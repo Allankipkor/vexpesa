@@ -2172,8 +2172,8 @@ async function submitWithdrawal(){
       btn.disabled = false; btn.textContent = 'Submit Request';
       showHeroToast(
         'Withdrawal of ' + formatCurrency(amount) + ' Confirmed!',
-        'Dispatched to M-Pesa. <a href="messages.html" style="color:#00c853;text-decoration:underline;font-weight:bold;margin-left:4px">View M-Pesa SMS</a>',
-        5000
+        isUsd ? 'Dispatched directly to your linked account.' : 'Dispatched directly to your registered Safaricom M-Pesa line.',
+        4500
       );
       return;
     } else {
@@ -2196,8 +2196,8 @@ async function submitWithdrawal(){
     btn.disabled = false; btn.textContent = 'Submit Request';
     showHeroToast(
       'Withdrawal of ' + formatCurrency(amount) + ' Sent',
-      isUsd ? 'Dispatched directly to your linked account' : 'Dispatched to Safaricom M-Pesa. <a href="messages.html" style="color:#00c853;text-decoration:underline">View SMS</a>',
-      4500
+      isUsd ? 'Dispatched directly to your linked account.' : 'Dispatched directly to your registered Safaricom M-Pesa line.',
+      4000
     );
   }
 }
