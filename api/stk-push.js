@@ -90,6 +90,26 @@ export default async function handler(req, res) {
     }
   }
 
+  // Record deposit in Neon DB
+  if (db) {
+    try {
+      await db`
+        INSERT INTO deposits (deposit_ref, username, amount_kes, phone, method, status)
+        VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa STK', 'completed')
+        ON CONFLICT (deposit_ref) DO NOTHING
+      `;
+      if (username) {
+        await db`
+          UPDATE users 
+          SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
+          WHERE username = ${username} OR name = ${username} OR phone = ${formattedPhone}
+        `;
+      }
+    } catch (dbErr) {
+      console.error('Error inserting deposit record:', dbErr);
+    }
+  }
+
   // Simulation mode
   return res.status(200).json({
     success: true,

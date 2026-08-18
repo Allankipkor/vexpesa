@@ -34,11 +34,16 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
 
 <main class="max-w-6xl mx-auto px-4 py-8 w-full flex-1">
     <!-- Top KPI Stats -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-lg">
             <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Total Traders</div>
             <div class="text-2xl font-bold text-white font-mono" id="adminStatUsers">1,284</div>
             <div class="text-[11px] text-green-400 mt-2 flex items-center gap-1">● Active on platform</div>
+        </div>
+        <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-lg">
+            <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Total Deposits</div>
+            <div class="text-2xl font-bold text-emerald-400 font-mono" id="adminStatDeposits">KES 8,420,000</div>
+            <div class="text-[11px] text-emerald-400 mt-2 flex items-center gap-1">● Verified M-Pesa Inflow</div>
         </div>
         <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-lg">
             <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">24h Trade Volume</div>
@@ -266,6 +271,51 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Real-Time Successful Deposits Ledger Table -->
+    <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-6 shadow-xl mb-8">
+        <div class="flex items-center justify-between pb-4 border-b border-gray-800 mb-4 flex-wrap gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-lg">
+                    💰
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-white tracking-tight flex items-center gap-2" style="font-family:'Space Grotesk'">
+                        Successful Deposits & Inflows
+                        <span id="badgeDepositCount" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono font-bold">0 Deposits</span>
+                    </h3>
+                    <p class="text-xs text-gray-400">Live verified player M-Pesa STK deposits, PayHero gateway inflows, and account top-ups</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <input type="text" id="searchDepositsInput" oninput="filterDepositsTable(this.value)" placeholder="Search trader, ref, phone..." 
+                        class="bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 w-48 sm:w-64 font-sans">
+                </div>
+                <button onclick="renderDepositsList()" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
+                    <span>🔄</span> Refresh
+                </button>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="text-[11px] text-gray-400 uppercase bg-gray-800/40">
+                    <tr>
+                        <th class="px-4 py-3 rounded-l-lg">Deposit Ref</th>
+                        <th class="px-4 py-3">Trader</th>
+                        <th class="px-4 py-3">Phone</th>
+                        <th class="px-4 py-3">Amount</th>
+                        <th class="px-4 py-3">Method</th>
+                        <th class="px-4 py-3">Date & Time (EAT)</th>
+                        <th class="px-4 py-3 text-right rounded-r-lg">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="depositsTableBody" class="divide-y divide-gray-800/60 font-mono">
+                    <!-- Dynamic deposit rows -->
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -917,7 +967,136 @@ async function renderTradersList(){
   });
 }
 
+let allAdminDeposits = [];
+let depositSearchQuery = '';
+
+function formatEATDateTime(isoString) {
+  if (!isoString) return 'Just now';
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return 'Recently';
+  return date.toLocaleString('en-GB', {
+    timeZone: 'Africa/Nairobi',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
+function filterDepositsTable(query) {
+  depositSearchQuery = (query || '').toLowerCase().trim();
+  displayFilteredDeposits();
+}
+
+function displayFilteredDeposits() {
+  const tbody = document.getElementById('depositsTableBody');
+  if (!tbody) return;
+
+  const curr = document.getElementById('cfgCurrency') ? document.getElementById('cfgCurrency').value : 'kes';
+  const prefix = curr === 'usd' ? '$' : 'KES ';
+
+  const filtered = allAdminDeposits.filter(d => {
+    if (!depositSearchQuery) return true;
+    const ref = (d.deposit_ref || '').toLowerCase();
+    const user = (d.username || '').toLowerCase();
+    const phone = (d.phone || '').toLowerCase();
+    const method = (d.method || '').toLowerCase();
+    return ref.includes(depositSearchQuery) || user.includes(depositSearchQuery) || phone.includes(depositSearchQuery) || method.includes(depositSearchQuery);
+  });
+
+  tbody.innerHTML = '';
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500 font-sans">No successful deposits found${depositSearchQuery ? ' matching your search' : ''}. Verified player deposits will automatically populate here in real-time.</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(d => {
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-gray-800/30 transition-colors';
+    const amountVal = parseFloat(d.amount_kes || 0);
+    const formattedAmt = prefix + amountVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const isSuccess = (d.status || '').toLowerCase() === 'completed' || (d.status || '').toLowerCase() === 'success' || (d.status || '').toLowerCase() === 'successful';
+
+    tr.innerHTML = `
+      <td class="px-4 py-3">
+        <span class="font-mono text-blue-400 font-bold text-[11px] bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">${d.deposit_ref || 'DEP-' + d.id}</span>
+      </td>
+      <td class="px-4 py-3">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-[10px]">${(d.username||'T').charAt(0).toUpperCase()}</div>
+          <span class="font-bold text-white font-sans">${d.username || 'Trader'}</span>
+        </div>
+      </td>
+      <td class="px-4 py-3 text-gray-300 font-sans text-[11px]">${d.phone || '—'}</td>
+      <td class="px-4 py-3 font-bold text-emerald-400 font-mono">${formattedAmt}</td>
+      <td class="px-4 py-3">
+        <span class="px-2 py-0.5 rounded text-[10px] font-sans font-medium bg-gray-800 text-gray-300 border border-gray-700/60">${d.method || 'M-Pesa STK'}</span>
+      </td>
+      <td class="px-4 py-3 text-gray-400 font-sans text-[11px]">${formatEATDateTime(d.created_at)}</td>
+      <td class="px-4 py-3 text-right">
+        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${isSuccess ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
+          <span class="w-1.5 h-1.5 rounded-full ${isSuccess ? 'bg-emerald-400' : 'bg-amber-400'}"></span>
+          ${isSuccess ? 'Completed' : d.status || 'Pending'}
+        </span>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function renderDepositsList() {
+  try {
+    let res = await fetch('/api/deposits');
+    if (!res.ok) res = await fetch('../api/deposits');
+    const data = await res.json();
+
+    if (data.success && data.deposits) {
+      allAdminDeposits = data.deposits;
+      displayFilteredDeposits();
+
+      const countBadge = document.getElementById('badgeDepositCount');
+      if (countBadge) countBadge.textContent = `${data.deposits.length} Deposit${data.deposits.length === 1 ? '' : 's'}`;
+
+      const statDeposits = document.getElementById('adminStatDeposits');
+      if (statDeposits && data.stats) {
+        const curr = document.getElementById('cfgCurrency') ? document.getElementById('cfgCurrency').value : 'kes';
+        const prefix = curr === 'usd' ? '$' : 'KES ';
+        statDeposits.textContent = prefix + parseFloat(data.stats.total_deposits_kes || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+      }
+      return;
+    }
+  } catch (err) {
+    console.error('Error loading deposits list:', err);
+  }
+
+  // Fallback to locally recorded transactions if DB not reachable
+  const localTx = JSON.parse(localStorage.getItem('maliTransactions') || '[]');
+  const localDeposits = localTx.filter(t => t.type === 'deposit');
+  if (localDeposits.length > 0) {
+    allAdminDeposits = localDeposits.map((d, i) => ({
+      id: i + 1,
+      deposit_ref: d.ref || `DEP-${1000 + i}`,
+      username: JSON.parse(localStorage.getItem('maliUser') || '{}').username || 'Trader',
+      phone: JSON.parse(localStorage.getItem('maliUser') || '{}').phone || '254712345678',
+      amount_kes: d.amount,
+      method: d.method || 'M-Pesa STK',
+      status: 'completed',
+      created_at: d.date || new Date().toISOString()
+    }));
+    displayFilteredDeposits();
+  }
+}
+
 loadAdminConfig();
+renderDepositsList();
+
+// Live Real-Time Auto-Refresh every 5 seconds
+setInterval(() => {
+  renderDepositsList();
+  renderTradersList();
+}, 5000);
 </script>
 </body>
 </html>

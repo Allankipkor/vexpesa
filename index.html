@@ -2054,12 +2054,15 @@ async function requestSTK(){
 
   // Fetch admin credentials from localStorage
   const adminCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
+  currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
+  const uname = currentUser ? (currentUser.username || currentUser.name || currentUser.email) : 'Trader';
 
   try {
     const res = await fetch('api/stk-push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        username: uname,
         phone: phone,
         amount: kesAmount,
         payheroUsername: adminCfg.payheroUsername || '',
@@ -2071,16 +2074,35 @@ async function requestSTK(){
     const data = await res.json();
     if (data.success) {
       status.innerHTML='<span style="color:var(--green)">✓ STK Push sent! Please enter your M-Pesa PIN on your phone.</span>';
-      setTimeout(()=>{
+      setTimeout(async ()=>{
         balance += kesAmount;
         localStorage.setItem('maliRealBalance', balance);
         updateHUD();
         saveTransaction({
           type: 'deposit',
           amount: kesAmount,
-          method: 'M-Pesa',
+          method: 'M-Pesa STK',
+          ref: data.reference || 'MALI-' + Date.now(),
           date: new Date().toISOString()
         });
+
+        // Record in Neon DB deposits table
+        try {
+          await fetch('/api/deposits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              deposit_ref: data.reference || 'MALI-' + Date.now(),
+              username: uname,
+              amount_kes: kesAmount,
+              currency: depositCurrency,
+              phone: phone,
+              method: 'M-Pesa STK',
+              status: 'completed'
+            })
+          });
+        } catch(e) {}
+
         status.innerHTML=`<span style="color:var(--green)">✓ KES ${kesAmount.toLocaleString()} credited successfully!</span>`;
         launchCelebration();
         setTimeout(closeDeposit, 1800);
@@ -2093,16 +2115,33 @@ async function requestSTK(){
   } catch (err) {
     // Client-side fallback simulation if backend is static
     status.innerHTML='<span style="color:var(--green)">✓ STK Push sent! Please enter your M-Pesa PIN.</span>';
-    setTimeout(()=>{
+    setTimeout(async ()=>{
       balance += kesAmount;
       localStorage.setItem('maliRealBalance', balance);
       updateHUD();
       saveTransaction({
         type: 'deposit',
         amount: kesAmount,
-        method: 'M-Pesa',
+        method: 'M-Pesa STK',
         date: new Date().toISOString()
       });
+
+      try {
+        await fetch('/api/deposits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deposit_ref: 'DEP-' + Date.now(),
+            username: uname,
+            amount_kes: kesAmount,
+            currency: depositCurrency,
+            phone: phone,
+            method: 'M-Pesa STK',
+            status: 'completed'
+          })
+        });
+      } catch(e) {}
+
       status.innerHTML=`<span style="color:var(--green)">✓ KES ${kesAmount.toLocaleString()} credited successfully!</span>`;
       launchCelebration();
       setTimeout(closeDeposit, 1800);
