@@ -1,21 +1,12 @@
 {
   "version": 2,
-  "functions": {
-    "api/*.php": {
-      "runtime": "vercel-php@0.7.3"
-    }
-  },
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/api/settings.php", "destination": "/api/settings.js" },
+    { "source": "/api/stk-push.php", "destination": "/api/stk-push.js" },
+    { "source": "/api/payhero-callback.php", "destination": "/api/payhero-callback.js" },
+    { "source": "/api/withdraw.php", "destination": "/api/withdraw.js" },
+    { "source": "/api/trade.php", "destination": "/api/trade.js" }
   ]
 }
