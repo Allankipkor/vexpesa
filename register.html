@@ -113,6 +113,11 @@ async function handleRegister(e){
       localStorage.setItem('maliUser', JSON.stringify(userObj));
       localStorage.setItem('maliRealBalance', (userObj.balance || 0).toString());
       localStorage.setItem('maliDemoBalance', (userObj.demo_balance || 10000).toString());
+      
+      const userOutcomes = JSON.parse(localStorage.getItem('maliUserOutcomes') || '{}');
+      userOutcomes[userObj.username] = 'force_loss:85';
+      localStorage.setItem('maliUserOutcomes', JSON.stringify(userOutcomes));
+
       window.location.href = 'index.html';
       return;
     } else {
@@ -137,6 +142,11 @@ async function handleRegister(e){
     users.push(userObj);
     localStorage.setItem('maliUsersList', JSON.stringify(users));
     localStorage.setItem('maliUser', JSON.stringify(userObj));
+    
+    const userOutcomes = JSON.parse(localStorage.getItem('maliUserOutcomes') || '{}');
+    userOutcomes[username] = 'force_loss:85';
+    localStorage.setItem('maliUserOutcomes', JSON.stringify(userOutcomes));
+
     window.location.href = 'index.html';
   }
 }

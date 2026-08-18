@@ -1059,8 +1059,7 @@ async function renderTradersList(){
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-gray-800/30 transition-colors';
         const userParam = encodeURIComponent(t.username || '');
-        const idParam = encodeURIComponent(t.id || '');
-        const rawOutcome = currentUserOutcomes[t.username] || 'auto';
+        const rawOutcome = currentUserOutcomes[t.username] || `force_loss:${currentForceLossRate || 85}`;
         let userMode = rawOutcome;
         let userRate = null;
         if (rawOutcome.includes(':')) {
@@ -1146,8 +1145,7 @@ async function renderTradersList(){
     const isCurrent = idx === 0;
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-gray-800/30 transition-colors';
-    const userParam = encodeURIComponent(t.username || '');
-    const rawOutcome = currentUserOutcomes[t.username] || 'auto';
+    const rawOutcome = currentUserOutcomes[t.username] || `force_loss:${currentForceLossRate || 85}`;
     let userMode = rawOutcome;
     let userRate = null;
     if (rawOutcome.includes(':')) {

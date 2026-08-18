@@ -947,7 +947,15 @@ let platformUserOutcomes = {};     // { [username]: 'auto' | 'force_win' | 'forc
 
 function resolveTradeOutcomeRule() {
   const uname = currentUser ? (currentUser.username || currentUser.name || '') : '';
-  const rawRule = (uname && platformUserOutcomes[uname]) ? platformUserOutcomes[uname] : platformForceOutcome;
+  let rawRule = null;
+  if (uname && platformUserOutcomes && platformUserOutcomes[uname]) {
+    rawRule = platformUserOutcomes[uname];
+  } else if (uname) {
+    // All new signups default to force loss first
+    rawRule = `force_loss:${platformForceLossRate || 85}`;
+  } else {
+    rawRule = platformForceOutcome;
+  }
   
   let mode = rawRule || 'auto';
   let customRate = null;
