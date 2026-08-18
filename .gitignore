@@ -3,6 +3,22 @@
 Thumbs.db
 *.log
 
+# Sensitive environment and credentials
+.env
+.env.*
+*.env
+config.local.php
+secrets.json
+credentials.json
+*.pem
+*.key
+*.cert
+
+# Dependencies & build
+node_modules/
+vendor/
+
 # Temp files
 *.tmp
 *.bak
+

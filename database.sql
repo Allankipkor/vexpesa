@@ -90,7 +90,7 @@ INSERT INTO `settings` (`key`, `value`) VALUES
 ('checkout_method', 'both')
 ON DUPLICATE KEY UPDATE `value`=VALUES(`value`);
 
--- Seed Default Admin Account (password: admin123)
+-- Seed Default Admin Account (password: Aa@123)
 INSERT INTO `users` (`username`, `email`, `phone`, `password_hash`, `balance`, `role`) VALUES
 ('admin', 'admin@malicrush.com', '254712345678', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 100000.00, 'admin')
 ON DUPLICATE KEY UPDATE `username`=VALUES(`username`);

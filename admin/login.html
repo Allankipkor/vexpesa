@@ -26,6 +26,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0f17;background-im
     </div>
 
     <div class="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-6 shadow-2xl">
+        <div id="adminAlert" class="hidden mb-4 p-3 rounded-xl text-xs font-medium bg-red-500/10 border border-red-500/20 text-red-400"></div>
         <form id="adminLoginForm" onsubmit="handleAdminLogin(event)" class="space-y-4">
             <div>
                 <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Admin Email / Username</label>
@@ -34,7 +35,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0f17;background-im
             </div>
             <div>
                 <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Security Password</label>
-                <input type="password" id="adminPass" required placeholder="••••••••" value="admin123" autocomplete="current-password"
+                <input type="password" id="adminPass" required placeholder="••••••••" value="Aa@123" autocomplete="current-password"
                     class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
             </div>
             <button type="submit" id="adminLoginBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl text-sm transition-colors mt-2 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25">
@@ -52,15 +53,30 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0f17;background-im
 <script>
 function handleAdminLogin(e){
   e.preventDefault();
-  const u = document.getElementById('adminUser').value;
+  const alertEl = document.getElementById('adminAlert');
+  alertEl.classList.add('hidden');
+  
+  const u = document.getElementById('adminUser').value.trim();
   const p = document.getElementById('adminPass').value;
   const btn = document.getElementById('adminLoginBtn');
+
+  // Verify credentials
+  const validUser = (u.toLowerCase() === 'admin@malicrush.com' || u.toLowerCase() === 'admin');
+  const validPass = (p === 'Aa@123');
+
+  if (!validUser || !validPass) {
+    alertEl.textContent = 'Invalid credentials. Please enter the correct admin password (Aa@123).';
+    alertEl.classList.remove('hidden');
+    return;
+  }
+
   btn.textContent = 'Authenticating...';
+  btn.disabled = true;
 
   setTimeout(()=>{
     localStorage.setItem('maliAdminAuth', 'true');
     window.location.href = 'index.html';
-  }, 500);
+  }, 400);
 }
 </script>
 </body>
