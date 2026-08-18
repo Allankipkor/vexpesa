@@ -1370,7 +1370,7 @@ function updateHUD(){
   }
   
   if(activeTrade){
-    const diff = rate - activeTrade.entryRate;
+    const diff = (activeTrade.type === 'buy') ? (rate - activeTrade.entryRate) : (activeTrade.entryRate - rate);
     const cappedProfit = Math.min(activeTrade.stake * diff, activeTrade.stake * (CFG.MAX_MULT - 1));
     const pnl = diff > 0 ? cappedProfit : -activeTrade.stake;
     const pe = document.getElementById('profitDisplay');
@@ -1394,6 +1394,9 @@ function tick(){
 }
 
 async function syncUserBalance(){
+  // Never overwrite balance during an in-flight or resolving trade
+  if (activeTrade || tradePhase !== 'idle') return;
+
   currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
   if (!currentUser || (!currentUser.username && !currentUser.email)) return;
   const ident = currentUser.username || currentUser.email;
@@ -1746,14 +1749,25 @@ async function placeTrade(type){
   if(stake > maxStake){alert('Maximum stake is ' + formatCurrency(maxStake));return;}
 
   const plannedOutcome = resolveTradeOutcomeRule();
+  const uname = currentUser ? (currentUser.username || currentUser.email || '') : '';
+  const tradeId = (isDemoMode ? 'DEMO-' : 'MC-') + Date.now() + '-' + Math.floor(Math.random() * 9000 + 1000);
+
   if(isDemoMode){
     if(stake>demoBalance){alert('Insufficient demo balance. Reset demo account in profile.');return;}
     demoBalance-=stake;
-    localStorage.setItem('maliDemoBalance',demoBalance);
-    activeTrade={type,entryRate:rate,stake,tradeId:'DEMO-'+Date.now(),isDemo:true,plannedOutcome};
+    localStorage.setItem('maliDemoBalance',demoBalance.toString());
+    activeTrade={type,entryRate:rate,stake,tradeId,isDemo:true,plannedOutcome};
     updateHUD();
     showHeroToast('Demo trade: ' + formatCurrency(stake) + ' staked','Virtual funds · No risk',2800);
     _setupTradeButtons(type);
+
+    if (uname) {
+      fetch('/api/trade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'place', username: uname, stake, is_demo: true, trade_type: type, entry_rate: rate, trade_id: tradeId })
+      }).catch(()=>{});
+    }
     return;
   }
 
@@ -1765,8 +1779,8 @@ async function placeTrade(type){
   }
 
   balance -= stake;
-  localStorage.setItem('maliRealBalance', balance);
-  activeTrade={type,entryRate:rate,stake,tradeId:'MC-'+Date.now(),isDemo:false,plannedOutcome};
+  localStorage.setItem('maliRealBalance', balance.toString());
+  activeTrade={type,entryRate:rate,stake,tradeId,isDemo:false,plannedOutcome};
   updateHUD();
 
   showHeroToast(
@@ -1775,6 +1789,25 @@ async function placeTrade(type){
     3000
   );
   _setupTradeButtons(type);
+
+  if (uname) {
+    fetch('/api/trade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'place', username: uname, stake, is_demo: false, trade_type: type, entry_rate: rate, trade_id: tradeId })
+    })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data && data.success && data.new_balance !== undefined) {
+        if (activeTrade && activeTrade.tradeId === tradeId) {
+          balance = data.new_balance;
+          localStorage.setItem('maliRealBalance', balance.toString());
+          updateHUD();
+        }
+      }
+    })
+    .catch(()=>{});
+  }
 }
 
 function _setupTradeButtons(type){
@@ -1816,13 +1849,17 @@ function _setupTradeButtons(type){
 function cancelTrade(){
   if(!activeTrade || tradePhase !== 'prestart')return;
   clearInterval(prestartInterval);
+  const tradeRef = activeTrade.tradeId;
+  const stake = activeTrade.stake;
+  const isDemo = activeTrade.isDemo;
+  const uname = currentUser ? (currentUser.username || currentUser.email || '') : '';
 
-  if(activeTrade.isDemo){
-    demoBalance += activeTrade.stake;
-    localStorage.setItem('maliDemoBalance', demoBalance);
+  if(isDemo){
+    demoBalance += stake;
+    localStorage.setItem('maliDemoBalance', demoBalance.toString());
   } else {
-    balance += activeTrade.stake;
-    localStorage.setItem('maliRealBalance', balance);
+    balance += stake;
+    localStorage.setItem('maliRealBalance', balance.toString());
   }
 
   showToast('Trade cancelled', {sub:'Stake refunded in full', kind:'info'});
@@ -1830,6 +1867,14 @@ function cancelTrade(){
   resetBtns(); resetTimer(); updateHUD();
   document.getElementById('profitDisplay').textContent = formatCurrency(0);
   document.getElementById('profitDisplay').className='profit-val neutral';
+
+  if (uname) {
+    fetch('/api/trade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'cancel', username: uname, stake, is_demo: isDemo, trade_id: tradeRef })
+    }).catch(()=>{});
+  }
 }
 
 function updateActiveButton() {
@@ -1851,12 +1896,12 @@ function updateActiveButton() {
 
   if (tradePhase !== 'active') return;
 
-  if (rate <= 0 && prevRate > 0) {
+  if (activeTrade.type === 'buy' && rate <= 0 && prevRate > 0) {
     resolveTrade('crash');
     return;
   }
 
-  const rateDiff = rate - activeTrade.entryRate;
+  const rateDiff = (activeTrade.type === 'buy') ? (rate - activeTrade.entryRate) : (activeTrade.entryRate - rate);
   const rawPayout = rateDiff > 0 ? activeTrade.stake * (1 + rateDiff * 10) : 0;
   const autosellTarget = activeTrade.stake * CFG.AUTOSELL_MULT;
   if (rawPayout >= autosellTarget && CFG.AUTOSELL_MULT > 1) {
@@ -1927,7 +1972,7 @@ async function resolveTrade(reason) {
   tradePhase = 'resolving';
   clearInterval(prestartInterval);
 
-  const {type, entryRate, stake, isDemo} = activeTrade;
+  const {type, entryRate, stake, isDemo, tradeId: currentTradeId} = activeTrade;
   const bb=document.getElementById('buyBtn'),sb=document.getElementById('sellBtn');
   const secondaryBtn = (type==='buy') ? sb : bb;
   if (secondaryBtn) {
@@ -1938,7 +1983,7 @@ async function resolveTrade(reason) {
     secondaryBtn.querySelector('.sub').style.display = 'none';
   }
 
-  const outcomeRule = getActiveTradeOutcomeRule();
+  const outcomeRule = activeTrade.plannedOutcome || getActiveTradeOutcomeRule();
   const expired = reason === 'expired' || reason === 'crash';
   let won = false;
   let payout = 0;
@@ -1957,7 +2002,7 @@ async function resolveTrade(reason) {
     won = false;
     payout = 0;
   } else {
-    const rateDiff = rate - entryRate;
+    const rateDiff = (type === 'buy') ? (rate - entryRate) : (entryRate - rate);
     if (rateDiff > 0 || reason === 'autosell') {
       won = true;
       const mult = Math.min(1 + Math.max(rateDiff * 10, 0.25), CFG.MAX_MULT);
@@ -1968,10 +2013,12 @@ async function resolveTrade(reason) {
     }
   }
 
+  const uname = currentUser ? (currentUser.username || currentUser.email || '') : '';
+
   if (isDemo) {
-    if (won) { demoBalance += payout; localStorage.setItem('maliDemoBalance', demoBalance); }
+    if (won) { demoBalance += payout; localStorage.setItem('maliDemoBalance', demoBalance.toString()); }
   } else {
-    if (won) { balance += payout; localStorage.setItem('maliRealBalance', balance); }
+    if (won) { balance += payout; localStorage.setItem('maliRealBalance', balance.toString()); }
     saveTransaction({
       type: 'trade',
       tradeType: type,
@@ -1980,6 +2027,39 @@ async function resolveTrade(reason) {
       won,
       date: new Date().toISOString()
     });
+  }
+
+  // Persist resolved trade outcome to Neon PostgreSQL DB
+  if (uname) {
+    fetch('/api/trade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'resolve',
+        username: uname,
+        trade_id: currentTradeId,
+        won,
+        payout,
+        is_demo: isDemo,
+        exit_rate: rate,
+        multiplier: stake > 0 ? (payout / stake) : 1
+      })
+    })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data && data.success) {
+        if (!isDemo && data.new_balance !== undefined) {
+          balance = data.new_balance;
+          localStorage.setItem('maliRealBalance', balance.toString());
+          updateHUD();
+        } else if (isDemo && data.new_demo_balance !== undefined) {
+          demoBalance = data.new_demo_balance;
+          localStorage.setItem('maliDemoBalance', demoBalance.toString());
+          updateHUD();
+        }
+      }
+    })
+    .catch(()=>{});
   }
 
   showResult(won, stake, payout, entryRate, rate, type, reason);
