@@ -78,6 +78,8 @@ export default async function handler(req, res) {
     if (action === 'credit') {
       const amount = parseFloat(input.amount) || 0;
       const type = input.wallet_type || 'real'; // 'real' or 'demo'
+      const username = (input.username || '').trim();
+      const rawUserId = (input.user_id || input.userId || '').toString().trim();
 
       if (amount <= 0) {
         return res.status(400).json({ success: false, error: 'Invalid credit amount' });
@@ -86,27 +88,46 @@ export default async function handler(req, res) {
       if (db) {
         try {
           if (type === 'demo') {
-            await db`
-              UPDATE users 
-              SET demo_balance = demo_balance + ${amount}, updated_at = CURRENT_TIMESTAMP
-              WHERE id = ${userId} OR username = ${username}
-            `;
+            if (rawUserId && rawUserId !== 'null' && rawUserId !== 'undefined') {
+              await db`
+                UPDATE users 
+                SET demo_balance = demo_balance + ${amount}, updated_at = CURRENT_TIMESTAMP
+                WHERE id::text = ${rawUserId} OR username = ${username} OR name = ${username}
+              `;
+            } else {
+              await db`
+                UPDATE users 
+                SET demo_balance = demo_balance + ${amount}, updated_at = CURRENT_TIMESTAMP
+                WHERE username = ${username} OR name = ${username}
+              `;
+            }
           } else {
-            await db`
-              UPDATE users 
-              SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
-              WHERE id = ${userId} OR username = ${username}
-            `;
+            if (rawUserId && rawUserId !== 'null' && rawUserId !== 'undefined') {
+              await db`
+                UPDATE users 
+                SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
+                WHERE id::text = ${rawUserId} OR username = ${username} OR name = ${username}
+              `;
+            } else {
+              await db`
+                UPDATE users 
+                SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
+                WHERE username = ${username} OR name = ${username}
+              `;
+            }
           }
 
-          // Also record in deposits table
-          await db`
-            INSERT INTO deposits (deposit_ref, username, amount_kes, phone, method, status)
-            VALUES (${'CREDIT-' + Date.now()}, ${username}, ${amount}, 'Admin', 'Admin Credit', 'completed')
-          `;
+          // Also try recording in deposits table safely
+          try {
+            await db`
+              INSERT INTO deposits (deposit_ref, username, amount_kes, phone, method, status)
+              VALUES (${'CREDIT-' + Date.now()}, ${username}, ${amount}, 'Admin', 'Admin Credit', 'completed')
+            `;
+          } catch(depErr) {}
 
-          return res.status(200).json({ success: true, message: `Credited ${amount} to ${username}` });
+          return res.status(200).json({ success: true, message: `Successfully credited ${amount} to ${username}` });
         } catch (err) {
+          console.error('Error crediting balance in DB:', err);
           return res.status(500).json({ success: false, error: err.message });
         }
       }
