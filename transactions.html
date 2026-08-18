@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transaction & Trade History — MaliCrush</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5;}
+</style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+<!-- Header -->
+<header class="h-14 border-b border-gray-800/80 bg-gray-900/60 backdrop-blur px-4 lg:px-8 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center font-bold text-black text-sm" style="font-family:'Space Grotesk'">M</div>
+        <span class="font-bold text-white tracking-tight" style="font-family:'Space Grotesk'">Mali<span class="text-green-400">Crush</span></span>
+    </a>
+    <div class="flex items-center gap-3">
+        <a href="index.html" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-3 py-1.5 rounded-lg transition-colors">
+            ← Trade Screen
+        </a>
+    </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-4 py-8 w-full flex-1">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white tracking-tight" style="font-family:'Space Grotesk'">Transactions & Trades</h1>
+            <p class="text-sm text-gray-400">Live ledger of your bets, payouts, deposits, and M-Pesa withdrawals</p>
+        </div>
+        <div class="flex items-center gap-2 bg-gray-900/80 border border-gray-800 p-1 rounded-xl">
+            <button onclick="filterType('all')" id="btnFilterAll" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-green-500 text-black transition-all">All</button>
+            <button onclick="filterType('trade')" id="btnFilterTrade" class="text-xs font-semibold px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all">Trades</button>
+            <button onclick="filterType('deposit')" id="btnFilterDeposit" class="text-xs font-semibold px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all">Deposits</button>
+            <button onclick="filterType('withdrawal')" id="btnFilterWithdrawal" class="text-xs font-semibold px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all">Withdrawals</button>
+        </div>
+    </div>
+
+    <!-- History Table Card -->
+    <div class="bg-gray-900/80 border border-gray-800/80 rounded-2xl overflow-hidden shadow-xl">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-gray-800 bg-gray-950/40 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                        <th class="px-6 py-3.5">Type</th>
+                        <th class="px-6 py-3.5">Details</th>
+                        <th class="px-6 py-3.5">Amount</th>
+                        <th class="px-6 py-3.5">Result / Status</th>
+                        <th class="px-6 py-3.5 text-right">Date & Time</th>
+                    </tr>
+                </thead>
+                <tbody id="txTableBody" class="divide-y divide-gray-800/60 font-mono text-xs">
+                    <!-- Dynamic rows -->
+                </tbody>
+            </table>
+        </div>
+        <div id="emptyState" class="hidden text-center py-12">
+            <div class="text-3xl mb-2">📜</div>
+            <div class="text-sm font-semibold text-gray-400">No transactions recorded yet</div>
+            <p class="text-xs text-gray-600 mt-1">Start trading or deposit to view live ledger history.</p>
+        </div>
+    </div>
+</main>
+
+<footer class="text-center py-6 text-[10px] text-gray-600 border-t border-gray-900">
+    Licensed in the Commonwealth of The Bahamas · Licence No <span class="font-mono text-gray-500">BHA-0023-1873201</span>
+</footer>
+
+<script>
+let currentFilter = 'all';
+
+function renderTransactions(){
+  const list = JSON.parse(localStorage.getItem('maliTransactions') || '[]');
+  const tbody = document.getElementById('txTableBody');
+  const empty = document.getElementById('emptyState');
+  tbody.innerHTML = '';
+
+  const filtered = list.filter(item => {
+    if (currentFilter === 'all') return true;
+    return item.type === currentFilter;
+  });
+
+  if (filtered.length === 0) {
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  filtered.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-gray-800/30 transition-colors';
+
+    let typeBadge = '';
+    let details = '';
+    let amountStr = '';
+    let statusBadge = '';
+
+    const d = item.date ? new Date(item.date) : new Date();
+    const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+    if (item.type === 'trade') {
+      typeBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold ${item.tradeType === 'buy' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'} uppercase">🎯 ${item.tradeType}</span>`;
+      details = `Stake: KES ${item.stake.toFixed(2)}`;
+      if (item.won) {
+        amountStr = `<span class="text-green-400 font-bold">+ KES ${item.payout.toFixed(2)}</span>`;
+        statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-green-500/20 text-green-300 font-bold">WON</span>`;
+      } else {
+        amountStr = `<span class="text-red-400 font-bold">- KES ${item.stake.toFixed(2)}</span>`;
+        statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-red-500/20 text-red-300 font-bold">LOST</span>`;
+      }
+    } else if (item.type === 'deposit') {
+      typeBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">💳 Deposit</span>`;
+      details = `Via ${item.method || 'M-PESA'}`;
+      amountStr = `<span class="text-blue-400 font-bold">+ KES ${item.amount.toLocaleString('en-US',{minimumFractionDigits:2})}</span>`;
+      statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-bold">COMPLETED</span>`;
+    } else if (item.type === 'withdrawal') {
+      typeBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase">↓ Withdrawal</span>`;
+      details = `M-Pesa B2C Payout`;
+      amountStr = `<span class="text-amber-400 font-bold">- KES ${item.amount.toLocaleString('en-US',{minimumFractionDigits:2})}</span>`;
+      statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-bold">PROCESSED</span>`;
+    }
+
+    tr.innerHTML = `
+      <td class="px-6 py-4">${typeBadge}</td>
+      <td class="px-6 py-4 font-sans text-gray-300">${details}</td>
+      <td class="px-6 py-4">${amountStr}</td>
+      <td class="px-6 py-4">${statusBadge}</td>
+      <td class="px-6 py-4 text-right text-gray-500">${dateStr}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function filterType(type){
+  currentFilter = type;
+  ['all','trade','deposit','withdrawal'].forEach(t => {
+    const btn = document.getElementById('btnFilter' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (btn) {
+      if (t === type) {
+        btn.className = 'text-xs font-semibold px-3 py-1.5 rounded-lg bg-green-500 text-black transition-all';
+      } else {
+        btn.className = 'text-xs font-semibold px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all';
+      }
+    }
+  });
+  renderTransactions();
+}
+
+// Seed default history if empty
+if (!localStorage.getItem('maliTransactions')) {
+  const initial = [
+    { type: 'deposit', amount: 2500, method: 'M-PESA', date: new Date(Date.now() - 3600000 * 2).toISOString() },
+    { type: 'trade', tradeType: 'buy', stake: 100, payout: 245, won: true, date: new Date(Date.now() - 3600000).toISOString() },
+    { type: 'trade', tradeType: 'sell', stake: 200, payout: 0, won: false, date: new Date(Date.now() - 1800000).toISOString() }
+  ];
+  localStorage.setItem('maliTransactions', JSON.stringify(initial));
+}
+
+renderTransactions();
+</script>
+</body>
+</html>

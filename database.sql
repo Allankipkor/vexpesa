@@ -1,0 +1,96 @@
+-- MaliCrush Database Schema
+-- Compatible with MySQL 5.7+ / MariaDB / Cloud SQL
+
+CREATE DATABASE IF NOT EXISTS `malicrush` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `malicrush`;
+
+-- 1. Users Table
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `username` VARCHAR(50) NOT NULL UNIQUE,
+  `email` VARCHAR(100) NOT NULL UNIQUE,
+  `phone` VARCHAR(20) NOT NULL,
+  `password_hash` VARCHAR(255) NOT NULL,
+  `balance` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  `demo_balance` DECIMAL(12,2) NOT NULL DEFAULT 10000.00,
+  `role` ENUM('user', 'admin') NOT NULL DEFAULT 'user',
+  `status` ENUM('active', 'suspended') NOT NULL DEFAULT 'active',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- 2. Trades Table
+CREATE TABLE IF NOT EXISTS `trades` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `trade_ref` VARCHAR(50) NOT NULL UNIQUE,
+  `user_id` INT UNSIGNED NOT NULL,
+  `trade_type` ENUM('buy', 'sell') NOT NULL,
+  `stake` DECIMAL(10,2) NOT NULL,
+  `entry_rate` DECIMAL(10,4) NOT NULL,
+  `exit_rate` DECIMAL(10,4) NULL,
+  `multiplier` DECIMAL(6,2) NULL,
+  `payout` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `result` ENUM('pending', 'win', 'lose', 'cancelled') NOT NULL DEFAULT 'pending',
+  `is_demo` TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `resolved_at` TIMESTAMP NULL,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 3. Deposits Table
+CREATE TABLE IF NOT EXISTS `deposits` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `deposit_ref` VARCHAR(50) NOT NULL UNIQUE,
+  `user_id` INT UNSIGNED NOT NULL,
+  `amount_kes` DECIMAL(10,2) NOT NULL,
+  `amount_usd` DECIMAL(10,2) NULL,
+  `currency` ENUM('kes', 'usd') NOT NULL DEFAULT 'kes',
+  `method` ENUM('mpesa', 'pesapal', 'hub', 'megapay', 'paywave') NOT NULL DEFAULT 'mpesa',
+  `phone` VARCHAR(20) NOT NULL,
+  `status` ENUM('pending', 'completed', 'failed') NOT NULL DEFAULT 'pending',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 4. Withdrawals Table
+CREATE TABLE IF NOT EXISTS `withdrawals` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `withdraw_ref` VARCHAR(50) NOT NULL UNIQUE,
+  `user_id` INT UNSIGNED NOT NULL,
+  `amount_kes` DECIMAL(10,2) NOT NULL,
+  `phone` VARCHAR(20) NOT NULL,
+  `status` ENUM('pending', 'processed', 'rejected') NOT NULL DEFAULT 'pending',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 5. Platform Settings Table
+CREATE TABLE IF NOT EXISTS `settings` (
+  `key` VARCHAR(50) PRIMARY KEY,
+  `value` TEXT NOT NULL
+) ENGINE=InnoDB;
+
+-- Seed Default Settings
+INSERT INTO `settings` (`key`, `value`) VALUES
+('graph_speed', '300'),
+('graph_y_max', '0.12'),
+('graph_spike_freq', '0.10'),
+('graph_crash_freq', '0.02'),
+('graph_base_level', '0.025'),
+('graph_spike_max', '0.105'),
+('graph_crash_depth', '-0.17'),
+('trade_duration', '60'),
+('trade_min_stake', '10'),
+('trade_max_stake', '50000'),
+('trade_max_multiplier', '5.0'),
+('trade_prestart_wait', '3'),
+('trade_autosell_multiplier', '2.5'),
+('usd_rate', '129.00'),
+('deposit_currency', 'kes'),
+('checkout_method', 'both')
+ON DUPLICATE KEY UPDATE `value`=VALUES(`value`);
+
+-- Seed Default Admin Account (password: admin123)
+INSERT INTO `users` (`username`, `email`, `phone`, `password_hash`, `balance`, `role`) VALUES
+('admin', 'admin@malicrush.com', '254712345678', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 100000.00, 'admin')
+ON DUPLICATE KEY UPDATE `username`=VALUES(`username`);

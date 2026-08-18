@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — MaliCrush Platform Control</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5;}
+</style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+<!-- Admin Top Nav -->
+<header class="h-16 border-b border-gray-800 bg-gray-900/90 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20" style="font-family:'Space Grotesk'">M</div>
+        <div>
+            <div class="font-bold text-white tracking-tight flex items-center gap-2" style="font-family:'Space Grotesk'">
+                MaliCrush <span class="px-2 py-0.5 text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-md font-mono">ADMIN PANEL</span>
+            </div>
+        </div>
+    </div>
+    <div class="flex items-center gap-3">
+        <a href="../index.html" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5">
+            <span>👁</span> View Live Platform
+        </a>
+        <button onclick="adminLogout()" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-semibold px-3.5 py-2 rounded-xl transition-all">
+            Sign Out
+        </button>
+    </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-8 w-full flex-1">
+    <!-- Top KPI Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-lg">
+            <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Total Traders</div>
+            <div class="text-2xl font-bold text-white font-mono" id="statUsers">1,284</div>
+            <div class="text-[11px] text-green-400 mt-2 flex items-center gap-1">● Active on platform</div>
+        </div>
+        <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-lg">
+            <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">24h Trade Volume</div>
+            <div class="text-2xl font-bold text-green-400 font-mono">KES 4,820,400</div>
+            <div class="text-[11px] text-gray-500 mt-2">+18.4% vs yesterday</div>
+        </div>
+        <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-lg">
+            <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Total Payouts</div>
+            <div class="text-2xl font-bold text-amber-400 font-mono">KES 32,491,000</div>
+            <div class="text-[11px] text-gray-500 mt-2">M-Pesa B2C instant</div>
+        </div>
+        <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-lg">
+            <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Platform Margin</div>
+            <div class="text-2xl font-bold text-blue-400 font-mono">14.8%</div>
+            <div class="text-[11px] text-green-400 mt-2">Healthy engine spread</div>
+        </div>
+    </div>
+
+    <!-- Admin Settings Tabs -->
+    <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-6 mb-8 shadow-xl">
+        <div class="flex items-center justify-between pb-5 border-b border-gray-800 mb-6">
+            <div>
+                <h2 class="text-lg font-bold text-white" style="font-family:'Space Grotesk'">Platform Engine Configuration</h2>
+                <p class="text-xs text-gray-400">Live controls for price generation, trading limits, and payment gateways</p>
+            </div>
+            <button onclick="saveAdminConfig()" id="saveCfgBtn" class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-blue-500/25 transition-all">
+                Save & Apply Settings
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Column 1: Graph Engine Parameters -->
+            <div class="space-y-4">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                    Price Wave & Spikes
+                </h3>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Engine Speed (ms per tick)</label>
+                    <input type="number" id="cfgSpeed" value="300" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Spike Frequency (0.01 - 0.50)</label>
+                    <input type="number" step="0.01" id="cfgSpikeFreq" value="0.10" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Spike Maximum Height</label>
+                    <input type="number" step="0.01" id="cfgSpikeMax" value="0.105" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Red Dip / Crash Frequency</label>
+                    <input type="number" step="0.01" id="cfgCrashFreq" value="0.02" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Crash Depth (Floor)</label>
+                    <input type="number" step="0.01" id="cfgCrashDepth" value="-0.17" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+
+            <!-- Column 2: Trading Engine Settings -->
+            <div class="space-y-4">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-green-400 flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Trade Parameters
+                </h3>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Max Multiplier Cap (e.g. 5.0)</label>
+                    <input type="number" step="0.1" id="cfgMaxMult" value="5.0" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Prestart Cancel Window (seconds)</label>
+                    <input type="number" id="cfgPrestart" value="3" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Autosell Multiplier (× trigger)</label>
+                    <input type="number" step="0.1" id="cfgAutosell" value="2.5" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Minimum Stake (KES)</label>
+                    <input type="number" id="cfgMinStake" value="10" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Maximum Stake (KES)</label>
+                    <input type="number" id="cfgMaxStake" value="50000" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                </div>
+            </div>
+
+            <!-- Column 3: Payment & Gateway Settings -->
+            <div class="space-y-4">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                    Payments & Currencies
+                </h3>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">1 USD Exchange Rate (KES)</label>
+                    <input type="number" step="0.1" id="cfgUsdRate" value="129.00" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Primary Deposit Currency</label>
+                    <select id="cfgCurrency" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                        <option value="kes">KES (Kenyan Shillings)</option>
+                        <option value="usd">USD ($ Dollars)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Minimum Deposit (KES)</label>
+                    <input type="number" id="cfgMinDep" value="50" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Active Gateways</label>
+                    <div class="space-y-1.5 text-xs text-gray-300">
+                        <label class="flex items-center gap-2"><input type="checkbox" checked class="accent-green-500"> Safaricom M-Pesa STK Push</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" checked class="accent-indigo-500"> PesaPal Secure Modal</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" checked class="accent-blue-500"> MegaPay & Hub Gateways</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="text-center py-6 text-[10px] text-gray-600 border-t border-gray-900">
+    MaliCrush Administrator Core · Licensed in the Commonwealth of The Bahamas
+</footer>
+
+<script>
+// Check admin authentication
+if (localStorage.getItem('maliAdminAuth') !== 'true') {
+  window.location.href = 'login.html';
+}
+
+function adminLogout(){
+  localStorage.removeItem('maliAdminAuth');
+  window.location.href = 'login.html';
+}
+
+function loadAdminConfig(){
+  const cfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
+  if (cfg.speed) document.getElementById('cfgSpeed').value = cfg.speed;
+  if (cfg.spikeFreq) document.getElementById('cfgSpikeFreq').value = cfg.spikeFreq;
+  if (cfg.spikeMax) document.getElementById('cfgSpikeMax').value = cfg.spikeMax;
+  if (cfg.crashFreq) document.getElementById('cfgCrashFreq').value = cfg.crashFreq;
+  if (cfg.crashDepth) document.getElementById('cfgCrashDepth').value = cfg.crashDepth;
+  if (cfg.maxMult) document.getElementById('cfgMaxMult').value = cfg.maxMult;
+  if (cfg.prestart) document.getElementById('cfgPrestart').value = cfg.prestart;
+  if (cfg.autosell) document.getElementById('cfgAutosell').value = cfg.autosell;
+  if (cfg.minStake) document.getElementById('cfgMinStake').value = cfg.minStake;
+  if (cfg.maxStake) document.getElementById('cfgMaxStake').value = cfg.maxStake;
+  if (cfg.usdRate) document.getElementById('cfgUsdRate').value = cfg.usdRate;
+  if (cfg.currency) document.getElementById('cfgCurrency').value = cfg.currency;
+  if (cfg.minDep) document.getElementById('cfgMinDep').value = cfg.minDep;
+}
+loadAdminConfig();
+
+function saveAdminConfig(){
+  const cfg = {
+    speed: parseFloat(document.getElementById('cfgSpeed').value) || 300,
+    spikeFreq: parseFloat(document.getElementById('cfgSpikeFreq').value) || 0.10,
+    spikeMax: parseFloat(document.getElementById('cfgSpikeMax').value) || 0.105,
+    crashFreq: parseFloat(document.getElementById('cfgCrashFreq').value) || 0.02,
+    crashDepth: parseFloat(document.getElementById('cfgCrashDepth').value) || -0.17,
+    maxMult: parseFloat(document.getElementById('cfgMaxMult').value) || 5.0,
+    prestart: parseInt(document.getElementById('cfgPrestart').value) || 3,
+    autosell: parseFloat(document.getElementById('cfgAutosell').value) || 2.5,
+    minStake: parseFloat(document.getElementById('cfgMinStake').value) || 10,
+    maxStake: parseFloat(document.getElementById('cfgMaxStake').value) || 50000,
+    usdRate: parseFloat(document.getElementById('cfgUsdRate').value) || 129.00,
+    currency: document.getElementById('cfgCurrency').value || 'kes',
+    minDep: parseFloat(document.getElementById('cfgMinDep').value) || 50
+  };
+
+  localStorage.setItem('maliPlatformConfig', JSON.stringify(cfg));
+  const btn = document.getElementById('saveCfgBtn');
+  btn.textContent = 'Saved & Applied! ✓';
+  btn.classList.add('bg-green-500', 'text-black');
+  setTimeout(()=>{
+    btn.textContent = 'Save & Apply Settings';
+    btn.classList.remove('bg-green-500', 'text-black');
+  }, 1800);
+}
+</script>
+</body>
+</html>

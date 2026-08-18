@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up — MaliCrush</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>body{font-family:'Plus Jakarta Sans',sans-serif;background:#060a10;}</style>
+</head>
+<body class="min-h-screen flex items-center justify-center px-4 py-8">
+<div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+        <a href="index.html" class="inline-flex items-center gap-2.5 mb-3 group">
+            <div class="w-10 h-10 bg-gradient-to-br from-green-500 via-emerald-500 to-blue-600 rounded-xl flex items-center justify-center font-bold text-black text-lg shadow-lg shadow-green-500/20 group-hover:scale-105 transition-transform" style="font-family:'Space Grotesk'">M</div>
+            <span class="text-2xl font-bold text-white tracking-tight" style="font-family:'Space Grotesk'">Mali<span class="text-green-400">Crush</span></span>
+        </a>
+        <p class="text-sm text-gray-400">Create your trading account</p>
+    </div>
+
+    <div class="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-6 shadow-2xl">
+        <div id="regAlert" class="hidden mb-4 p-3 rounded-xl text-xs font-medium bg-red-500/10 border border-red-500/20 text-red-400"></div>
+
+        <form id="registerForm" class="space-y-4" onsubmit="handleRegister(event)">
+            <div>
+                <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Username</label>
+                <input type="text" id="regUsername" required placeholder="e.g. trader254"
+                    class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500 transition-colors">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Email</label>
+                <input type="email" id="regEmail" required placeholder="you@email.com"
+                    class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500 transition-colors">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Phone (M-Pesa)</label>
+                <div class="flex bg-gray-800/80 border border-gray-700 rounded-xl overflow-hidden focus-within:border-green-500 transition-colors">
+                    <span class="bg-gray-700/50 px-3 flex items-center text-gray-400 text-sm font-mono font-semibold border-r border-gray-700">🇰🇪 +254</span>
+                    <input type="tel" id="regPhone" required placeholder="712345678" maxlength="9"
+                        pattern="[0-9]{9}" inputmode="numeric"
+                        oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"
+                        class="flex-1 bg-transparent px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none font-mono">
+                </div>
+                <p class="text-[11px] text-gray-500 mt-1">Enter 9 digits after 254 (e.g. 712345678)</p>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Password</label>
+                <input type="password" id="regPassword" required placeholder="Min 6 characters" minlength="6"
+                    class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500 transition-colors">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Confirm Password</label>
+                <input type="password" id="regConfirmPassword" required placeholder="••••••••" minlength="6"
+                    class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500 transition-colors">
+            </div>
+            <button type="submit" id="regSubmitBtn" class="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-black font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-green-500/25 mt-2 active:scale-[0.98]">
+                Create MaliCrush Account
+            </button>
+        </form>
+    </div>
+
+    <p class="text-center text-sm text-gray-500 mt-5">Already have an account? <a href="login.html" class="text-green-400 font-semibold hover:underline">Sign In</a></p>
+    <p class="text-center text-[10px] text-gray-600 mt-8 px-4 leading-relaxed">
+        Licensed and regulated in the Commonwealth of The Bahamas under licence number <span class="font-mono text-gray-500">BHA-0023-1873201</span>.
+    </p>
+</div>
+
+<script>
+function handleRegister(e){
+  e.preventDefault();
+  const username = document.getElementById('regUsername').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const phoneDigits = document.getElementById('regPhone').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const confirmPassword = document.getElementById('regConfirmPassword').value;
+  const alertEl = document.getElementById('regAlert');
+  const btn = document.getElementById('regSubmitBtn');
+
+  alertEl.classList.add('hidden');
+
+  if (password !== confirmPassword) {
+    alertEl.textContent = 'Passwords do not match.';
+    alertEl.classList.remove('hidden');
+    return;
+  }
+
+  if (phoneDigits.length !== 9) {
+    alertEl.textContent = 'Please enter a valid 9-digit phone number.';
+    alertEl.classList.remove('hidden');
+    return;
+  }
+
+  const fullPhone = '254' + phoneDigits;
+  btn.disabled = true;
+  btn.textContent = 'Creating Account...';
+
+  setTimeout(()=>{
+    const userObj = {
+      username,
+      email,
+      phone: fullPhone,
+      password,
+      joined: new Date().toISOString()
+    };
+
+    const users = JSON.parse(localStorage.getItem('maliUsersList') || '[]');
+    users.push(userObj);
+    localStorage.setItem('maliUsersList', JSON.stringify(users));
+    localStorage.setItem('maliUser', JSON.stringify(userObj));
+
+    window.location.href = 'index.html';
+  }, 600);
+}
+</script>
+</body>
+</html>

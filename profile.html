@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Profile & Wallet — MaliCrush</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5;}
+</style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+<!-- Header -->
+<header class="h-14 border-b border-gray-800/80 bg-gray-900/60 backdrop-blur px-4 lg:px-8 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center font-bold text-black text-sm" style="font-family:'Space Grotesk'">M</div>
+        <span class="font-bold text-white tracking-tight" style="font-family:'Space Grotesk'">Mali<span class="text-green-400">Crush</span></span>
+    </a>
+    <div class="flex items-center gap-3">
+        <a href="index.html" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+            ← Trade Screen
+        </a>
+    </div>
+</header>
+
+<main class="max-w-2xl mx-auto px-4 py-8 w-full flex-1">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-white tracking-tight" style="font-family:'Space Grotesk'">Account & Wallet</h1>
+            <p class="text-sm text-gray-400">Manage your MaliCrush profile, M-Pesa details, and balances</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500/20 to-blue-500/20 border border-green-500/30 flex items-center justify-center text-green-400 text-xl font-bold font-mono" id="avatarLetter">
+            T
+        </div>
+    </div>
+
+    <!-- Balance Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div class="bg-gray-900/80 border border-gray-800/80 rounded-2xl p-5 relative overflow-hidden shadow-xl">
+            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-green-500/5 rounded-full blur-xl pointer-events-none"></div>
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Real Balance</span>
+                <span class="w-2 h-2 rounded-full bg-green-500 shadow-lg shadow-green-500"></span>
+            </div>
+            <div class="text-2xl font-bold text-white font-mono" id="realBalCard">KES 0.00</div>
+            <div class="mt-4 flex gap-2">
+                <a href="index.html" class="flex-1 text-center bg-green-500 hover:bg-green-400 text-black text-xs font-bold py-2 rounded-xl transition-all">Deposit / Trade</a>
+            </div>
+        </div>
+
+        <div class="bg-gray-900/80 border border-gray-800/80 rounded-2xl p-5 relative overflow-hidden shadow-xl">
+            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-amber-500/5 rounded-full blur-xl pointer-events-none"></div>
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Demo Balance</span>
+                <span class="w-2 h-2 rounded-full bg-amber-400 shadow-lg shadow-amber-400"></span>
+            </div>
+            <div class="text-2xl font-bold text-amber-400 font-mono" id="demoBalCard">KES 10,000.00</div>
+            <div class="mt-4 flex gap-2">
+                <button onclick="resetDemoBal()" class="flex-1 text-center bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold py-2 rounded-xl transition-all">Reset to 10,000</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Details Box -->
+    <div class="bg-gray-900/80 border border-gray-800/80 rounded-2xl p-6 mb-6 shadow-xl">
+        <h2 class="text-base font-bold text-white mb-4 flex items-center gap-2" style="font-family:'Space Grotesk'">
+            <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            Personal Information
+        </h2>
+
+        <form id="profileForm" onsubmit="saveProfile(event)" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Username</label>
+                    <input type="text" id="profUsername" required class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Email Address</label>
+                    <input type="email" id="profEmail" required class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Registered M-Pesa Phone Number</label>
+                <div class="flex bg-gray-800/80 border border-gray-700 rounded-xl overflow-hidden focus-within:border-green-500">
+                    <span class="bg-gray-700/50 px-3 flex items-center text-gray-400 text-xs font-mono font-semibold border-r border-gray-700">🇰🇪 +254</span>
+                    <input type="text" id="profPhone" required placeholder="712345678" maxlength="9" class="flex-1 bg-transparent px-4 py-2.5 text-sm text-white font-mono focus:outline-none">
+                </div>
+                <p class="text-[11px] text-gray-500 mt-1">All M-Pesa withdrawals are credited directly to this number.</p>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+                <button type="submit" id="saveProfBtn" class="bg-gray-800 hover:bg-gray-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs transition-colors">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Quick Navigation Links -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <a href="transactions.html" class="bg-gray-900/60 hover:bg-gray-800/80 border border-gray-800 p-4 rounded-xl text-center transition-all group">
+            <div class="text-lg mb-1 group-hover:scale-110 transition-transform">📊</div>
+            <div class="text-xs font-semibold text-gray-300">Transaction History</div>
+        </a>
+        <a href="index.html" class="bg-gray-900/60 hover:bg-gray-800/80 border border-gray-800 p-4 rounded-xl text-center transition-all group">
+            <div class="text-lg mb-1 group-hover:scale-110 transition-transform">📈</div>
+            <div class="text-xs font-semibold text-gray-300">Live Trading</div>
+        </a>
+        <button onclick="logoutProfile()" class="bg-gray-900/60 hover:bg-red-950/40 border border-gray-800 hover:border-red-500/30 p-4 rounded-xl text-center transition-all group col-span-2 sm:col-span-1">
+            <div class="text-lg mb-1 group-hover:scale-110 transition-transform">🚪</div>
+            <div class="text-xs font-semibold text-red-400">Sign Out</div>
+        </button>
+    </div>
+</main>
+
+<footer class="text-center py-6 text-[10px] text-gray-600 border-t border-gray-900">
+    Licensed in the Commonwealth of The Bahamas · Licence No <span class="font-mono text-gray-500">BHA-0023-1873201</span>
+</footer>
+
+<script>
+let user = JSON.parse(localStorage.getItem('maliUser') || 'null');
+if (!user) {
+  user = { username: 'Trader254', email: 'trader@malicrush.com', phone: '254712345678' };
+  localStorage.setItem('maliUser', JSON.stringify(user));
+}
+
+function loadProfileUI(){
+  document.getElementById('profUsername').value = user.username || '';
+  document.getElementById('profEmail').value = user.email || '';
+  const phoneDigits = (user.phone || '254712345678').replace(/^254/, '');
+  document.getElementById('profPhone').value = phoneDigits;
+  document.getElementById('avatarLetter').textContent = (user.username || 'T').charAt(0).toUpperCase();
+
+  const realBal = parseFloat(localStorage.getItem('maliRealBalance') || '2500.00');
+  const demoBal = parseFloat(localStorage.getItem('maliDemoBalance') || '10000.00');
+  document.getElementById('realBalCard').textContent = 'KES ' + realBal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('demoBalCard').textContent = 'KES ' + demoBal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+loadProfileUI();
+
+function saveProfile(e){
+  e.preventDefault();
+  user.username = document.getElementById('profUsername').value.trim();
+  user.email = document.getElementById('profEmail').value.trim();
+  user.phone = '254' + document.getElementById('profPhone').value.trim();
+  localStorage.setItem('maliUser', JSON.stringify(user));
+  
+  const btn = document.getElementById('saveProfBtn');
+  btn.textContent = 'Saved! ✓';
+  btn.classList.add('bg-green-500','text-black');
+  setTimeout(()=>{
+    btn.textContent = 'Save Changes';
+    btn.classList.remove('bg-green-500','text-black');
+  }, 1500);
+}
+
+function resetDemoBal(){
+  localStorage.setItem('maliDemoBalance', '10000.00');
+  loadProfileUI();
+  alert('Demo balance reset to KES 10,000.00 virtual funds.');
+}
+
+function logoutProfile(){
+  localStorage.removeItem('maliUser');
+  window.location.href = 'login.html';
+}
+</script>
+</body>
+</html>
