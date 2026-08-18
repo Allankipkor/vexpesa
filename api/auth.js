@@ -184,9 +184,54 @@ export default async function handler(req, res) {
       }
     }
 
+  // 3. SYNC / GET USER PROFILE & BALANCE
+  if (action === 'me' || action === 'sync' || (req.method === 'GET' && (req.query.username || req.query.identifier))) {
+    const identifier = (req.query.username || req.query.email || req.query.identifier || input.username || input.identifier || '').trim();
+    if (!identifier) {
+      return res.status(400).json({ success: false, error: 'Identifier is required.' });
+    }
+
+    if (db) {
+      try {
+        const users = await db`
+          SELECT id, COALESCE(username, name, email) AS username, email, phone, balance, demo_balance, role, status
+          FROM users 
+          WHERE (
+            username = ${identifier} 
+            OR email = ${identifier.toLowerCase()} 
+            OR phone = ${identifier}
+            OR name = ${identifier}
+            OR id::text = ${identifier}
+          )
+          LIMIT 1
+        `;
+
+        if (users.length > 0) {
+          const user = users[0];
+          return res.status(200).json({
+            success: true,
+            user: {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+              phone: user.phone || '254712345678',
+              balance: parseFloat(user.balance || 0),
+              demo_balance: parseFloat(user.demo_balance || 10000),
+              role: user.role || 'user',
+              status: user.status || 'active'
+            }
+          });
+        }
+        return res.status(404).json({ success: false, error: 'User not found' });
+      } catch (err) {
+        console.error('Error fetching user profile/balance:', err);
+        return res.status(500).json({ success: false, error: err.message });
+      }
+    }
+
     return res.status(200).json({
       success: true,
-      user: { username: identifier, email: `${identifier}@malicrush.com`, phone: '254712345678', balance: 2500.00, demo_balance: 10000.00, role: 'user' }
+      user: { username: identifier, email: `${identifier}@malicrush.com`, phone: '254712345678', balance: 0.00, demo_balance: 10000.00, role: 'user' }
     });
   }
 

@@ -144,12 +144,31 @@ function loadProfileUI(){
   document.getElementById('profPhone').value = phoneDigits;
   document.getElementById('avatarLetter').textContent = (user.username || 'T').charAt(0).toUpperCase();
 
-  const realBal = parseFloat(localStorage.getItem('maliRealBalance') || '2500.00');
+  const realBal = parseFloat(localStorage.getItem('maliRealBalance') || '0.00');
   const demoBal = parseFloat(localStorage.getItem('maliDemoBalance') || '10000.00');
   document.getElementById('realBalCard').textContent = formatProfileMoney(realBal);
   document.getElementById('demoBalCard').textContent = formatProfileMoney(demoBal);
 }
+
+async function syncProfileWithServer(){
+  if (!user || (!user.username && !user.email)) return;
+  const ident = user.username || user.email;
+  try {
+    let res = await fetch(`/api/auth?action=me&username=${encodeURIComponent(ident)}`);
+    if (!res.ok) res = await fetch(`api/auth?action=me&username=${encodeURIComponent(ident)}`);
+    const data = await res.json();
+    if (data.success && data.user) {
+      localStorage.setItem('maliRealBalance', parseFloat(data.user.balance || 0).toString());
+      localStorage.setItem('maliDemoBalance', parseFloat(data.user.demo_balance || 10000).toString());
+      user = { ...user, ...data.user };
+      localStorage.setItem('maliUser', JSON.stringify(user));
+      loadProfileUI();
+    }
+  } catch(e) {}
+}
+
 loadProfileUI();
+syncProfileWithServer();
 
 window.addEventListener('storage', (e) => {
   if (e.key === 'maliPlatformConfig' || e.key === 'maliDepositCurrency' || e.key === 'maliRealBalance' || e.key === 'maliDemoBalance') {

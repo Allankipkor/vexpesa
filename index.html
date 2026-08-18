@@ -1272,6 +1272,32 @@ function tick(){
   }
 }
 
+async function syncUserBalance(){
+  currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
+  if (!currentUser || (!currentUser.username && !currentUser.email)) return;
+  const ident = currentUser.username || currentUser.email;
+
+  try {
+    let res = await fetch(`/api/auth?action=me&username=${encodeURIComponent(ident)}`);
+    if (!res.ok) res = await fetch(`api/auth?action=me&username=${encodeURIComponent(ident)}`);
+    const data = await res.json();
+    if (data.success && data.user) {
+      const serverReal = parseFloat(data.user.balance || 0);
+      const serverDemo = parseFloat(data.user.demo_balance || 10000);
+
+      balance = serverReal;
+      demoBalance = serverDemo;
+      localStorage.setItem('maliRealBalance', serverReal.toString());
+      localStorage.setItem('maliDemoBalance', serverDemo.toString());
+      
+      currentUser = { ...currentUser, ...data.user };
+      localStorage.setItem('maliUser', JSON.stringify(currentUser));
+      
+      updateHUD();
+    }
+  } catch (e) {}
+}
+
 function checkUserSession(){
   currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
   const authWrap = document.getElementById('authButtonsWrap');
@@ -1283,11 +1309,12 @@ function checkUserSession(){
   if (currentUser && (currentUser.username || currentUser.email)) {
     if (authWrap) authWrap.style.display = 'none';
     if (userWrap) userWrap.style.display = 'block';
-    if (nameNav) nameNav.textContent = currentUser.username || currentUser.name || 'Account';
+    if (nameNav) nameNav.textContent = (currentUser.username || currentUser.name || 'Account') + ' ▾';
     if (currentUser.phone) {
       if (depPhone) depPhone.value = currentUser.phone;
       if (withPhone) withPhone.textContent = currentUser.phone;
     }
+    syncUserBalance();
   } else {
     if (authWrap) authWrap.style.display = 'flex';
     if (userWrap) userWrap.style.display = 'none';
@@ -1426,9 +1453,17 @@ applyPlatformConfig();
 tickInterval = setInterval(tick, CFG.TICK);
 
 window.addEventListener('storage', (e) => {
-  if (e.key === 'maliUser') checkUserSession();
+  if (e.key === 'maliUser' || e.key === 'maliRealBalance' || e.key === 'maliDemoBalance') {
+    balance = parseFloat(localStorage.getItem('maliRealBalance') || '0.00');
+    demoBalance = parseFloat(localStorage.getItem('maliDemoBalance') || '10000.00');
+    checkUserSession();
+    updateHUD();
+  }
   if (e.key === 'maliPlatformConfig' || e.key === 'maliDepositCurrency') applyPlatformConfig();
 });
+
+window.addEventListener('focus', syncUserBalance);
+setInterval(syncUserBalance, 8000);
 
 fetch('api/settings').then(r=>r.json()).then(s=>{
   const localCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
