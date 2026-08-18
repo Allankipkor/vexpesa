@@ -35,7 +35,9 @@ export async function initDb() {
       )
     `;
 
-    // Ensure all columns exist even if table was created previously with different schema
+    // Ensure ALL columns exist even if table was created previously with different schema
+    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)`;
+    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(100)`;
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20) DEFAULT ''`;
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT ''`;
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS balance NUMERIC(12,2) DEFAULT 0.00`;
