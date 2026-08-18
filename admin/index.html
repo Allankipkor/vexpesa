@@ -136,46 +136,58 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
                 </div>
             </div>
 
-            <!-- Column 3: Payment & Gateway Settings -->
+            <!-- Column 3: Payment & PayHero Gateway Settings -->
             <div class="space-y-4">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                    Payments & Currencies
+                <h3 class="text-xs font-bold uppercase tracking-wider text-green-400 flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    PayHero M-Pesa Configuration
                 </h3>
 
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">1 USD Exchange Rate (KES)</label>
-                    <input type="number" step="0.1" id="cfgUsdRate" value="129.00" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500">
+                <div class="p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
+                    <div class="text-[11px] font-bold text-green-400 flex items-center justify-between mb-1">
+                        <span>📱 Safaricom M-Pesa STK Push</span>
+                        <span class="px-2 py-0.5 text-[9px] bg-green-500/20 rounded font-mono text-green-300">PAYHERO API</span>
+                    </div>
+                    <p class="text-[10px] text-gray-400">Direct mobile PIN prompts via PayHero Kenya gateway rails</p>
                 </div>
 
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">Primary Deposit Currency</label>
-                    <select id="cfgCurrency" onchange="onCurrencySelectChange()" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
-                        <option value="kes">KES (Kenyan Shillings)</option>
-                        <option value="usd">USD ($ Dollars)</option>
-                    </select>
+                    <label class="block text-xs text-gray-400 mb-1">PayHero API Username / Key</label>
+                    <input type="text" id="cfgPayheroUsername" placeholder="e.g. your_api_username" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
                 </div>
 
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1" id="lblMinDep">Minimum Deposit (KES)</label>
-                    <input type="number" id="cfgMinDep" value="50" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500">
+                    <label class="block text-xs text-gray-400 mb-1">PayHero API Password / Secret</label>
+                    <input type="password" id="cfgPayheroPassword" placeholder="••••••••••••••••" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
                 </div>
 
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">Active Gateways</label>
-                    <div class="space-y-2 text-xs text-gray-300">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="cfgGwMpesa" checked class="accent-green-500 rounded"> 
-                            Safaricom M-Pesa STK Push
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="cfgGwPesapal" checked class="accent-indigo-500 rounded"> 
-                            PesaPal Secure Modal (Card/Airtel)
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="cfgGwOther" checked class="accent-blue-500 rounded"> 
-                            MegaPay & Hub Gateways
-                        </label>
+                    <label class="block text-xs text-gray-400 mb-1">PayHero Channel ID (Paybill / Till ID)</label>
+                    <input type="number" id="cfgPayheroChannelId" placeholder="e.g. 682" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Callback URL (Webhook IPN)</label>
+                    <input type="text" id="cfgPayheroCallbackUrl" placeholder="https://your-domain.vercel.app/api/payhero-callback.php" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                </div>
+
+                <div class="pt-2 border-t border-gray-800 space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Primary Deposit Currency</label>
+                        <select id="cfgCurrency" onchange="onCurrencySelectChange()" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500">
+                            <option value="kes">KES (Kenyan Shillings)</option>
+                            <option value="usd">USD ($ Dollars)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">1 USD Exchange Rate (KES)</label>
+                        <input type="number" step="0.1" id="cfgUsdRate" value="129.00" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1" id="lblMinDep">Minimum Deposit (KES)</label>
+                        <input type="number" id="cfgMinDep" value="50" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
                     </div>
                 </div>
             </div>
@@ -286,9 +298,10 @@ function loadAdminConfig(){
   if (cfg.currency) document.getElementById('cfgCurrency').value = cfg.currency;
   if (cfg.minDep) document.getElementById('cfgMinDep').value = cfg.minDep;
 
-  if (cfg.gwMpesa !== undefined) document.getElementById('cfgGwMpesa').checked = !!cfg.gwMpesa;
-  if (cfg.gwPesapal !== undefined) document.getElementById('cfgGwPesapal').checked = !!cfg.gwPesapal;
-  if (cfg.gwOther !== undefined) document.getElementById('cfgGwOther').checked = !!cfg.gwOther;
+  if (cfg.payheroUsername) document.getElementById('cfgPayheroUsername').value = cfg.payheroUsername;
+  if (cfg.payheroPassword) document.getElementById('cfgPayheroPassword').value = cfg.payheroPassword;
+  if (cfg.payheroChannelId) document.getElementById('cfgPayheroChannelId').value = cfg.payheroChannelId;
+  if (cfg.payheroCallbackUrl) document.getElementById('cfgPayheroCallbackUrl').value = cfg.payheroCallbackUrl;
 
   onCurrencySelectChange();
 
@@ -300,6 +313,13 @@ function loadAdminConfig(){
     }
     if (!cfg.usdRate && s.payments && s.payments.usd_rate) {
       document.getElementById('cfgUsdRate').value = s.payments.usd_rate;
+    }
+    if (s.payments && s.payments.payhero) {
+      const ph = s.payments.payhero;
+      if (!cfg.payheroUsername && ph.api_username) document.getElementById('cfgPayheroUsername').value = ph.api_username;
+      if (!cfg.payheroPassword && ph.api_password) document.getElementById('cfgPayheroPassword').value = ph.api_password;
+      if (!cfg.payheroChannelId && ph.channel_id) document.getElementById('cfgPayheroChannelId').value = ph.channel_id;
+      if (!cfg.payheroCallbackUrl && ph.callback_url) document.getElementById('cfgPayheroCallbackUrl').value = ph.callback_url;
     }
   }).catch(()=>{});
 
@@ -321,9 +341,10 @@ function saveAdminConfig(){
     usdRate: parseFloat(document.getElementById('cfgUsdRate').value) || 129.00,
     currency: document.getElementById('cfgCurrency').value || 'kes',
     minDep: parseFloat(document.getElementById('cfgMinDep').value) || 50,
-    gwMpesa: document.getElementById('cfgGwMpesa').checked,
-    gwPesapal: document.getElementById('cfgGwPesapal').checked,
-    gwOther: document.getElementById('cfgGwOther').checked
+    payheroUsername: document.getElementById('cfgPayheroUsername').value.trim(),
+    payheroPassword: document.getElementById('cfgPayheroPassword').value.trim(),
+    payheroChannelId: document.getElementById('cfgPayheroChannelId').value.trim(),
+    payheroCallbackUrl: document.getElementById('cfgPayheroCallbackUrl').value.trim()
   };
 
   // Save to LocalStorage

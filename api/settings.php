@@ -37,7 +37,14 @@ $defaults = [
     "payments" => [
         "usd_rate" => 129.00,
         "deposit_currency" => "kes",
-        "checkout_method" => "both"
+        "gateway" => "payhero",
+        "payhero" => [
+            "api_username" => "",
+            "api_password" => "",
+            "channel_id" => "",
+            "callback_url" => "",
+            "service_name" => "MaliCrush M-Pesa"
+        ]
     ],
     "site" => [
         "name" => "MaliCrush",
@@ -97,12 +104,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $current['trade']['autosell_multiplier'] = (float)$input['autosell'];
         }
 
-        if (isset($input['gwMpesa']) || isset($input['gwPesapal']) || isset($input['gwOther'])) {
-            $current['payments']['gateways'] = [
-                'mpesa' => isset($input['gwMpesa']) ? (bool)$input['gwMpesa'] : true,
-                'pesapal' => isset($input['gwPesapal']) ? (bool)$input['gwPesapal'] : true,
-                'other' => isset($input['gwOther']) ? (bool)$input['gwOther'] : true
-            ];
+        // PayHero settings mapping
+        if (!isset($current['payments']['payhero'])) {
+            $current['payments']['payhero'] = [];
+        }
+        if (isset($input['payhero']) && is_array($input['payhero'])) {
+            $current['payments']['payhero'] = array_merge($current['payments']['payhero'], $input['payhero']);
+        }
+        if (isset($input['payheroUsername'])) {
+            $current['payments']['payhero']['api_username'] = trim($input['payheroUsername']);
+        }
+        if (isset($input['payheroPassword'])) {
+            $current['payments']['payhero']['api_password'] = trim($input['payheroPassword']);
+        }
+        if (isset($input['payheroChannelId'])) {
+            $current['payments']['payhero']['channel_id'] = trim($input['payheroChannelId']);
+        }
+        if (isset($input['payheroCallbackUrl'])) {
+            $current['payments']['payhero']['callback_url'] = trim($input['payheroCallbackUrl']);
         }
 
         if (isset($input['payments']) && is_array($input['payments'])) {
