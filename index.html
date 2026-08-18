@@ -785,13 +785,8 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
 // ═══════════════════════════════════════════
 // MALICRUSH CLIENT STATE & PERSISTENCE
 // ═══════════════════════════════════════════
-// Clean up any legacy test accounts stored in browser cache
+// Load current logged in user from localStorage
 let currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
-if (currentUser && (currentUser.email === 'allano@malicrush.com' || currentUser.email === 'trader@malicrush.com' || currentUser.username === 'Allano' || currentUser.username === 'Trader' || currentUser.username === 'Trader254')) {
-  localStorage.removeItem('maliUser');
-  localStorage.removeItem('maliRealBalance');
-  currentUser = null;
-}
 let balance = parseFloat(localStorage.getItem('maliRealBalance') || '0.00');
 const DEMO_START_BALANCE = 10000;
 const savedDemoPref = localStorage.getItem('maliIsDemoMode');
@@ -1244,7 +1239,8 @@ function updateHUD(){
   if (lowEl) lowEl.textContent = low24.toFixed(4);
   
   const displayBal = isDemoMode ? demoBalance : balance;
-  document.getElementById('headerBalance').textContent=displayBal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const balEl = document.getElementById('headerBalance');
+  if (balEl) balEl.textContent = displayBal.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 
   const demoBtn = document.getElementById('demoToggleBtn');
   if (demoBtn) {
@@ -1253,14 +1249,219 @@ function updateHUD(){
   }
   
   if(activeTrade){
-    const diff=rate-activeTrade.entryRate;
-    const cappedProfit=Math.min(activeTrade.stake*diff, activeTrade.stake*(CFG.MAX_MULT-1));
-    const pnl=diff>0 ? cappedProfit : -activeTrade.stake;
-    const pe=document.getElementById('profitDisplay');
-    pe.textContent=(pnl>=0?'+ ':'- ')+formatCurrency(Math.abs(pnl));
-    pe.className='profit-val '+(pnl>0?'pos':(pnl<0?'neg':'neutral'));
+    const diff = rate - activeTrade.entryRate;
+    const cappedProfit = Math.min(activeTrade.stake * diff, activeTrade.stake * (CFG.MAX_MULT - 1));
+    const pnl = diff > 0 ? cappedProfit : -activeTrade.stake;
+    const pe = document.getElementById('profitDisplay');
+    if (pe) {
+      pe.textContent = (pnl >= 0 ? '+ ' : '- ') + formatCurrency(Math.abs(pnl));
+      pe.className = 'profit-val ' + (pnl > 0 ? 'pos' : (pnl < 0 ? 'neg' : 'neutral'));
+    }
   }
 }
+
+function tick(){
+  const p = nextP();
+  prices.push(p);
+  if (prices.length > CFG.MAX_PTS) prices.shift();
+  draw();
+  updateHUD();
+  if (activeTrade && tradePhase === 'active') {
+    if (typeof updateActiveButton === 'function') updateActiveButton();
+    if (typeof updateAutosellHud === 'function') updateAutosellHud();
+  }
+}
+
+function checkUserSession(){
+  currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
+  const authWrap = document.getElementById('authButtonsWrap');
+  const userWrap = document.getElementById('userMenuWrap');
+  const nameNav = document.getElementById('userNameNav');
+  const depPhone = document.getElementById('depositPhone');
+  const withPhone = document.getElementById('withdrawPhoneDisplay');
+
+  if (currentUser && (currentUser.username || currentUser.email)) {
+    if (authWrap) authWrap.style.display = 'none';
+    if (userWrap) userWrap.style.display = 'block';
+    if (nameNav) nameNav.textContent = currentUser.username || currentUser.name || 'Account';
+    if (currentUser.phone) {
+      if (depPhone) depPhone.value = currentUser.phone;
+      if (withPhone) withPhone.textContent = currentUser.phone;
+    }
+  } else {
+    if (authWrap) authWrap.style.display = 'flex';
+    if (userWrap) userWrap.style.display = 'none';
+  }
+}
+
+function logoutUser(){
+  localStorage.removeItem('maliUser');
+  localStorage.removeItem('maliRealBalance');
+  localStorage.setItem('maliUserLoggedOut', 'true');
+  currentUser = null;
+  balance = 0.00;
+  checkUserSession();
+  updateHUD();
+  showToast('Signed out', {sub: 'You have been logged out of MaliCrush', kind: 'info'});
+}
+
+function applyPlatformConfig(){
+  const savedCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
+  if (savedCfg.speed) CFG.TICK = savedCfg.speed;
+  if (savedCfg.spikeFreq) CFG.SPIKE_FREQ = savedCfg.spikeFreq;
+  if (savedCfg.spikeMax) CFG.SPIKE_MAX = savedCfg.spikeMax;
+  if (savedCfg.crashFreq) CFG.CRASH_FREQ = savedCfg.crashFreq;
+  if (savedCfg.crashDepth) CFG.CRASH_DEPTH = savedCfg.crashDepth;
+  if (savedCfg.maxMult) CFG.MAX_MULT = savedCfg.maxMult;
+  if (savedCfg.prestart) CFG.PRESTART_WAIT = savedCfg.prestart;
+  if (savedCfg.autosell) CFG.AUTOSELL_MULT = savedCfg.autosell;
+  if (savedCfg.minStake) CFG.MIN_STAKE = savedCfg.minStake;
+  if (savedCfg.maxStake) CFG.MAX_STAKE = savedCfg.maxStake;
+  if (savedCfg.minDep) CFG.MIN_DEPOSIT = savedCfg.minDep;
+  if (savedCfg.usdRate) usdRate = parseFloat(savedCfg.usdRate) || 129.00;
+
+  if (savedCfg.currency) {
+    depositCurrency = savedCfg.currency.toLowerCase();
+  } else if (localStorage.getItem('maliDepositCurrency')) {
+    depositCurrency = localStorage.getItem('maliDepositCurrency').toLowerCase();
+  }
+
+  const isUsd = depositCurrency === 'usd';
+
+  // Update Top Nav Header
+  const headerBalIcon = document.getElementById('headerBalIcon');
+  if (headerBalIcon) headerBalIcon.textContent = isUsd ? '$' : 'K';
+
+  const statVol = document.getElementById('stat24Volume');
+  if (statVol) statVol.textContent = isUsd ? '$37.5K' : 'KES 4.8M';
+
+  const statPay = document.getElementById('statTotalPayouts');
+  if (statPay) statPay.textContent = isUsd ? '$251.8K' : 'KES 32.4M';
+
+  // Update Stake Controls
+  const stakeCur = document.getElementById('stakeCurrency');
+  if (stakeCur) stakeCur.textContent = isUsd ? 'USD' : 'KES';
+
+  const stakeInput = document.getElementById('stakeInput');
+  const quickWrap = document.getElementById('quickAmountsWrap');
+  if (isUsd) {
+    if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) >= 50)) {
+      stakeInput.value = '1';
+      stakeInput.min = '1';
+      stakeInput.step = '1';
+    }
+    if (quickWrap) {
+      quickWrap.innerHTML = `
+        <button class="quick-amt" onclick="setStake(1)">$1</button>
+        <button class="quick-amt" onclick="setStake(2)">$2</button>
+        <button class="quick-amt" onclick="setStake(5)">$5</button>
+        <button class="quick-amt" onclick="setStake(10)">$10</button>
+      `;
+    }
+  } else {
+    if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) < 10)) {
+      stakeInput.value = '100';
+      stakeInput.min = '10';
+      stakeInput.step = '10';
+    }
+    if (quickWrap) {
+      quickWrap.innerHTML = `
+        <button class="quick-amt" onclick="setStake(50)">50</button>
+        <button class="quick-amt" onclick="setStake(100)">100</button>
+        <button class="quick-amt" onclick="setStake(200)">200</button>
+        <button class="quick-amt" onclick="setStake(500)">500</button>
+      `;
+    }
+  }
+
+  // Update Profit Bar
+  const profitDisplay = document.getElementById('profitDisplay');
+  if (profitDisplay && (!activeTrade || tradePhase === 'idle')) {
+    profitDisplay.textContent = formatCurrency(0);
+    profitDisplay.className = 'profit-val neutral';
+  }
+
+  // Update Withdraw Modal
+  const wBal = document.getElementById('withdrawBalance');
+  if (wBal) wBal.textContent = formatCurrency(balance);
+  const wLabel = document.getElementById('withdrawAmtLabel');
+  if (wLabel) wLabel.textContent = isUsd ? 'Amount ($ USD)' : 'Amount (KES)';
+  const wHint = document.getElementById('withdrawHint');
+  if (wHint) {
+    wHint.innerHTML = isUsd
+      ? '<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is $1.00 USD. Dispatched instantly via Global Payout / M-Pesa conversion.'
+      : '<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is KES 100. Dispatched instantly via M-Pesa B2C.';
+  }
+
+  updateHUD();
+}
+
+function initTheme(){
+  const saved = localStorage.getItem('maliTheme') || 'dark';
+  if (saved === 'light') {
+    document.body.classList.add('light-mode');
+  } else {
+    document.body.classList.remove('light-mode');
+  }
+}
+
+function toggleTheme(){
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('maliTheme', isLight ? 'light' : 'dark');
+  if (typeof draw === 'function') draw();
+}
+
+// ═══════════════════════════════════════════
+// INITIALIZE CHART & TICK LOOP
+// ═══════════════════════════════════════════
+for (let i = 0; i < CFG.MAX_PTS; i++) {
+  prices.push(nextP());
+}
+initTheme();
+resize();
+draw();
+checkUserSession();
+applyPlatformConfig();
+
+tickInterval = setInterval(tick, CFG.TICK);
+
+window.addEventListener('storage', (e) => {
+  if (e.key === 'maliUser') checkUserSession();
+  if (e.key === 'maliPlatformConfig' || e.key === 'maliDepositCurrency') applyPlatformConfig();
+});
+
+fetch('api/settings').then(r=>r.json()).then(s=>{
+  const localCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
+  if(s.graph){
+    CFG.TICK = localCfg.speed || s.graph.speed || 120;
+    CFG.Y_MAX = s.graph.y_max || 3.0;
+    CFG.SPIKE_FREQ = localCfg.spikeFreq || s.graph.spike_frequency || 0.12;
+    CFG.CRASH_FREQ = localCfg.crashFreq || s.graph.crash_frequency || 0.02;
+    CFG.BASE_LEVEL = s.graph.base_level || 0.5;
+    CFG.SPIKE_MAX = localCfg.spikeMax || s.graph.spike_max || 2.8;
+    CFG.CRASH_DEPTH = localCfg.crashDepth || s.graph.crash_depth || -2.8;
+    eng.base = CFG.BASE_LEVEL * 0.5;
+    high24 = CFG.Y_MAX * 0.8; low24 = -CFG.Y_MAX * 0.8;
+  }
+  if(s.trade){
+    CFG.TRADE_DUR = s.trade.duration || 60;
+    CFG.MIN_STAKE = localCfg.minStake || s.trade.min_stake || 10;
+    CFG.MAX_STAKE = localCfg.maxStake || s.trade.max_stake || 50000;
+    CFG.MIN_DEPOSIT = localCfg.minDep || s.trade.min_deposit || 50;
+    CFG.MAX_MULT = localCfg.maxMult || s.trade.max_multiplier || 5.0;
+    CFG.PRESTART_WAIT = localCfg.prestart || s.trade.prestart_wait || 3;
+    CFG.AUTOSELL_MULT = localCfg.autosell || s.trade.autosell_multiplier || 2.5;
+    document.getElementById('timerVal').textContent = CFG.TRADE_DUR;
+  }
+  if (s.payments) {
+    usdRate = parseFloat(localCfg.usdRate || s.payments.usd_rate) || 129;
+    depositCurrency = (localCfg.currency || s.payments.deposit_currency || 'kes').toLowerCase();
+    checkoutMethod = s.payments.checkout_method || 'both';
+  }
+  applyPlatformConfig();
+  clearInterval(tickInterval);
+  tickInterval = setInterval(tick, CFG.TICK);
+}).catch(()=>{});
 
 // ═══════════════════════════════════════════
 // TOASTS & HERO BANNERS
@@ -1358,10 +1559,6 @@ function resetTimer(){
 // ═══════════════════════════════════════════
 // TRADING LIFECYCLE
 // ═══════════════════════════════════════════
-let tradePhase = 'idle';
-let prestartLeft = 0;
-let prestartInterval = null;
-
 async function placeTrade(type){
   playSound('click');
   if(activeTrade)return;
@@ -1871,22 +2068,6 @@ document.addEventListener('click', (e) => {
   if (dd && !e.target.closest('.user-menu')) dd.classList.remove('open');
 });
 
-function initTheme(){
-  const saved = localStorage.getItem('maliTheme') || 'dark';
-  if (saved === 'light') {
-    document.body.classList.add('light-mode');
-  } else {
-    document.body.classList.remove('light-mode');
-  }
-}
-initTheme();
-
-function toggleTheme(){
-  const isLight = document.body.classList.toggle('light-mode');
-  localStorage.setItem('maliTheme', isLight ? 'light' : 'dark');
-  if (typeof draw === 'function') draw();
-}
-
 // ═══════════════════════════════════════════
 // LIVE ACTIVITY CHAT SIMULATION
 // ═══════════════════════════════════════════
@@ -1958,24 +2139,6 @@ function closeMobileChat(){
   document.getElementById('chatSidebar').classList.remove('mobile-open');
   document.getElementById('chatSidebar').querySelector('.mobile-chat-close').style.display='none';
 }
-
-// ═══════════════════════════════════════════
-// MAIN TICK LOOP
-// ═══════════════════════════════════════════
-function tick(){
-  prices.push(nextP());
-  if(prices.length>CFG.MAX_PTS)prices.shift();
-  draw();
-  updateHUD();
-  if(activeTrade){
-    updateActiveButton();
-    updateAutosellHud();
-  }
-}
-for(let i=0;i<40;i++)prices.push(nextP());
-let tickInterval=setInterval(tick,CFG.TICK);
-resetTimer();
-updateHUD();
 </script>
 </body>
 </html>
