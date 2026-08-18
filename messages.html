@@ -2,648 +2,722 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Messages — MaliCrush Official Notifications</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Messages</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg-app: #121316;
-  --bg-surface: #1e1f24;
-  --bg-bubble: #282a30;
-  --bg-bubble-user: #005cbb;
-  --text-primary: #e3e3e3;
-  --text-secondary: #909094;
-  --text-muted: #646468;
-  --border: #2d2f36;
-  --mpesa-green: #00c853;
-  --mpesa-bg: rgba(0, 200, 83, 0.12);
-  --accent-blue: #a8c7fa;
-  --accent-blue-bg: rgba(168, 199, 250, 0.12);
-}
-
-body.light-mode {
-  --bg-app: #f2f4f8;
-  --bg-surface: #ffffff;
-  --bg-bubble: #e8ecf4;
-  --bg-bubble-user: #0b57d0;
-  --text-primary: #1f1f1f;
-  --text-secondary: #444746;
-  --text-muted: #747775;
-  --border: #e0e2ec;
-  --mpesa-green: #00873a;
-  --mpesa-bg: rgba(0, 135, 58, 0.1);
-  --accent-blue: #0b57d0;
-  --accent-blue-bg: rgba(11, 87, 208, 0.08);
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 body {
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg-app);
-  color: var(--text-primary);
+  background-color: #f8fafd;
+  color: #1f1f1f;
   height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.app-shell {
+  width: 100%;
+  max-width: 520px;
+  height: 100%;
+  background: #ffffff;
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
 }
 
-/* Header */
-.app-header {
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
-  padding: 12px 16px;
+/* VIEW 1: THREAD LIST */
+.view-threads {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+.view-threads.hidden { display: none; }
+
+/* Top Header */
+.messages-header {
+  height: 56px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  border-bottom: 1px solid #f1f3f4;
+  background: #ffffff;
+  flex-shrink: 0;
   z-index: 10;
 }
-.header-left {
+.google-logo {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  user-select: none;
+}
+.logo-g1 { color: #4285F4; }
+.logo-o1 { color: #EA4335; }
+.logo-o2 { color: #FBBC05; }
+.logo-g2 { color: #4285F4; }
+.logo-l { color: #34A853; }
+.logo-e { color: #EA4335; }
+.logo-messages { color: #5f6368; font-weight: 400; }
+
+.header-tools {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
-.btn-back {
+.icon-btn {
   background: none;
   border: none;
-  color: var(--text-primary);
-  font-size: 20px;
   cursor: pointer;
-  width: 36px;
-  height: 36px;
+  padding: 6px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background .2s;
-}
-.btn-back:hover {
-  background: rgba(255,255,255,0.08);
-}
-.header-title-wrap {
-  display: flex;
-  flex-direction: column;
-}
-.header-title {
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
-}
-.header-sub {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.btn-apk {
-  background: linear-gradient(135deg, #00c853, #009624);
-  color: #000;
-  font-weight: 700;
-  font-size: 11px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  text-decoration: none;
-  box-shadow: 0 4px 12px rgba(0,200,83,0.25);
-  transition: transform .15s;
-}
-.btn-apk:active { transform: scale(0.96); }
-
-/* Main Container */
-.messages-container {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-/* Sidebar Thread List */
-.thread-list-pane {
-  width: 340px;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-@media (max-width: 768px) {
-  .thread-list-pane {
-    width: 100%;
-  }
-  .conversation-pane {
-    position: fixed;
-    inset: 0;
-    z-index: 20;
-    background: var(--bg-app);
-    transform: translateX(100%);
-    transition: transform .25s cubic-bezier(0.1, 0.9, 0.2, 1);
-  }
-  .conversation-pane.open {
-    transform: translateX(0);
-  }
-}
-
-.search-box-wrap {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.search-box {
-  width: 100%;
-  background: var(--bg-app);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 8px 16px;
-  font-size: 13px;
-  color: var(--text-primary);
-  outline: none;
-}
-
-.thread-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: #444746;
   transition: background .15s;
 }
-.thread-item:hover, .thread-item.active {
-  background: rgba(255,255,255,0.04);
+.icon-btn:hover { background: #f1f3f4; }
+.profile-avatar-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #f58220;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
-.thread-avatar {
+
+/* Search bar overlay */
+.search-header {
+  height: 56px;
+  padding: 0 16px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e2ec;
+  flex-shrink: 0;
+}
+.search-header.active { display: flex; }
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: #1f1f1f;
+}
+
+/* Thread list */
+.threads-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 90px;
+}
+.thread-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 18px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s;
+}
+.thread-row:active, .thread-row:hover {
+  background: #f8f9fa;
+}
+.thread-avatar-circle {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--mpesa-bg);
-  border: 1.5px solid var(--mpesa-green);
-  color: var(--mpesa-green);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
+  color: #ffffff;
   flex-shrink: 0;
 }
-.thread-info {
+.thread-content {
   flex: 1;
   min-width: 0;
 }
-.thread-top {
+.thread-row-top {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  align-items: baseline;
+  margin-bottom: 2px;
 }
-.thread-sender {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-primary);
+.thread-title {
+  font-size: 14.5px;
+  color: #1f1f1f;
 }
+.thread-title.unread { font-weight: 700; color: #000000; }
 .thread-time {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 11.5px;
+  color: #747775;
 }
-.thread-preview {
-  font-size: 12px;
-  color: var(--text-secondary);
+.thread-time.unread { color: #1a73e8; font-weight: 700; }
+.thread-snippet {
+  font-size: 13px;
+  color: #747775;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.thread-snippet.unread { color: #1f1f1f; font-weight: 500; }
+
 .unread-badge {
-  background: var(--mpesa-green);
-  color: #000;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #1a73e8;
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   margin-left: 6px;
 }
 
-/* Conversation Pane */
-.conversation-pane {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-app);
-}
-
-.conv-header {
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.conv-sender-wrap {
+/* Floating Action Button (Start Chat) */
+.fab-start-chat {
+  position: absolute;
+  bottom: 24px;
+  right: 20px;
+  background: #c2e7ff;
+  color: #001d35;
+  border: none;
+  border-radius: 16px;
+  padding: 14px 20px;
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.conv-title {
-  font-size: 15px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.verified-tag {
-  background: var(--mpesa-bg);
-  color: var(--mpesa-green);
-  font-size: 9px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 6px;
-  letter-spacing: 0.5px;
-}
-
-.conv-messages-wrap {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.date-divider {
-  text-align: center;
-  margin: 8px 0;
-}
-.date-badge {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 11px;
-  padding: 4px 12px;
-  border-radius: 12px;
-  display: inline-block;
-}
-
-.sms-bubble-wrap {
-  display: flex;
-  flex-direction: column;
-  max-width: 88%;
-  align-self: flex-start;
-  gap: 4px;
-}
-
-.sms-bubble {
-  background: var(--bg-bubble);
-  border: 1px solid var(--border);
-  border-radius: 18px 18px 18px 4px;
-  padding: 14px 16px;
-  color: var(--text-primary);
-  font-size: 13.5px;
-  line-height: 1.45;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  position: relative;
-  word-break: break-word;
-}
-
-.sms-bubble .mpesa-code {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  color: var(--mpesa-green);
-}
-.sms-bubble .amount-highlight {
-  font-weight: 700;
-  color: #fff;
-  background: rgba(0, 200, 83, 0.15);
-  padding: 1px 4px;
-  border-radius: 4px;
-}
-
-.bubble-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(255,255,255,0.06);
-}
-.bubble-time {
-  font-size: 10.5px;
-  color: var(--text-muted);
-}
-.bubble-actions {
-  display: flex;
-  gap: 8px;
-}
-.bubble-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: transform .15s, background .15s;
+  z-index: 20;
 }
-.bubble-btn:hover {
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-}
+.fab-start-chat:active { transform: scale(0.96); background: #b0dbf7; }
 
-/* Quick Banner for APK download */
-.app-banner {
-  background: linear-gradient(90deg, #0d2818, #0a1f13);
-  border: 1px solid rgba(0, 200, 83, 0.3);
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin-bottom: 12px;
+/* VIEW 2: CONVERSATION THREAD */
+.view-conversation {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: #ffffff;
+  position: relative;
+}
+.view-conversation.active { display: flex; }
+
+.conv-topbar {
+  height: 56px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-bottom: 1px solid #e0e2ec;
+  background: #ffffff;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.conv-topbar-left {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
-.banner-text {
-  font-size: 12px;
-  color: #a7f3d0;
-}
-.banner-btn {
-  background: var(--mpesa-green);
-  color: #000;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 6px 12px;
-  border-radius: 16px;
-  text-decoration: none;
-  flex-shrink: 0;
+.conv-sender-name {
+  font-size: 17px;
+  font-weight: 500;
+  color: #1f1f1f;
 }
 
-/* Empty State */
-.empty-state {
-  margin: auto;
+.conv-messages-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bubble-date-pill {
   text-align: center;
-  padding: 40px 20px;
+  margin: 6px 0;
 }
-.empty-icon {
-  font-size: 44px;
-  margin-bottom: 12px;
-  opacity: 0.6;
+.bubble-date-text {
+  font-size: 11px;
+  color: #747775;
+  font-weight: 500;
 }
-.empty-title {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 4px;
+
+.chat-bubble-card {
+  max-width: 86%;
+  align-self: flex-start;
+  background: #f1f3f4;
+  color: #1f1f1f;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-.empty-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-  max-width: 280px;
+.chat-bubble-text {
+  padding: 13px 15px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.chat-bubble-preview-box {
+  background: #f8f9fa;
+  border-top: 1px solid #e0e2ec;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background .12s;
+  user-select: none;
+}
+.chat-bubble-preview-box:active { background: #e8eaed; }
+.preview-box-text {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #444746;
+}
+
+/* Locked Footer */
+.conv-locked-footer {
+  background: #f8fafd;
+  border-top: 1px solid #e0e2ec;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.locked-notice {
+  background: #e9eef6;
+  color: #1f1f1f;
+  font-size: 12.5px;
+  line-height: 1.4;
+  padding: 10px 16px;
+  border-radius: 14px;
+  text-align: center;
+  width: 100%;
+}
+.locked-notice a {
+  color: #1a73e8;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
 }
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<header class="app-header">
-  <div class="header-left">
-    <button class="btn-back" onclick="window.location.href='/'" title="Back to MaliCrush">←</button>
-    <div class="header-title-wrap">
-      <h1 class="header-title">Messages</h1>
-      <span class="header-sub">M-Pesa SMS & Payment Notifications</span>
-    </div>
-  </div>
-  <div class="header-actions">
-    <a href="/downloads/Messages.apk" download class="btn-apk">
-      <span>📱</span> Download Android APK
-    </a>
-  </div>
-</header>
+<div class="app-shell">
 
-<!-- Main Messages UI -->
-<main class="messages-container">
-  <!-- Left: Thread List -->
-  <section class="thread-list-pane" id="threadListPane">
-    <div class="search-box-wrap">
-      <input type="text" class="search-box" placeholder="Search conversations..." id="searchQuery" oninput="filterThreads(this.value)">
-    </div>
-
-    <div id="threadListItems">
-      <!-- MPESA Thread -->
-      <div class="thread-item active" onclick="openThread('MPESA')">
-        <div class="thread-avatar">M</div>
-        <div class="thread-info">
-          <div class="thread-top">
-            <span class="thread-sender">MPESA</span>
-            <span class="thread-time" id="mpesaThreadTime">Just now</span>
-          </div>
-          <div class="thread-preview" id="mpesaThreadPreview">No messages yet. Withdrawals will appear here automatically.</div>
-        </div>
-        <span class="unread-badge" id="mpesaUnreadBadge" style="display:none">1</span>
+  <!-- VIEW 1: THREADS LIST -->
+  <div class="view-threads" id="viewThreads">
+    
+    <!-- Google Messages Top Header -->
+    <header class="messages-header" id="mainHeader">
+      <div class="google-logo">
+        <span class="logo-g1">G</span><span class="logo-o1">o</span><span class="logo-o2">o</span><span class="logo-g2">g</span><span class="logo-l">l</span><span class="logo-e">e</span>
+        <span class="logo-messages"> Messages</span>
       </div>
-    </div>
-  </section>
-
-  <!-- Right: Conversation View -->
-  <section class="conversation-pane" id="convPane">
-    <div class="conv-header">
-      <div class="conv-sender-wrap">
-        <button class="btn-back d-md-none" onclick="closeConvMobile()" style="display:none" id="btnBackMobile">←</button>
-        <div class="thread-avatar" style="width:36px;height:36px;font-size:12px;">M</div>
-        <div>
-          <div class="conv-title">
-            <span>MPESA</span>
-            <span class="verified-tag">OFFICIAL SAFARICOM</span>
-          </div>
-          <div class="header-sub">Safaricom B2C Confirmation Alerts</div>
-        </div>
-      </div>
-      <div>
-        <button onclick="testPhoneNotification()" class="bubble-btn" style="border:1px solid var(--border);border-radius:12px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--accent-blue)">
-          🔔 Test Phone Notification
+      <div class="header-tools">
+        <button class="icon-btn" onclick="toggleSearch(true)" aria-label="Search">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+        <button class="profile-avatar-btn" onclick="window.location.href='/'" title="Back to Platform">
+          A
         </button>
       </div>
+    </header>
+
+    <!-- Search Bar (Overlay) -->
+    <div class="search-header" id="searchHeader">
+      <button class="icon-btn" onclick="toggleSearch(false)">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <input type="text" class="search-input" id="searchQuery" placeholder="Search messages..." oninput="onSearch(this.value)">
     </div>
 
-    <div class="conv-messages-wrap" id="convMessagesWrap">
-      <!-- In-app APK Promo Banner -->
-      <div class="app-banner">
-        <div class="banner-text">
-          <strong>Get Instant Phone Vibration & SMS Popups</strong><br>
-          Install our native Android Messages APK to receive authentic heads-up M-Pesa notifications directly on your lock screen.
+    <!-- Threads Scroll List -->
+    <div class="threads-scroll" id="threadsScroll">
+      <!-- Dynamic thread rows rendered via JS -->
+    </div>
+
+    <!-- Start Chat FAB -->
+    <button class="fab-start-chat" onclick="openThread('mpesa')">
+      <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      <span>Start chat</span>
+    </button>
+  </div>
+
+  <!-- VIEW 2: CONVERSATION VIEW -->
+  <div class="view-conversation" id="viewConv">
+    <header class="conv-topbar">
+      <div class="conv-topbar-left">
+        <button class="icon-btn" onclick="closeThread()">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <div class="thread-avatar-circle" id="convAvatar" style="width:34px;height:34px;background:#ffcc00">
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
         </div>
-        <a href="/downloads/Messages.apk" download class="banner-btn">Get APK</a>
+        <span class="conv-sender-name" id="convSenderTitle">MPESA</span>
       </div>
+      <div>
+        <button class="icon-btn" onclick="clearThreadMessages()">
+          <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+        </button>
+      </div>
+    </header>
 
-      <div class="date-divider">
-        <span class="date-badge" id="convDateBadge">Today</span>
-      </div>
-
-      <!-- Messages Bubbles Container -->
-      <div id="bubblesContainer" style="display:flex;flex-direction:column;gap:14px;">
-        <!-- Dynamic SMS Bubbles -->
-      </div>
+    <div class="conv-messages-list" id="convMessagesList">
+      <!-- Dynamic Bubbles -->
     </div>
-  </section>
-</main>
+
+    <footer class="conv-locked-footer">
+      <div class="locked-notice">
+        Sender can't accept replies. Contact them directly. <a href="/">Learn more</a>
+      </div>
+    </footer>
+  </div>
+
+</div>
 
 <script>
-let messages = [];
-let currentUser = null;
+let dbMessages = [];
+let activeThreadId = null;
+let searchQuery = "";
 
-function formatDateLabel(dateStr) {
-  const d = new Date(dateStr || Date.now());
-  let h = d.getHours();
-  const m = d.getMinutes().toString().padStart(2, '0');
-  const ampm = h >= 12 ? 'pm' : 'am';
-  h = h % 12 || 12;
-  return `${h}:${m} ${ampm}`;
+function formatThreadTime(isoString) {
+  const date = new Date(isoString || Date.now());
+  const now = new Date();
+  if (date.toDateString() === now.toDateString()) {
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "pm" : "am";
+    hours = hours % 12 || 12;
+    return `${hours}:${minutes} ${ampm}`;
+  }
+  const diffDays = Math.ceil(Math.abs(now - date) / (1000 * 60 * 60 * 24));
+  if (diffDays <= 7) return date.toLocaleDateString(undefined, { weekday: "short" });
+  const day = date.getDate();
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear().toString().slice(-2);
+  return `${day}/${month}/${year}`;
 }
 
-function renderMessages() {
-  const container = document.getElementById('bubblesContainer');
-  const previewEl = document.getElementById('mpesaThreadPreview');
-  const timeEl = document.getElementById('mpesaThreadTime');
-  const badgeEl = document.getElementById('mpesaUnreadBadge');
+function formatBubbleDate(isoString) {
+  const date = new Date(isoString || Date.now());
+  let hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "pm" : "am";
+  hours = hours % 12 || 12;
+  return `Today • ${hours}:${minutes} ${ampm}`;
+}
 
-  if (!container) return;
+function getThreads() {
+  const realMpesa = dbMessages.filter(m => m.title === "MPESA");
+  const realBank = dbMessages.filter(m => m.title === "BANK");
+  const threads = [];
 
-  if (messages.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">💬</div>
-        <h3 class="empty-title">No M-Pesa SMS Yet</h3>
-        <p class="empty-desc">When you request a withdrawal on MaliCrush, your Safaricom M-Pesa confirmation SMS will be delivered right here.</p>
-      </div>
-    `;
-    if (previewEl) previewEl.textContent = 'No withdrawal alerts yet.';
-    if (badgeEl) badgeEl.style.display = 'none';
-    return;
-  }
-
-  container.innerHTML = '';
-  let unreadCount = 0;
-
-  messages.forEach((m, idx) => {
-    if (!m.read) unreadCount++;
-
-    const bubbleWrap = document.createElement('div');
-    bubbleWrap.className = 'sms-bubble-wrap';
-
-    // Format formatted reference and amounts
-    let formattedText = m.body;
-    formattedText = formattedText.replace(/([A-Z0-9]{8,12} Confirmed)/g, '<span class="mpesa-code">$1</span>');
-    formattedText = formattedText.replace(/(Ksh[\d,]+\.\d{2})/g, '<span class="amount-highlight">$1</span>');
-
-    const bubbleTime = formatDateLabel(m.createdAt);
-
-    bubbleWrap.innerHTML = `
-      <div class="sms-bubble">
-        <div>${formattedText}</div>
-        <div class="bubble-footer">
-          <span class="bubble-time">${bubbleTime}</span>
-          <div class="bubble-actions">
-            <button class="bubble-btn" onclick="copyText('${encodeURIComponent(m.body)}')">Copy</button>
-            <button class="bubble-btn" onclick="deleteMessage('${m.id}')">Delete</button>
-          </div>
-        </div>
-      </div>
-    `;
-    container.appendChild(bubbleWrap);
+  // 1. Globalpay
+  threads.push({
+    id: "globalpay",
+    title: "Globalpay",
+    avatarColor: "#f58220",
+    unreadCount: 65,
+    timeLabel: "Sun",
+    messages: [{
+      id: "gp1",
+      body: "Dear customer, we are unable to process your transaction on FACEBK. Please verify details.",
+      createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
+    }]
   });
 
-  const latest = messages[0];
-  if (previewEl && latest) {
-    previewEl.textContent = latest.body;
-  }
-  if (timeEl && latest) {
-    timeEl.textContent = formatDateLabel(latest.createdAt);
-  }
-  if (badgeEl) {
-    if (unreadCount > 0) {
-      badgeEl.textContent = unreadCount;
-      badgeEl.style.display = 'inline-block';
-    } else {
-      badgeEl.style.display = 'none';
-    }
+  // 2. MPESA (Dynamic from DB)
+  if (realMpesa.length > 0) {
+    const latest = realMpesa[0];
+    const unread = realMpesa.filter(m => !m.read).length;
+    threads.push({
+      id: "mpesa",
+      title: "MPESA",
+      avatarColor: "#ffcc00",
+      unreadCount: unread,
+      timeLabel: formatThreadTime(latest.createdAt),
+      messages: [...realMpesa].reverse()
+    });
+  } else {
+    threads.push({
+      id: "mpesa",
+      title: "MPESA",
+      avatarColor: "#ffcc00",
+      unreadCount: 0,
+      timeLabel: "Sun",
+      messages: [{
+        id: "mp1",
+        body: "Dear customer, you do not have sufficient funds to complete this transaction. Please top up your account.",
+        createdAt: new Date(Date.now() - 3600000 * 12).toISOString()
+      }]
+    });
   }
 
-  // Scroll to bottom
-  const wrap = document.getElementById('convMessagesWrap');
-  if (wrap) wrap.scrollTop = wrap.scrollHeight;
+  // 3. Safaricom
+  threads.push({
+    id: "safaricom",
+    title: "Safaricom",
+    avatarColor: "#f58220",
+    unreadCount: 10,
+    timeLabel: "Sun",
+    messages: [{
+      id: "sf1",
+      body: "Do more with Safaricom data. You have purchased 50MB valid for 24hr. Dial *544# to manage subscription.",
+      createdAt: new Date(Date.now() - 3600000 * 25).toISOString()
+    }]
+  });
+
+  // 4. mySafApp
+  threads.push({
+    id: "mysafapp",
+    title: "mySafApp",
+    avatarColor: "#ec4899",
+    unreadCount: 7,
+    timeLabel: "Sun",
+    messages: [{
+      id: "ms1",
+      body: "<#> Please enter this One Time PIN: 3995 to log onto your mySafaricom App. Do not share your PIN.",
+      createdAt: new Date(Date.now() - 3600000 * 30).toISOString()
+    }]
+  });
+
+  // 5. airtelmoney
+  threads.push({
+    id: "airtelmoney",
+    title: "airtelmoney",
+    avatarColor: "#ffcc00",
+    unreadCount: 31,
+    timeLabel: "Sat",
+    messages: [{
+      id: "am1",
+      body: "B3PHQ3WQ1C9. Ksh 60 paid to Lipa Na Mpesa via Airtel Money on 27/7/26 at 4:10 PM. Thank you.",
+      createdAt: new Date(Date.now() - 3600000 * 36).toISOString()
+    }]
+  });
+
+  // 6. AirtelMoney
+  threads.push({
+    id: "airtelmoney2",
+    title: "AirtelMoney",
+    avatarColor: "#ffcc00",
+    unreadCount: 6,
+    timeLabel: "Sat",
+    messages: [{
+      id: "am2",
+      body: "Congratulations! You have received KES 5.65 in your BONUS wallet. To check your balance, dial *222#.",
+      createdAt: new Date(Date.now() - 3600000 * 40).toISOString()
+    }]
+  });
+
+  // 7. AIRTEL
+  threads.push({
+    id: "airtel",
+    title: "AIRTEL",
+    avatarColor: "#ec4899",
+    unreadCount: 5,
+    timeLabel: "Sat",
+    messages: [{
+      id: "at1",
+      body: "Dear customer you have successfully subscribed to the Amazing 1GB, Valid for 24 Hours. Enjoy browsing.",
+      createdAt: new Date(Date.now() - 3600000 * 45).toISOString()
+    }]
+  });
+
+  // 8. Equity Bank
+  threads.push({
+    id: "equity",
+    title: "Equity Bank",
+    avatarColor: "#ec4899",
+    unreadCount: 0,
+    timeLabel: "Sat",
+    messages: [{
+      id: "eq1",
+      body: "Confirmed. Payment of KES. 70.00 to MARY WANJIKU WAWERU has been processed. Trans ID: EQY7829281.",
+      createdAt: new Date(Date.now() - 3600000 * 50).toISOString()
+    }]
+  });
+
+  return threads;
 }
 
-async function fetchMessages() {
-  currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
-  const uname = currentUser ? (currentUser.username || currentUser.email || '') : '';
+function renderThreads() {
+  const container = document.getElementById("threadsScroll");
+  if (!container) return;
 
+  const threads = getThreads().filter(t => {
+    const q = searchQuery.toLowerCase();
+    return t.title.toLowerCase().includes(q) || t.messages.some(m => m.body.toLowerCase().includes(q));
+  });
+
+  container.innerHTML = "";
+
+  threads.forEach(t => {
+    const latest = t.messages[t.messages.length - 1];
+    const isUnread = t.unreadCount > 0;
+
+    const row = document.createElement("button");
+    row.className = "thread-row";
+    row.onclick = () => openThread(t.id);
+
+    row.innerHTML = `
+      <div class="thread-avatar-circle" style="background:${t.avatarColor}">
+        <svg width="22" height="22" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
+      </div>
+      <div class="thread-content">
+        <div class="thread-row-top">
+          <span class="thread-title ${isUnread ? 'unread' : ''}">${t.title}</span>
+          <span class="thread-time ${isUnread ? 'unread' : ''}">${t.timeLabel}</span>
+        </div>
+        <p class="thread-snippet ${isUnread ? 'unread' : ''}">${latest ? latest.body : ''}</p>
+      </div>
+      ${isUnread ? `<div class="unread-badge">${t.unreadCount}</div>` : ''}
+    `;
+
+    container.appendChild(row);
+  });
+
+  if (activeThreadId) {
+    renderConversation();
+  }
+}
+
+function openThread(threadId) {
+  activeThreadId = threadId;
+  document.getElementById("viewThreads").classList.add("hidden");
+  document.getElementById("viewConv").classList.add("active");
+  renderConversation();
+
+  if (threadId === "mpesa") {
+    fetch("/api/messages?title=MPESA", { method: "PATCH" }).catch(() => {});
+  }
+}
+
+function closeThread() {
+  activeThreadId = null;
+  document.getElementById("viewThreads").classList.remove("hidden");
+  document.getElementById("viewConv").classList.remove("active");
+  renderThreads();
+}
+
+function renderConversation() {
+  const threads = getThreads();
+  const thread = threads.find(t => t.id === activeThreadId);
+  if (!thread) return;
+
+  document.getElementById("convSenderTitle").textContent = thread.title;
+  document.getElementById("convAvatar").style.background = thread.avatarColor;
+
+  const list = document.getElementById("convMessagesList");
+  list.innerHTML = "";
+
+  thread.messages.forEach(m => {
+    const wrap = document.createElement("div");
+    wrap.style.display = "flex";
+    wrap.style.flexDirection = "column";
+    wrap.style.gap = "6px";
+
+    wrap.innerHTML = `
+      <div class="bubble-date-pill">
+        <span class="bubble-date-text">${formatBubbleDate(m.createdAt)}</span>
+      </div>
+      <div class="chat-bubble-card">
+        <div class="chat-bubble-text">${m.body}</div>
+        ${thread.title === "MPESA" ? `
+          <div class="chat-bubble-preview-box" onclick="alert('Transaction Verified with Safaricom M-Pesa')">
+            <svg width="16" height="16" fill="none" stroke="#444746" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+            <span class="preview-box-text">Tap to load preview</span>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    list.appendChild(wrap);
+  });
+
+  list.scrollTop = list.scrollHeight;
+}
+
+function toggleSearch(show) {
+  const searchH = document.getElementById("searchHeader");
+  const mainH = document.getElementById("mainHeader");
+  if (show) {
+    searchH.classList.add("active");
+    mainH.style.display = "none";
+    document.getElementById("searchQuery").focus();
+  } else {
+    searchH.classList.remove("active");
+    mainH.style.display = "flex";
+    searchQuery = "";
+    document.getElementById("searchQuery").value = "";
+    renderThreads();
+  }
+}
+
+function onSearch(val) {
+  searchQuery = val;
+  renderThreads();
+}
+
+async function clearThreadMessages() {
+  if (!confirm("Clear message history?")) return;
   try {
-    const res = await fetch(`/api/messages?username=${encodeURIComponent(uname)}`);
-    const data = await res.json();
-    if (data.success && data.messages) {
-      messages = data.messages;
-      renderMessages();
-
-      // If running inside Android APK bridge, notify native app
-      if (window.AndroidMessagesBridge && typeof window.AndroidMessagesBridge.onMessagesReceived === 'function') {
-        window.AndroidMessagesBridge.onMessagesReceived(JSON.stringify(messages));
-      }
-    }
-  } catch (e) {
-    console.error('Error fetching messages:', e);
-  }
-}
-
-function copyText(encoded) {
-  const text = decodeURIComponent(encoded);
-  navigator.clipboard.writeText(text).then(() => {
-    alert('SMS text copied to clipboard!');
-  }).catch(() => {});
-}
-
-async function deleteMessage(id) {
-  try {
-    await fetch(`/api/messages?id=${id}`, { method: 'DELETE' });
-    messages = messages.filter(m => m.id !== id);
-    renderMessages();
+    await fetch("/api/messages", { method: "DELETE" });
+    dbMessages = [];
+    renderThreads();
+    if (activeThreadId) closeThread();
   } catch (e) {}
 }
 
-function testPhoneNotification() {
-  const sampleSMS = `UK${Math.floor(100000+Math.random()*900000)} Confirmed.You have received Ksh5,450.00 from MALICRUSH PAYMENTS KENYA LIMITED. 2534525 on Today. New M-PESA balance is Ksh19,850.00.`;
-  
-  if (window.AndroidMessagesBridge && typeof window.AndroidMessagesBridge.showNativeNotification === 'function') {
-    window.AndroidMessagesBridge.showNativeNotification('MPESA', sampleSMS);
-  } else if ("Notification" in window) {
-    if (Notification.permission === "granted") {
-      new Notification("MPESA", { body: sampleSMS, icon: '/favicon.ico' });
-    } else {
-      Notification.requestPermission().then(p => {
-        if (p === "granted") new Notification("MPESA", { body: sampleSMS, icon: '/favicon.ico' });
-      });
+async function fetchMessages() {
+  try {
+    const res = await fetch("/api/messages");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.messages) {
+        dbMessages = data.messages;
+        renderThreads();
+
+        if (window.AndroidMessagesBridge && typeof window.AndroidMessagesBridge.onMessagesReceived === 'function') {
+          window.AndroidMessagesBridge.onMessagesReceived(JSON.stringify(dbMessages));
+        }
+      }
     }
-  } else {
-    alert('Notification trigger simulated:\n\n' + sampleSMS);
+  } catch (e) {
+    console.error("Poll error:", e);
   }
 }
 
-function openThread(sender) {
-  const isMobile = window.innerWidth <= 768;
-  if (isMobile) {
-    document.getElementById('convPane').classList.add('open');
-    document.getElementById('btnBackMobile').style.display = 'block';
-  }
-}
-
-function closeConvMobile() {
-  document.getElementById('convPane').classList.remove('open');
-}
-
-// Initial load and polling every 4 seconds
 fetchMessages();
-setInterval(fetchMessages, 4000);
+setInterval(fetchMessages, 3000);
 </script>
 </body>
 </html>
