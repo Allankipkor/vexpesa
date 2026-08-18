@@ -1774,10 +1774,10 @@ async function requestSTK(){
   }
 
   const kesAmount = depositCurrency==='usd' ? Math.round(selectedAmount*usdRate) : Math.round(selectedAmount);
-  btn.disabled=true; btn.textContent='Connecting to PayHero...';
-  status.innerHTML='<span style="color:var(--gold)">⚡ Sending M-Pesa STK Prompt to ' + phone + '...</span>';
+  btn.disabled=true; btn.textContent='Sending M-Pesa STK...';
+  status.innerHTML='<span style="color:var(--gold)">⚡ Sending M-Pesa prompt to ' + phone + '...</span>';
 
-  // Fetch admin PayHero credentials from localStorage
+  // Fetch admin credentials from localStorage
   const adminCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
 
   try {
@@ -1803,7 +1803,7 @@ async function requestSTK(){
         saveTransaction({
           type: 'deposit',
           amount: kesAmount,
-          method: 'M-Pesa (PayHero)',
+          method: 'M-Pesa',
           date: new Date().toISOString()
         });
         status.innerHTML=`<span style="color:var(--green)">✓ KES ${kesAmount.toLocaleString()} credited successfully!</span>`;
@@ -1825,7 +1825,7 @@ async function requestSTK(){
       saveTransaction({
         type: 'deposit',
         amount: kesAmount,
-        method: 'M-Pesa (PayHero)',
+        method: 'M-Pesa',
         date: new Date().toISOString()
       });
       status.innerHTML=`<span style="color:var(--green)">✓ KES ${kesAmount.toLocaleString()} credited successfully!</span>`;

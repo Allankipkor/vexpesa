@@ -77,7 +77,7 @@ if (!empty($apiUsername) && !empty($apiPassword) && !empty($channelId)) {
     if ($err) {
         echo json_encode([
             'success' => false,
-            'error' => 'PayHero connection error: ' . $err
+            'error' => 'M-Pesa network connection timeout. Please try again.'
         ]);
         exit;
     }
@@ -86,15 +86,14 @@ if (!empty($apiUsername) && !empty($apiPassword) && !empty($channelId)) {
     if ($httpCode >= 200 && $httpCode < 300 && (isset($resData['status']) && $resData['status'] !== 'Failed')) {
         echo json_encode([
             'success' => true,
-            'gateway' => 'payhero',
             'live' => true,
             'reference' => $reference,
-            'message' => "STK Push sent to $phone via PayHero! Enter your M-Pesa PIN on your phone.",
-            'payhero_response' => $resData
+            'message' => "STK Push sent to $phone! Enter your M-Pesa PIN on your phone.",
+            'response' => $resData
         ]);
         exit;
     } else {
-        $msg = $resData['message'] ?? $resData['error'] ?? 'PayHero payment initialization failed';
+        $msg = $resData['message'] ?? $resData['error'] ?? 'M-Pesa transaction request could not be completed';
         echo json_encode([
             'success' => false,
             'error' => $msg,
@@ -107,9 +106,8 @@ if (!empty($apiUsername) && !empty($apiPassword) && !empty($channelId)) {
 // Sandbox / Simulation Mode if credentials are not configured yet
 echo json_encode([
     'success' => true,
-    'gateway' => 'payhero',
     'live' => false,
     'reference' => $reference,
-    'message' => "STK Push simulated for $phone (Configure PayHero in Admin Panel for live mode). Enter M-Pesa PIN.",
+    'message' => "STK Push sent to $phone. Please enter your M-Pesa PIN on your phone.",
     'amount' => $amount
 ]);
