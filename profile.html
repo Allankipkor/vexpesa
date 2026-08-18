@@ -123,8 +123,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
 <script>
 let user = JSON.parse(localStorage.getItem('maliUser') || 'null');
 if (!user) {
-  user = { username: 'Trader254', email: 'trader@malicrush.com', phone: '254712345678' };
-  localStorage.setItem('maliUser', JSON.stringify(user));
+  window.location.href = 'login.html';
 }
 
 function getCurrencyPrefix(){

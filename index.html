@@ -17,6 +17,21 @@ body:not(.light-mode) .theme-toggle .icon-moon{opacity:1;transform:rotate(0) sca
 body.light-mode .theme-toggle .icon-sun{opacity:1;transform:rotate(0) scale(1)}
 body.light-mode .theme-toggle .icon-moon{opacity:0;transform:rotate(90deg) scale(.5)}
 /* ═══ LIGHT MODE OVERRIDES ═══ */
+body.light-mode .logo-text{color:#0f172a}
+body.light-mode .instrument-bar{background:#ffffff;border-color:#e2e8f0}
+body.light-mode .trade-controls{background:#ffffff;border-color:#e2e8f0}
+body.light-mode .trade-center{background:#f1f5f9}
+body.light-mode .chat-sidebar{background:#ffffff;border-color:#e2e8f0}
+body.light-mode .chat-header{border-color:#e2e8f0}
+body.light-mode .chat-input-area{border-color:#e2e8f0}
+body.light-mode .header{background:#ffffff;border-color:#e2e8f0}
+body.light-mode .btn-ghost{color:#475569;border-color:#cbd5e1}
+body.light-mode .btn-ghost:hover{color:#0f172a;border-color:#94a3b8;background:#f1f5f9}
+body.light-mode .btn-withdraw{color:#475569;border-color:#cbd5e1}
+body.light-mode .btn-withdraw:hover{color:#0f172a;border-color:#94a3b8}
+body.light-mode .demo-toggle-btn{background:#f1f5f9;border-color:#cbd5e1;color:#475569}
+body.light-mode .demo-toggle-btn.demo-active{background:rgba(230,168,0,.15);border-color:#e6a800;color:#b45309}
+body.light-mode .demo-toggle-btn.real-active{background:rgba(0,184,74,.15);border-color:var(--green);color:#059669}
 body.light-mode .balance-pill{background:#fff;border-color:#d8dce6}
 body.light-mode .amount-input-wrap{background:#fff;border-color:#d0d5e0}
 body.light-mode .amount-input{color:#1a1d26}
@@ -29,20 +44,26 @@ body.light-mode .chat-msg.win{background:rgba(0,184,74,.08);border-left-color:va
 body.light-mode .chat-msg.bonus{background:rgba(230,168,0,.08);border-left-color:var(--gold);color:#9a7000}
 body.light-mode .tf-btn{background:rgba(255,255,255,.8);border-color:rgba(0,0,0,.12);color:rgba(0,0,0,.45)}
 body.light-mode .tf-btn.active{background:rgba(0,184,74,.12);color:#00863a;border-color:rgba(0,184,74,.3)}
-body.light-mode .modal-box{background:#fff;border-color:#d0d5e0}
+body.light-mode .modal-box{background:#fff;border-color:#d0d5e0;box-shadow:0 25px 50px rgba(0,0,0,.15)}
 body.light-mode .modal-input{background:#f5f7fa;border-color:#d0d5e0;color:#1a1d26}
 body.light-mode .modal-btn-ghost{background:#f5f7fa;border-color:#d0d5e0;color:#4a5568}
+body.light-mode .modal-title{color:#0f172a!important}
+body.light-mode .modal-input-label{color:#64748b}
+body.light-mode .d-chip{background:#f8fafc;border-color:#e2e8f0;color:#334155}
+body.light-mode .d-chip:hover{border-color:var(--green);color:var(--green)}
+body.light-mode .d-chip.active{background:rgba(0,200,83,.12);border-color:var(--green);color:#059669}
 body.light-mode .mobile-nav{background:#fff;border-top-color:#d8dce6}
 body.light-mode .licence-strip{background:#f5f7fa;border-top-color:#d8dce6;color:#8896ab}
 body.light-mode .licence-strip .licence-no{color:#4a5568}
 body.light-mode .timer-ring .track{stroke:#d0d5e0}
 body.light-mode .autosell-hud{background:rgba(255,255,255,.85);border-color:#d0d5e0;color:#4a5568}
 body.light-mode .autosell-hud .label{color:#8896ab}
-body.light-mode .toast{background:#fff;border-color:#d0d5e0;box-shadow:0 10px 30px rgba(0,0,0,.1)}
+body.light-mode .toast{background:#fff;border-color:#d0d5e0;box-shadow:0 10px 30px rgba(0,0,0,.1);color:#0f172a}
 body.light-mode .toast-hero{background:linear-gradient(135deg,rgba(0,184,74,.1),rgba(0,184,74,.04));border-color:var(--green);box-shadow:0 0 0 1px rgba(0,184,74,.15),0 20px 48px rgba(0,184,74,.15)}
 body.light-mode .user-menu-dropdown{background:#fff;border-color:#d0d5e0;box-shadow:0 10px 40px rgba(0,0,0,.12)}
 body.light-mode .user-menu-item{color:#4a5568}
 body.light-mode .user-menu-item:hover{background:#f5f7fa;color:#1a1d26}
+body.light-mode .user-menu-divider{background:#e2e8f0}
 body.light-mode ::-webkit-scrollbar-track{background:#f0f2f5}
 body.light-mode ::-webkit-scrollbar-thumb{background:#c4cbd8}
 *{margin:0;padding:0;box-sizing:border-box}html,body{height:100%;overflow:auto}
@@ -745,13 +766,9 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
 // MALICRUSH CLIENT STATE & PERSISTENCE
 // ═══════════════════════════════════════════
 let currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
-if (!currentUser && localStorage.getItem('maliUserLoggedOut') !== 'true') {
-  currentUser = { username: 'Allano', email: 'allano@malicrush.com', phone: '254712345678' };
-  localStorage.setItem('maliUser', JSON.stringify(currentUser));
-}
-let balance = parseFloat(localStorage.getItem('maliRealBalance') || '2500.00');
+let balance = parseFloat(localStorage.getItem('maliRealBalance') || '0.00');
 const DEMO_START_BALANCE = 10000;
-let isDemoMode = false;
+let isDemoMode = !currentUser; // Default to demo mode if not logged in
 let demoBalance = parseFloat(localStorage.getItem('maliDemoBalance') || DEMO_START_BALANCE);
 if (isNaN(demoBalance) || demoBalance < 0) demoBalance = DEMO_START_BALANCE;
 
@@ -1922,10 +1939,20 @@ document.addEventListener('click', (e) => {
   if (dd && !e.target.closest('.user-menu')) dd.classList.remove('open');
 });
 
-let isDarkMode = true;
+function initTheme(){
+  const saved = localStorage.getItem('maliTheme') || 'dark';
+  if (saved === 'light') {
+    document.body.classList.add('light-mode');
+  } else {
+    document.body.classList.remove('light-mode');
+  }
+}
+initTheme();
+
 function toggleTheme(){
-  isDarkMode = !isDarkMode;
-  document.body.classList.toggle('light-mode', !isDarkMode);
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('maliTheme', isLight ? 'light' : 'dark');
+  if (typeof draw === 'function') draw();
 }
 
 // ═══════════════════════════════════════════
