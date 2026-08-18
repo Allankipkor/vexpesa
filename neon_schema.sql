@@ -1,0 +1,71 @@
+-- MaliCrush PostgreSQL Schema for Neon Database
+
+-- 1. Users Table
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(50) NOT NULL UNIQUE,
+  email VARCHAR(100) NOT NULL UNIQUE,
+  phone VARCHAR(20) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  balance NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+  demo_balance NUMERIC(12,2) NOT NULL DEFAULT 10000.00,
+  role VARCHAR(20) NOT NULL DEFAULT 'user',
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Trades Table
+CREATE TABLE IF NOT EXISTS trades (
+  id SERIAL PRIMARY KEY,
+  trade_ref VARCHAR(50) NOT NULL UNIQUE,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  trade_type VARCHAR(10) NOT NULL,
+  stake NUMERIC(10,2) NOT NULL,
+  entry_rate NUMERIC(10,4) NOT NULL,
+  exit_rate NUMERIC(10,4),
+  multiplier NUMERIC(6,2),
+  payout NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+  result VARCHAR(20) NOT NULL DEFAULT 'pending',
+  is_demo BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TIMESTAMP WITH TIME ZONE
+);
+
+-- 3. Deposits Table
+CREATE TABLE IF NOT EXISTS deposits (
+  id SERIAL PRIMARY KEY,
+  deposit_ref VARCHAR(50) NOT NULL UNIQUE,
+  user_id INT REFERENCES users(id) ON DELETE SET NULL,
+  username VARCHAR(50),
+  amount_kes NUMERIC(10,2) NOT NULL,
+  amount_usd NUMERIC(10,2),
+  currency VARCHAR(10) NOT NULL DEFAULT 'kes',
+  method VARCHAR(30) NOT NULL DEFAULT 'mpesa',
+  phone VARCHAR(20) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. Withdrawals Table
+CREATE TABLE IF NOT EXISTS withdrawals (
+  id SERIAL PRIMARY KEY,
+  withdraw_ref VARCHAR(50) NOT NULL UNIQUE,
+  user_id INT REFERENCES users(id) ON DELETE SET NULL,
+  username VARCHAR(50),
+  amount_kes NUMERIC(10,2) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. Platform Settings Table
+CREATE TABLE IF NOT EXISTS settings (
+  key VARCHAR(50) PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Seed Default Admin Account (password: Aa@123)
+INSERT INTO users (username, email, phone, password_hash, balance, demo_balance, role)
+VALUES ('admin', 'admin@malicrush.com', '254712345678', 'Aa@123', 100000.00, 100000.00, 'admin')
+ON CONFLICT (username) DO NOTHING;

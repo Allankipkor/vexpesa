@@ -1,3 +1,5 @@
+import { getDb, initDb } from './db.js';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -7,9 +9,13 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  await initDb();
+  const db = getDb();
+
   const input = req.body || {};
   const phone = (input.phone || '').trim();
   const amount = parseFloat(input.amount) || 100;
+  const username = input.username || '';
 
   if (!phone) {
     return res.status(400).json({ success: false, error: 'Phone number is required' });

@@ -48,7 +48,7 @@
 </div>
 
 <script>
-function handleLogin(e){
+async function handleLogin(e){
   e.preventDefault();
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
@@ -57,14 +57,38 @@ function handleLogin(e){
   btn.disabled = true;
   btn.textContent = 'Verifying...';
 
-  setTimeout(()=>{
-    // If registered users exist in localStorage, verify against them; otherwise accept demo credentials
+  try {
+    const res = await fetch('api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'login',
+        identifier: email,
+        password
+      })
+    });
+
+    const data = await res.json();
+    if (data.success && data.user) {
+      const userObj = data.user;
+      localStorage.setItem('maliUser', JSON.stringify(userObj));
+      localStorage.setItem('maliRealBalance', (userObj.balance || 0).toString());
+      localStorage.setItem('maliDemoBalance', (userObj.demo_balance || 10000).toString());
+      window.location.href = 'index.html';
+      return;
+    } else {
+      alert(data.error || 'Invalid username/email or password.');
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      return;
+    }
+  } catch (err) {
+    // Local fallback
     const users = JSON.parse(localStorage.getItem('maliUsersList') || '[]');
     const found = users.find(u => (u.email === email || u.phone === email || u.username === email) && u.password === password);
     
     let userObj = found;
     if (!userObj) {
-      // Default / fallback user login
       const username = email.includes('@') ? email.split('@')[0] : (email.match(/^\d+$/) ? 'Trader' + email.slice(-4) : email);
       userObj = {
         username,
@@ -76,7 +100,7 @@ function handleLogin(e){
 
     localStorage.setItem('maliUser', JSON.stringify(userObj));
     window.location.href = 'index.html';
-  }, 600);
+  }
 }
 </script>
 </body>

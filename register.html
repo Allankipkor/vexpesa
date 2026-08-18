@@ -66,7 +66,7 @@
 </div>
 
 <script>
-function handleRegister(e){
+async function handleRegister(e){
   e.preventDefault();
   const username = document.getElementById('regUsername').value.trim();
   const email = document.getElementById('regEmail').value.trim();
@@ -94,22 +94,51 @@ function handleRegister(e){
   btn.disabled = true;
   btn.textContent = 'Creating Account...';
 
-  setTimeout(()=>{
+  try {
+    const res = await fetch('api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'register',
+        username,
+        email,
+        phone: fullPhone,
+        password
+      })
+    });
+
+    const data = await res.json();
+    if (data.success && data.user) {
+      const userObj = data.user;
+      localStorage.setItem('maliUser', JSON.stringify(userObj));
+      localStorage.setItem('maliRealBalance', (userObj.balance || 0).toString());
+      localStorage.setItem('maliDemoBalance', (userObj.demo_balance || 10000).toString());
+      window.location.href = 'index.html';
+      return;
+    } else {
+      alertEl.textContent = data.error || 'Registration failed. Please try again.';
+      alertEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Create Account';
+      return;
+    }
+  } catch (err) {
+    // Local fallback
     const userObj = {
       username,
       email,
       phone: fullPhone,
       password,
+      balance: 0,
+      demo_balance: 10000,
       joined: new Date().toISOString()
     };
-
     const users = JSON.parse(localStorage.getItem('maliUsersList') || '[]');
     users.push(userObj);
     localStorage.setItem('maliUsersList', JSON.stringify(users));
     localStorage.setItem('maliUser', JSON.stringify(userObj));
-
     window.location.href = 'index.html';
-  }, 600);
+  }
 }
 </script>
 </body>
