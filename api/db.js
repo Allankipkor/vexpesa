@@ -35,10 +35,12 @@ export async function initDb() {
       )
     `;
 
-    // Ensure ALL columns exist even if table was created previously with different schema
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)`;
+    // Ensure ALL columns exist and legacy constraints do not block inserts
+    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
+    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(100)`;
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(100)`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20) DEFAULT ''`;
+    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
+    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT ''`;
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT ''`;
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS balance NUMERIC(12,2) DEFAULT 0.00`;
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS demo_balance NUMERIC(12,2) DEFAULT 10000.00`;
@@ -46,6 +48,11 @@ export async function initDb() {
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`;
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+
+    try { await db`ALTER TABLE users ALTER COLUMN name DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE users ALTER COLUMN phone DROP NOT NULL`; } catch (e) {}
 
     // Ensure ID column has an auto-increment sequence
     try {
