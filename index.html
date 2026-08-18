@@ -1472,10 +1472,23 @@ function applyPlatformConfig(){
   if (stakeCur) stakeCur.textContent = 'KES';
 
   const stakeInput = document.getElementById('stakeInput');
-  if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) < (CFG.MIN_STAKE || 10))) {
-    stakeInput.value = '100';
-    stakeInput.min = (CFG.MIN_STAKE || 10).toString();
-    stakeInput.step = '10';
+  const minS = CFG.MIN_STAKE || 10;
+  const maxS = CFG.MAX_STAKE || 50000;
+  if (stakeInput) {
+    stakeInput.min = minS.toString();
+    stakeInput.max = maxS.toString();
+    if (!stakeInput.dataset.modified || parseFloat(stakeInput.value) < minS) {
+      stakeInput.value = Math.max(minS, 100).toString();
+    }
+  }
+
+  // Dynamically update quick amount buttons based on minStake
+  const quickWrap = document.getElementById('quickAmountsWrap');
+  if (quickWrap) {
+    const base = minS;
+    const amounts = [base, base * 2, base * 5, base * 10]
+      .filter((v, i, a) => a.indexOf(v) === i && v <= maxS && v >= minS);
+    quickWrap.innerHTML = amounts.map(a => `<button class="quick-amt" onclick="setStake(${a})">${a.toLocaleString()}</button>`).join('');
   }
 
   // Update Profit Bar
@@ -1725,12 +1738,17 @@ function resetTimer(){
 async function placeTrade(type){
   playSound('click');
   if(activeTrade)return;
-  const isUsd = depositCurrency === 'usd';
-  const minStake = isUsd ? 1 : CFG.MIN_STAKE;
-  const maxStake = isUsd ? Math.round(CFG.MAX_STAKE / usdRate) : CFG.MAX_STAKE;
-  const stake=parseFloat(document.getElementById('stakeInput').value) || (isUsd ? 1 : 100);
-  if(stake < minStake){alert('Minimum stake is ' + formatCurrency(minStake));return;}
-  if(stake > maxStake){alert('Maximum stake is ' + formatCurrency(maxStake));return;}
+  const minStake = CFG.MIN_STAKE || 10;
+  const maxStake = CFG.MAX_STAKE || 50000;
+  const stake = parseFloat(document.getElementById('stakeInput').value) || minStake;
+  if(stake < minStake){
+    showToast('Minimum stake is ' + formatCurrency(minStake), {kind:'warn'});
+    return;
+  }
+  if(stake > maxStake){
+    showToast('Maximum stake is ' + formatCurrency(maxStake), {kind:'warn'});
+    return;
+  }
 
   const plannedOutcome = resolveTradeOutcomeRule();
   const uname = currentUser ? (currentUser.username || currentUser.email || '') : '';

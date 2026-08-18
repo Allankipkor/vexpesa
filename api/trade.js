@@ -28,6 +28,30 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid stake amount' });
     }
 
+    let minStake = 10.0;
+    let maxStake = 50000.0;
+    if (db) {
+      try {
+        const cfgRows = await db`SELECT value FROM settings WHERE key = 'platform_config' LIMIT 1`;
+        if (cfgRows.length > 0) {
+          const cfg = typeof cfgRows[0].value === 'string' ? JSON.parse(cfgRows[0].value) : cfgRows[0].value;
+          if (cfg.minStake !== undefined || cfg.trade?.min_stake !== undefined) {
+            minStake = parseFloat(cfg.minStake !== undefined ? cfg.minStake : cfg.trade.min_stake) || 10.0;
+          }
+          if (cfg.maxStake !== undefined || cfg.trade?.max_stake !== undefined) {
+            maxStake = parseFloat(cfg.maxStake !== undefined ? cfg.maxStake : cfg.trade.max_stake) || 50000.0;
+          }
+        }
+      } catch(e) {}
+    }
+
+    if (stake < minStake) {
+      return res.status(400).json({ success: false, error: `Minimum stake is KES ${minStake.toLocaleString('en-US', {minimumFractionDigits: 2})}` });
+    }
+    if (stake > maxStake) {
+      return res.status(400).json({ success: false, error: `Maximum stake is KES ${maxStake.toLocaleString('en-US', {minimumFractionDigits: 2})}` });
+    }
+
     if (db && username) {
       try {
         const users = await db`
