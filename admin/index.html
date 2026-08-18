@@ -37,29 +37,29 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-lg">
             <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Total Traders</div>
-            <div class="text-2xl font-bold text-white font-mono" id="statUsers">1,284</div>
+            <div class="text-2xl font-bold text-white font-mono" id="adminStatUsers">1,284</div>
             <div class="text-[11px] text-green-400 mt-2 flex items-center gap-1">● Active on platform</div>
         </div>
         <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-lg">
             <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">24h Trade Volume</div>
-            <div class="text-2xl font-bold text-green-400 font-mono">KES 4,820,400</div>
+            <div class="text-2xl font-bold text-green-400 font-mono" id="adminStatVol">KES 4,820,400</div>
             <div class="text-[11px] text-gray-500 mt-2">+18.4% vs yesterday</div>
         </div>
         <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-lg">
             <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Total Payouts</div>
-            <div class="text-2xl font-bold text-amber-400 font-mono">KES 32,491,000</div>
-            <div class="text-[11px] text-gray-500 mt-2">M-Pesa B2C instant</div>
+            <div class="text-2xl font-bold text-amber-400 font-mono" id="adminStatPayouts">KES 32,491,000</div>
+            <div class="text-[11px] text-gray-500 mt-2" id="adminStatPayoutSub">M-Pesa B2C instant</div>
         </div>
         <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-lg">
             <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Platform Margin</div>
-            <div class="text-2xl font-bold text-blue-400 font-mono">14.8%</div>
+            <div class="text-2xl font-bold text-blue-400 font-mono" id="adminStatMargin">14.8%</div>
             <div class="text-[11px] text-green-400 mt-2">Healthy engine spread</div>
         </div>
     </div>
 
-    <!-- Admin Settings Tabs -->
+    <!-- Admin Settings Box -->
     <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-6 mb-8 shadow-xl">
-        <div class="flex items-center justify-between pb-5 border-b border-gray-800 mb-6">
+        <div class="flex items-center justify-between pb-5 border-b border-gray-800 mb-6 flex-wrap gap-3">
             <div>
                 <h2 class="text-lg font-bold text-white" style="font-family:'Space Grotesk'">Platform Engine Configuration</h2>
                 <p class="text-xs text-gray-400">Live controls for price generation, trading limits, and payment gateways</p>
@@ -126,12 +126,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
                 </div>
 
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">Minimum Stake (KES)</label>
+                    <label class="block text-xs text-gray-400 mb-1" id="lblMinStake">Minimum Stake (KES)</label>
                     <input type="number" id="cfgMinStake" value="10" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
                 </div>
 
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">Maximum Stake (KES)</label>
+                    <label class="block text-xs text-gray-400 mb-1" id="lblMaxStake">Maximum Stake (KES)</label>
                     <input type="number" id="cfgMaxStake" value="50000" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
                 </div>
             </div>
@@ -150,26 +150,64 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
 
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Primary Deposit Currency</label>
-                    <select id="cfgCurrency" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                    <select id="cfgCurrency" onchange="onCurrencySelectChange()" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
                         <option value="kes">KES (Kenyan Shillings)</option>
                         <option value="usd">USD ($ Dollars)</option>
                     </select>
                 </div>
 
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">Minimum Deposit (KES)</label>
+                    <label class="block text-xs text-gray-400 mb-1" id="lblMinDep">Minimum Deposit (KES)</label>
                     <input type="number" id="cfgMinDep" value="50" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500">
                 </div>
 
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Active Gateways</label>
-                    <div class="space-y-1.5 text-xs text-gray-300">
-                        <label class="flex items-center gap-2"><input type="checkbox" checked class="accent-green-500"> Safaricom M-Pesa STK Push</label>
-                        <label class="flex items-center gap-2"><input type="checkbox" checked class="accent-indigo-500"> PesaPal Secure Modal</label>
-                        <label class="flex items-center gap-2"><input type="checkbox" checked class="accent-blue-500"> MegaPay & Hub Gateways</label>
+                    <div class="space-y-2 text-xs text-gray-300">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="cfgGwMpesa" checked class="accent-green-500 rounded"> 
+                            Safaricom M-Pesa STK Push
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="cfgGwPesapal" checked class="accent-indigo-500 rounded"> 
+                            PesaPal Secure Modal (Card/Airtel)
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="cfgGwOther" checked class="accent-blue-500 rounded"> 
+                            MegaPay & Hub Gateways
+                        </label>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Registered Traders & Live Wallets Table -->
+    <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-6 shadow-xl mb-8">
+        <div class="flex items-center justify-between pb-4 border-b border-gray-800 mb-4">
+            <div>
+                <h3 class="text-base font-bold text-white" style="font-family:'Space Grotesk'">Active Trader Accounts</h3>
+                <p class="text-xs text-gray-400">Registered platform user balances and wallet control</p>
+            </div>
+            <button onclick="renderTradersList()" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-3 py-1.5 rounded-lg transition-all">
+                🔄 Refresh Traders
+            </button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="text-[11px] text-gray-400 uppercase bg-gray-800/40">
+                    <tr>
+                        <th class="px-4 py-3 rounded-l-lg">User</th>
+                        <th class="px-4 py-3">Phone / Contact</th>
+                        <th class="px-4 py-3">Real Wallet Balance</th>
+                        <th class="px-4 py-3">Demo Balance</th>
+                        <th class="px-4 py-3 text-right rounded-r-lg">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tradersTableBody" class="divide-y divide-gray-800/60 font-mono">
+                    <!-- Dynamic trader rows -->
+                </tbody>
+            </table>
         </div>
     </div>
 </main>
@@ -189,7 +227,50 @@ function adminLogout(){
   window.location.href = 'login.html';
 }
 
+function onCurrencySelectChange(){
+  const curr = document.getElementById('cfgCurrency').value;
+  const isUsd = curr === 'usd';
+
+  document.getElementById('lblMinStake').textContent = isUsd ? 'Minimum Stake (USD $)' : 'Minimum Stake (KES)';
+  document.getElementById('lblMaxStake').textContent = isUsd ? 'Maximum Stake (USD $)' : 'Maximum Stake (KES)';
+  document.getElementById('lblMinDep').textContent = isUsd ? 'Minimum Deposit (USD $)' : 'Minimum Deposit (KES)';
+
+  const minStakeInput = document.getElementById('cfgMinStake');
+  const maxStakeInput = document.getElementById('cfgMaxStake');
+  const minDepInput = document.getElementById('cfgMinDep');
+
+  if (isUsd) {
+    if (parseFloat(minStakeInput.value) >= 10) minStakeInput.value = 1;
+    if (parseFloat(maxStakeInput.value) >= 5000) maxStakeInput.value = 500;
+    if (parseFloat(minDepInput.value) >= 50) minDepInput.value = 1;
+  } else {
+    if (parseFloat(minStakeInput.value) < 10) minStakeInput.value = 10;
+    if (parseFloat(maxStakeInput.value) < 5000) maxStakeInput.value = 50000;
+    if (parseFloat(minDepInput.value) < 10) minDepInput.value = 50;
+  }
+
+  updateAdminKPIDisplay(curr);
+}
+
+function updateAdminKPIDisplay(curr){
+  const isUsd = curr === 'usd';
+  const volEl = document.getElementById('adminStatVol');
+  const payEl = document.getElementById('adminStatPayouts');
+  const subEl = document.getElementById('adminStatPayoutSub');
+
+  if (isUsd) {
+    if (volEl) volEl.textContent = '$37,500.00';
+    if (payEl) payEl.textContent = '$251,800.00';
+    if (subEl) subEl.textContent = 'Global Payouts instant';
+  } else {
+    if (volEl) volEl.textContent = 'KES 4,820,400';
+    if (payEl) payEl.textContent = 'KES 32,491,000';
+    if (subEl) subEl.textContent = 'M-Pesa B2C instant';
+  }
+}
+
 function loadAdminConfig(){
+  // Load from localStorage first
   const cfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
   if (cfg.speed) document.getElementById('cfgSpeed').value = cfg.speed;
   if (cfg.spikeFreq) document.getElementById('cfgSpikeFreq').value = cfg.spikeFreq;
@@ -204,8 +285,26 @@ function loadAdminConfig(){
   if (cfg.usdRate) document.getElementById('cfgUsdRate').value = cfg.usdRate;
   if (cfg.currency) document.getElementById('cfgCurrency').value = cfg.currency;
   if (cfg.minDep) document.getElementById('cfgMinDep').value = cfg.minDep;
+
+  if (cfg.gwMpesa !== undefined) document.getElementById('cfgGwMpesa').checked = !!cfg.gwMpesa;
+  if (cfg.gwPesapal !== undefined) document.getElementById('cfgGwPesapal').checked = !!cfg.gwPesapal;
+  if (cfg.gwOther !== undefined) document.getElementById('cfgGwOther').checked = !!cfg.gwOther;
+
+  onCurrencySelectChange();
+
+  // Also fetch backend API if running
+  fetch('../api/settings.php').then(r=>r.json()).then(s=>{
+    if (!cfg.currency && s.payments && s.payments.deposit_currency) {
+      document.getElementById('cfgCurrency').value = s.payments.deposit_currency;
+      onCurrencySelectChange();
+    }
+    if (!cfg.usdRate && s.payments && s.payments.usd_rate) {
+      document.getElementById('cfgUsdRate').value = s.payments.usd_rate;
+    }
+  }).catch(()=>{});
+
+  renderTradersList();
 }
-loadAdminConfig();
 
 function saveAdminConfig(){
   const cfg = {
@@ -221,10 +320,23 @@ function saveAdminConfig(){
     maxStake: parseFloat(document.getElementById('cfgMaxStake').value) || 50000,
     usdRate: parseFloat(document.getElementById('cfgUsdRate').value) || 129.00,
     currency: document.getElementById('cfgCurrency').value || 'kes',
-    minDep: parseFloat(document.getElementById('cfgMinDep').value) || 50
+    minDep: parseFloat(document.getElementById('cfgMinDep').value) || 50,
+    gwMpesa: document.getElementById('cfgGwMpesa').checked,
+    gwPesapal: document.getElementById('cfgGwPesapal').checked,
+    gwOther: document.getElementById('cfgGwOther').checked
   };
 
+  // Save to LocalStorage
   localStorage.setItem('maliPlatformConfig', JSON.stringify(cfg));
+  localStorage.setItem('maliDepositCurrency', cfg.currency);
+
+  // Sync to Backend PHP Server API
+  fetch('../api/settings.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(cfg)
+  }).catch(()=>{});
+
   const btn = document.getElementById('saveCfgBtn');
   btn.textContent = 'Saved & Applied! ✓';
   btn.classList.add('bg-green-500', 'text-black');
@@ -232,7 +344,83 @@ function saveAdminConfig(){
     btn.textContent = 'Save & Apply Settings';
     btn.classList.remove('bg-green-500', 'text-black');
   }, 1800);
+
+  updateAdminKPIDisplay(cfg.currency);
 }
+
+function renderTradersList(){
+  const users = JSON.parse(localStorage.getItem('maliUsersList') || '[]');
+  const currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null') || { username: 'Allano', email: 'allano@malicrush.com', phone: '254712345678' };
+  
+  const allTraders = [currentUser, ...users.filter(u => u.username !== currentUser.username)];
+  const tbody = document.getElementById('tradersTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const realBal = parseFloat(localStorage.getItem('maliRealBalance') || '2500.00');
+  const demoBal = parseFloat(localStorage.getItem('maliDemoBalance') || '10000.00');
+  const curr = document.getElementById('cfgCurrency') ? document.getElementById('cfgCurrency').value : 'kes';
+  const prefix = curr === 'usd' ? '$' : 'KES ';
+
+  allTraders.forEach((t, idx) => {
+    const isCurrent = idx === 0;
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-gray-800/30 transition-colors';
+    tr.innerHTML = `
+      <td class="px-4 py-3">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[10px]">${(t.username||'T').charAt(0).toUpperCase()}</div>
+          <div>
+            <div class="font-bold text-white">${t.username}</div>
+            <div class="text-[10px] text-gray-500 font-sans">${t.email || 'trader@malicrush.com'}</div>
+          </div>
+        </div>
+      </td>
+      <td class="px-4 py-3 text-gray-300 font-sans">${t.phone || '254712345678'}</td>
+      <td class="px-4 py-3 font-bold text-green-400">${prefix}${isCurrent ? realBal.toLocaleString('en-US',{minimumFractionDigits:2}) : '1,500.00'}</td>
+      <td class="px-4 py-3 text-amber-400">${prefix}${isCurrent ? demoBal.toLocaleString('en-US',{minimumFractionDigits:2}) : '10,000.00'}</td>
+      <td class="px-4 py-3 text-right">
+        <button onclick="creditTraderBalance(${isCurrent ? 'true' : 'false'})" class="text-[10px] bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 px-2 py-1 rounded-md transition-all font-sans">
+          + Credit Funds
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const statUsers = document.getElementById('adminStatUsers');
+  if (statUsers) statUsers.textContent = (1280 + allTraders.length).toLocaleString();
+}
+
+function creditTraderBalance(isCurrent){
+  const curr = document.getElementById('cfgCurrency').value;
+  const defCredit = curr === 'usd' ? '50' : '1000';
+  const amtStr = prompt(`Enter amount to credit to wallet (${curr.toUpperCase()}):`, defCredit);
+  if (!amtStr) return;
+  const amt = parseFloat(amtStr);
+  if (isNaN(amt) || amt <= 0) { alert('Invalid amount'); return; }
+
+  if (isCurrent) {
+    const curBal = parseFloat(localStorage.getItem('maliRealBalance') || '2500.00');
+    const nextBal = curBal + amt;
+    localStorage.setItem('maliRealBalance', nextBal.toString());
+  }
+
+  const txs = JSON.parse(localStorage.getItem('maliTransactions') || '[]');
+  txs.unshift({
+    type: 'deposit',
+    amount: amt,
+    method: 'Admin Credit',
+    date: new Date().toISOString()
+  });
+  localStorage.setItem('maliTransactions', JSON.stringify(txs.slice(0, 100)));
+
+  renderTradersList();
+  alert(`Successfully credited ${curr === 'usd' ? '$' : 'KES '}${amt.toFixed(2)} to trader wallet! ✓`);
+}
+
+loadAdminConfig();
 </script>
 </body>
 </html>
+

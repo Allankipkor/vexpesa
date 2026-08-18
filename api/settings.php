@@ -1,8 +1,16 @@
 <?php
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
-$settings = [
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit;
+}
+
+$file = __DIR__ . '/settings.json';
+
+$defaults = [
     "graph" => [
         "speed" => 300,
         "y_max" => 0.12,
@@ -38,4 +46,77 @@ $settings = [
     ]
 ];
 
-echo json_encode($settings);
+$current = $defaults;
+if (file_exists($file)) {
+    $saved = json_decode(file_get_contents($file), true);
+    if (is_array($saved)) {
+        $current = array_replace_recursive($defaults, $saved);
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    if (!empty($input)) {
+        if (isset($input['currency'])) {
+            $current['payments']['deposit_currency'] = strtolower($input['currency']);
+        }
+        if (isset($input['usdRate'])) {
+            $current['payments']['usd_rate'] = (float)$input['usdRate'];
+        }
+        if (isset($input['minDep'])) {
+            $current['trade']['min_deposit'] = (float)$input['minDep'];
+        }
+        if (isset($input['minStake'])) {
+            $current['trade']['min_stake'] = (float)$input['minStake'];
+        }
+        if (isset($input['maxStake'])) {
+            $current['trade']['max_stake'] = (float)$input['maxStake'];
+        }
+        if (isset($input['speed'])) {
+            $current['graph']['speed'] = (int)$input['speed'];
+        }
+        if (isset($input['spikeFreq'])) {
+            $current['graph']['spike_frequency'] = (float)$input['spikeFreq'];
+        }
+        if (isset($input['spikeMax'])) {
+            $current['graph']['spike_max'] = (float)$input['spikeMax'];
+        }
+        if (isset($input['crashFreq'])) {
+            $current['graph']['crash_frequency'] = (float)$input['crashFreq'];
+        }
+        if (isset($input['crashDepth'])) {
+            $current['graph']['crash_depth'] = (float)$input['crashDepth'];
+        }
+        if (isset($input['maxMult'])) {
+            $current['trade']['max_multiplier'] = (float)$input['maxMult'];
+        }
+        if (isset($input['prestart'])) {
+            $current['trade']['prestart_wait'] = (int)$input['prestart'];
+        }
+        if (isset($input['autosell'])) {
+            $current['trade']['autosell_multiplier'] = (float)$input['autosell'];
+        }
+
+        if (isset($input['gwMpesa']) || isset($input['gwPesapal']) || isset($input['gwOther'])) {
+            $current['payments']['gateways'] = [
+                'mpesa' => isset($input['gwMpesa']) ? (bool)$input['gwMpesa'] : true,
+                'pesapal' => isset($input['gwPesapal']) ? (bool)$input['gwPesapal'] : true,
+                'other' => isset($input['gwOther']) ? (bool)$input['gwOther'] : true
+            ];
+        }
+
+        if (isset($input['payments']) && is_array($input['payments'])) {
+            $current['payments'] = array_merge($current['payments'], $input['payments']);
+        }
+        if (isset($input['trade']) && is_array($input['trade'])) {
+            $current['trade'] = array_merge($current['trade'], $input['trade']);
+        }
+        if (isset($input['graph']) && is_array($input['graph'])) {
+            $current['graph'] = array_merge($current['graph'], $input['graph']);
+        }
+
+        @file_put_contents($file, json_encode($current, JSON_PRETTY_PRINT));
+    }
+}
+
+echo json_encode($current);

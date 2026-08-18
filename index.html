@@ -461,9 +461,9 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
     <div class="logo-text" id="siteLogo">Mali<span>Crush</span></div>
   </a>
   <div class="header-center">
-    <div class="header-stat"><span class="header-stat-label">24h Volume</span><span class="header-stat-val" style="color:var(--green)">KES 4.8M</span></div>
+    <div class="header-stat"><span class="header-stat-label">24h Volume</span><span class="header-stat-val" id="stat24Volume" style="color:var(--green)">KES 4.8M</span></div>
     <div class="header-stat"><span class="header-stat-label">Traders Online</span><span class="header-stat-val" id="onlineTraders">1,284</span></div>
-    <div class="header-stat"><span class="header-stat-label">Total Payouts</span><span class="header-stat-val" style="color:var(--gold)">KES 32.4M</span></div>
+    <div class="header-stat"><span class="header-stat-label">Total Payouts</span><span class="header-stat-val" id="statTotalPayouts" style="color:var(--gold)">KES 32.4M</span></div>
   </div>
   <div class="header-right">
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">
@@ -473,7 +473,7 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
     <button class="demo-toggle-btn" id="demoToggleBtn" onclick="toggleDemoMode()" title="Switch between demo and real trading">Real</button>
     
     <div class="balance-pill" onclick="openDeposit()" title="Click to deposit">
-      <div class="icon">K</div>
+      <div class="icon" id="headerBalIcon">K</div>
       <div class="val" id="headerBalance">0.00</div>
     </div>
 
@@ -576,10 +576,10 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
       <div class="trade-amount-section">
         <span class="trade-label">Stake Amount</span>
         <div class="amount-input-wrap">
-          <span class="amount-currency">KES</span>
-          <input class="amount-input" type="number" id="stakeInput" value="100" min="10" step="10">
+          <span class="amount-currency" id="stakeCurrency">KES</span>
+          <input class="amount-input" type="number" id="stakeInput" value="100" min="10" step="10" oninput="this.dataset.modified='true'">
         </div>
-        <div class="quick-amounts">
+        <div class="quick-amounts" id="quickAmountsWrap">
           <button class="quick-amt" onclick="setStake(50)">50</button>
           <button class="quick-amt" onclick="setStake(100)">100</button>
           <button class="quick-amt" onclick="setStake(200)">200</button>
@@ -744,15 +744,15 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
 <!-- WITHDRAW MODAL -->
 <div class="modal-overlay" id="withdrawModal">
   <div class="modal-box">
-    <div class="modal-title" style="color:var(--gold)">↓ Withdraw to M-Pesa</div>
+    <div class="modal-title" id="withdrawModalTitle" style="color:var(--gold)">↓ Withdraw Funds</div>
     <div style="text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:12px">
       Available: <span style="color:var(--gold);font-family:'JetBrains Mono',monospace;font-weight:700" id="withdrawBalance">KES 0.00</span>
     </div>
-    <label class="modal-input-label">Amount (KES)</label>
-    <input class="modal-input" type="number" id="withdrawAmount" placeholder="e.g. 500" min="100">
-    <label class="modal-input-label">Registered M-Pesa Number</label>
+    <label class="modal-input-label" id="withdrawAmtLabel">Amount (KES)</label>
+    <input class="modal-input" type="number" id="withdrawAmount" placeholder="e.g. 500" min="1">
+    <label class="modal-input-label">Registered Phone / Account</label>
     <div class="modal-input" id="withdrawPhoneDisplay" style="background:rgba(255,255,255,.05);color:var(--text-secondary);cursor:not-allowed;font-family:'JetBrains Mono',monospace;letter-spacing:1px;user-select:none">254712345678</div>
-    <div style="font-size:11px;color:var(--text-muted);margin:6px 2px 10px;line-height:1.5">
+    <div id="withdrawHint" style="font-size:11px;color:var(--text-muted);margin:6px 2px 10px;line-height:1.5">
       <span style="color:var(--gold)">ℹ</span> Minimum withdrawal is KES 100. Dispatched instantly via M-Pesa B2C.
     </div>
     <button class="modal-btn modal-btn-green" id="withdrawBtn" onclick="submitWithdrawal()">Submit Request</button>
@@ -834,6 +834,20 @@ function playSound(type){
   } catch(e){}
 }
 
+// Currency Formatting Helpers
+function getCurrencyCode(){
+  return (depositCurrency || 'kes').toUpperCase();
+}
+function getCurrencyPrefix(){
+  return depositCurrency === 'usd' ? '$' : 'KES ';
+}
+function formatCurrency(amount, includeSymbol = true){
+  const num = parseFloat(amount) || 0;
+  const formatted = num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (!includeSymbol) return formatted;
+  return depositCurrency === 'usd' ? `$${formatted}` : `KES ${formatted}`;
+}
+
 // ═══════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════
@@ -847,29 +861,138 @@ const CFG = {
   SCALE: 1,
 };
 
+function applyPlatformConfig(){
+  const savedCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
+  if (savedCfg.speed) CFG.TICK = savedCfg.speed;
+  if (savedCfg.spikeFreq) CFG.SPIKE_FREQ = savedCfg.spikeFreq;
+  if (savedCfg.spikeMax) CFG.SPIKE_MAX = savedCfg.spikeMax;
+  if (savedCfg.crashFreq) CFG.CRASH_FREQ = savedCfg.crashFreq;
+  if (savedCfg.crashDepth) CFG.CRASH_DEPTH = savedCfg.crashDepth;
+  if (savedCfg.maxMult) CFG.MAX_MULT = savedCfg.maxMult;
+  if (savedCfg.prestart) CFG.PRESTART_WAIT = savedCfg.prestart;
+  if (savedCfg.autosell) CFG.AUTOSELL_MULT = savedCfg.autosell;
+  if (savedCfg.minStake) CFG.MIN_STAKE = savedCfg.minStake;
+  if (savedCfg.maxStake) CFG.MAX_STAKE = savedCfg.maxStake;
+  if (savedCfg.minDep) CFG.MIN_DEPOSIT = savedCfg.minDep;
+  if (savedCfg.usdRate) usdRate = parseFloat(savedCfg.usdRate) || 129.00;
+
+  if (savedCfg.currency) {
+    depositCurrency = savedCfg.currency.toLowerCase();
+  } else if (localStorage.getItem('maliDepositCurrency')) {
+    depositCurrency = localStorage.getItem('maliDepositCurrency').toLowerCase();
+  }
+
+  const isUsd = depositCurrency === 'usd';
+
+  // Update Top Nav Header
+  const headerBalIcon = document.getElementById('headerBalIcon');
+  if (headerBalIcon) headerBalIcon.textContent = isUsd ? '$' : 'K';
+
+  const statVol = document.getElementById('stat24Volume');
+  if (statVol) statVol.textContent = isUsd ? '$37.5K' : 'KES 4.8M';
+
+  const statPay = document.getElementById('statTotalPayouts');
+  if (statPay) statPay.textContent = isUsd ? '$251.8K' : 'KES 32.4M';
+
+  // Update Stake Controls
+  const stakeCur = document.getElementById('stakeCurrency');
+  if (stakeCur) stakeCur.textContent = isUsd ? 'USD' : 'KES';
+
+  const stakeInput = document.getElementById('stakeInput');
+  const quickWrap = document.getElementById('quickAmountsWrap');
+  if (isUsd) {
+    if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) >= 50)) {
+      stakeInput.value = '1';
+      stakeInput.min = '1';
+      stakeInput.step = '1';
+    }
+    if (quickWrap) {
+      quickWrap.innerHTML = `
+        <button class="quick-amt" onclick="setStake(1)">$1</button>
+        <button class="quick-amt" onclick="setStake(2)">$2</button>
+        <button class="quick-amt" onclick="setStake(5)">$5</button>
+        <button class="quick-amt" onclick="setStake(10)">$10</button>
+      `;
+    }
+  } else {
+    if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) < 10)) {
+      stakeInput.value = '100';
+      stakeInput.min = '10';
+      stakeInput.step = '10';
+    }
+    if (quickWrap) {
+      quickWrap.innerHTML = `
+        <button class="quick-amt" onclick="setStake(50)">50</button>
+        <button class="quick-amt" onclick="setStake(100)">100</button>
+        <button class="quick-amt" onclick="setStake(200)">200</button>
+        <button class="quick-amt" onclick="setStake(500)">500</button>
+      `;
+    }
+  }
+
+  // Update Profit Bar
+  const profitDisplay = document.getElementById('profitDisplay');
+  if (profitDisplay && (!activeTrade || tradePhase === 'idle')) {
+    profitDisplay.textContent = formatCurrency(0);
+    profitDisplay.className = 'profit-val neutral';
+  }
+
+  // Update Withdraw Modal
+  const wBal = document.getElementById('withdrawBalance');
+  if (wBal) wBal.textContent = formatCurrency(balance);
+  const wLabel = document.getElementById('withdrawAmtLabel');
+  if (wLabel) wLabel.textContent = isUsd ? 'Amount ($ USD)' : 'Amount (KES)';
+  const wHint = document.getElementById('withdrawHint');
+  if (wHint) {
+    wHint.innerHTML = isUsd
+      ? '<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is $1.00 USD. Dispatched instantly via Global Payout / M-Pesa conversion.'
+      : '<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is KES 100. Dispatched instantly via M-Pesa B2C.';
+  }
+
+  updateHUD();
+}
+
+// Initial application of config from localStorage
+applyPlatformConfig();
+
+// Listen to changes from Admin Panel in other tabs or storage updates
+window.addEventListener('storage', (e) => {
+  if (e.key === 'maliPlatformConfig' || e.key === 'maliDepositCurrency') {
+    applyPlatformConfig();
+  }
+});
+
 // Fetch live settings if running on backend server
 fetch('api/settings.php').then(r=>r.json()).then(s=>{
+  const localCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
   if(s.graph){
-    CFG.TICK=s.graph.speed||300; CFG.Y_MAX=s.graph.y_max||0.12;
-    CFG.SPIKE_FREQ=s.graph.spike_frequency||0.10; CFG.CRASH_FREQ=s.graph.crash_frequency||0.02;
-    CFG.BASE_LEVEL=s.graph.base_level||0.025; CFG.SPIKE_MAX=s.graph.spike_max||0.105; CFG.CRASH_DEPTH=s.graph.crash_depth||-0.17;
+    CFG.TICK = localCfg.speed || s.graph.speed || 300;
+    CFG.Y_MAX = s.graph.y_max || 0.12;
+    CFG.SPIKE_FREQ = localCfg.spikeFreq || s.graph.spike_frequency || 0.10;
+    CFG.CRASH_FREQ = localCfg.crashFreq || s.graph.crash_frequency || 0.02;
+    CFG.BASE_LEVEL = s.graph.base_level || 0.025;
+    CFG.SPIKE_MAX = localCfg.spikeMax || s.graph.spike_max || 0.105;
+    CFG.CRASH_DEPTH = localCfg.crashDepth || s.graph.crash_depth || -0.17;
     CFG.SCALE = CFG.BASE_LEVEL / 0.025;
     eng.base = CFG.BASE_LEVEL * 0.5; rate = CFG.BASE_LEVEL * 0.6;
     high24 = CFG.Y_MAX * 0.8; low24 = -CFG.Y_MAX * 0.8;
   }
   if(s.trade){
-    CFG.TRADE_DUR=s.trade.duration||60;
-    CFG.MIN_STAKE=s.trade.min_stake||10; CFG.MAX_STAKE=s.trade.max_stake||50000; CFG.MIN_DEPOSIT=s.trade.min_deposit||50;
-    if (s.trade.max_multiplier) CFG.MAX_MULT = s.trade.max_multiplier;
-    if (s.trade.prestart_wait) CFG.PRESTART_WAIT = s.trade.prestart_wait;
-    if (s.trade.autosell_multiplier) CFG.AUTOSELL_MULT = s.trade.autosell_multiplier;
+    CFG.TRADE_DUR = s.trade.duration || 60;
+    CFG.MIN_STAKE = localCfg.minStake || s.trade.min_stake || 10;
+    CFG.MAX_STAKE = localCfg.maxStake || s.trade.max_stake || 50000;
+    CFG.MIN_DEPOSIT = localCfg.minDep || s.trade.min_deposit || 50;
+    CFG.MAX_MULT = localCfg.maxMult || s.trade.max_multiplier || 5.0;
+    CFG.PRESTART_WAIT = localCfg.prestart || s.trade.prestart_wait || 3;
+    CFG.AUTOSELL_MULT = localCfg.autosell || s.trade.autosell_multiplier || 2.5;
     document.getElementById('timerVal').textContent = CFG.TRADE_DUR;
   }
   if (s.payments) {
-    usdRate = parseFloat(s.payments.usd_rate) || 129;
-    depositCurrency = s.payments.deposit_currency || 'kes';
+    usdRate = parseFloat(localCfg.usdRate || s.payments.usd_rate) || 129;
+    depositCurrency = (localCfg.currency || s.payments.deposit_currency || 'kes').toLowerCase();
     checkoutMethod = s.payments.checkout_method || 'both';
   }
+  applyPlatformConfig();
   clearInterval(tickInterval);
   tickInterval = setInterval(tick, CFG.TICK);
 }).catch(()=>{});
@@ -1218,7 +1341,8 @@ function updateHUD(){
     const cappedProfit=Math.min(activeTrade.stake*diff, activeTrade.stake*(CFG.MAX_MULT-1));
     const pnl=diff>0 ? cappedProfit : -activeTrade.stake;
     const pe=document.getElementById('profitDisplay');
-    pe.textContent='KES '+(pnl>=0?'+':'')+pnl.toFixed(2);pe.className='profit-val '+(pnl>0?'pos':'neg');
+    pe.textContent=(pnl>=0?'+ ':'- ')+formatCurrency(Math.abs(pnl));
+    pe.className='profit-val '+(pnl>0?'pos':(pnl<0?'neg':'neutral'));
   }
 }
 
@@ -1325,9 +1449,12 @@ let prestartInterval = null;
 async function placeTrade(type){
   playSound('click');
   if(activeTrade)return;
-  const stake=parseFloat(document.getElementById('stakeInput').value)||100;
-  if(stake<CFG.MIN_STAKE){alert('Minimum stake is KES '+CFG.MIN_STAKE);return;}
-  if(stake>CFG.MAX_STAKE){alert('Maximum stake is KES '+CFG.MAX_STAKE);return;}
+  const isUsd = depositCurrency === 'usd';
+  const minStake = isUsd ? 1 : CFG.MIN_STAKE;
+  const maxStake = isUsd ? Math.round(CFG.MAX_STAKE / usdRate) : CFG.MAX_STAKE;
+  const stake=parseFloat(document.getElementById('stakeInput').value) || (isUsd ? 1 : 100);
+  if(stake < minStake){alert('Minimum stake is ' + formatCurrency(minStake));return;}
+  if(stake > maxStake){alert('Maximum stake is ' + formatCurrency(maxStake));return;}
 
   if(isDemoMode){
     if(stake>demoBalance){alert('Insufficient demo balance. Reset demo account in profile.');return;}
@@ -1335,7 +1462,7 @@ async function placeTrade(type){
     localStorage.setItem('maliDemoBalance',demoBalance);
     activeTrade={type,entryRate:rate,stake,tradeId:'DEMO-'+Date.now(),isDemo:true};
     updateHUD();
-    showHeroToast('Demo trade: KES '+stake.toLocaleString('en-US',{minimumFractionDigits:2})+' staked','Virtual funds · No risk',2800);
+    showHeroToast('Demo trade: ' + formatCurrency(stake) + ' staked','Virtual funds · No risk',2800);
     _setupTradeButtons(type);
     return;
   }
@@ -1353,7 +1480,7 @@ async function placeTrade(type){
   updateHUD();
 
   showHeroToast(
-    'Stake of KES ' + stake.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' placed',
+    'Stake of ' + formatCurrency(stake) + ' placed',
     'Trade starting in <strong>' + Math.max(1, CFG.PRESTART_WAIT) + 's</strong>',
     3000
   );
@@ -1411,7 +1538,7 @@ function cancelTrade(){
   showToast('Trade cancelled', {sub:'Stake refunded in full', kind:'info'});
   activeTrade = null; tradePhase = 'idle';
   resetBtns(); resetTimer(); updateHUD();
-  document.getElementById('profitDisplay').textContent='KES 0.00';
+  document.getElementById('profitDisplay').textContent = formatCurrency(0);
   document.getElementById('profitDisplay').className='profit-val neutral';
 }
 
@@ -1452,16 +1579,16 @@ function updateActiveButton() {
   const effectiveMult = livePayout / activeTrade.stake;
   const capped = rawPayout > capPayout && rateDiff > 0;
 
-  const payoutStr = livePayout.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const payoutStr = formatCurrency(livePayout);
   const multStr   = rateDiff > 0 ? '×' + effectiveMult.toFixed(2) + (capped ? ' (max)' : '') : '×0.00';
 
   primaryBtn.querySelector('.sub').style.display = 'block';
   primaryBtn.querySelector('.label').textContent = activeTrade.type === 'buy' ? 'BUY' : 'SELL';
-  primaryBtn.querySelector('.sub').textContent = 'Active · KES ' + activeTrade.stake.toFixed(2);
+  primaryBtn.querySelector('.sub').textContent = 'Active · ' + formatCurrency(activeTrade.stake);
 
   secondaryBtn.querySelector('.sub').style.display = 'block';
   secondaryBtn.querySelector('.label').textContent = 'CASHOUT';
-  secondaryBtn.querySelector('.sub').textContent = multStr + ' · KES ' + payoutStr;
+  secondaryBtn.querySelector('.sub').textContent = multStr + ' · ' + payoutStr;
 }
 
 // Celebration FX
@@ -1556,12 +1683,12 @@ async function resolveTrade(reason) {
   if (won) {
     launchCelebration();
     const traderName = currentUser ? currentUser.username : (isDemo ? 'DemoTrader' : 'Guest');
-    setTimeout(()=>addMsg(`System: CONGRATULATIONS @${traderName} on earning ${payout.toFixed(2)} KES on MaliCrush 🎉🎉`,'win'),400);
+    setTimeout(()=>addMsg(`System: CONGRATULATIONS @${traderName} on earning ${formatCurrency(payout)} on MaliCrush 🎉🎉`,'win'),400);
   }
 
   activeTrade=null; tradePhase='idle';
   resetTimer(); resetBtns(); updateHUD();
-  document.getElementById('profitDisplay').textContent='KES 0.00';
+  document.getElementById('profitDisplay').textContent = formatCurrency(0);
   document.getElementById('profitDisplay').className='profit-val neutral';
 }
 
@@ -1587,12 +1714,12 @@ function showResult(won,stake,payout,entry,exit,type,reason){
   let title = won ? (reason === 'autosell' ? 'Autosell Hit!' : 'Trade Won! 🎉') : (reason === 'crash' ? 'Rate Crashed' : (reason === 'expired' ? 'Trade Expired' : 'Trade Lost'));
   document.getElementById('resultTitle').textContent = title;
   document.getElementById('resultAmount').style.color=won?'#00c853':'#ff1744';
-  document.getElementById('resultAmount').textContent=(won?'+ KES ':'- KES ')+(won?payout:stake).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('resultAmount').textContent=(won?'+ ':'- ')+formatCurrency(won?payout:stake);
   if (won) {
     const mult = payout / stake;
-    document.getElementById('resultDetails').innerHTML=`Type: <span>${type.toUpperCase()}</span><br>Multiplier: <span style="color:#ffc107">×${mult.toFixed(2)}</span><br>Stake: <span>KES ${stake.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span><br>Total Payout: <span>KES ${payout.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+    document.getElementById('resultDetails').innerHTML=`Type: <span>${type.toUpperCase()}</span><br>Multiplier: <span style="color:#ffc107">×${mult.toFixed(2)}</span><br>Stake: <span>${formatCurrency(stake)}</span><br>Total Payout: <span>${formatCurrency(payout)}</span>`;
   } else {
-    document.getElementById('resultDetails').innerHTML=`Type: <span>${type.toUpperCase()}</span><br>Entry: <span>${entry.toFixed(4)}</span><br>Exit: <span>${exit.toFixed(4)}</span><br>Stake: <span>KES ${stake.toFixed(2)}</span>`;
+    document.getElementById('resultDetails').innerHTML=`Type: <span>${type.toUpperCase()}</span><br>Entry: <span>${entry.toFixed(4)}</span><br>Exit: <span>${exit.toFixed(4)}</span><br>Stake: <span>${formatCurrency(stake)}</span>`;
   }
   document.getElementById('resultModal').classList.add('show');
 }
@@ -1612,9 +1739,32 @@ function closeDeposit(){
 }
 
 function _applyDeposit(){
-  document.getElementById('amtKes').style.display = depositCurrency==='kes'?'block':'none';
-  document.getElementById('amtUsd').style.display = depositCurrency==='usd'?'block':'none';
-  setCheckoutTab(currentCheckoutTab);
+  const isUsd = depositCurrency === 'usd';
+  document.getElementById('amtKes').style.display = isUsd ? 'none' : 'block';
+  document.getElementById('amtUsd').style.display = isUsd ? 'block' : 'none';
+
+  const cfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
+  const gwMpesa = cfg.gwMpesa !== false;
+  const gwPesapal = cfg.gwPesapal !== false;
+  const gwOther = cfg.gwOther !== false;
+
+  const elMpesa = document.getElementById('ctabMpesa');
+  const elPesapal = document.getElementById('ctabPesapal');
+  const elHub = document.getElementById('ctabHub');
+  const elMegapay = document.getElementById('ctabMegapay');
+  const elPaywave = document.getElementById('ctabPaywave');
+
+  if (elMpesa) elMpesa.style.display = gwMpesa ? 'inline-block' : 'none';
+  if (elPesapal) elPesapal.style.display = gwPesapal ? 'inline-block' : 'none';
+  if (elHub) elHub.style.display = gwOther ? 'inline-block' : 'none';
+  if (elMegapay) elMegapay.style.display = gwOther ? 'inline-block' : 'none';
+  if (elPaywave) elPaywave.style.display = gwOther ? 'inline-block' : 'none';
+
+  let activeTab = currentCheckoutTab;
+  if (activeTab === 'mpesa' && !gwMpesa) activeTab = gwPesapal ? 'pesapal' : (gwOther ? 'hub' : 'mpesa');
+  if (activeTab === 'pesapal' && !gwPesapal) activeTab = gwMpesa ? 'mpesa' : (gwOther ? 'hub' : 'pesapal');
+
+  setCheckoutTab(activeTab);
   _disableDepBtn('Select an amount');
 }
 
@@ -1740,7 +1890,7 @@ function closePpModal(){
 // WITHDRAWAL
 // ═══════════════════════════════════════════
 function openWithdraw(){
-  document.getElementById('withdrawBalance').textContent = 'KES ' + balance.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('withdrawBalance').textContent = formatCurrency(balance);
   document.getElementById('withdrawStatus').textContent = '';
   document.getElementById('withdrawModal').classList.add('show');
 }
@@ -1751,12 +1901,14 @@ function submitWithdrawal(){
   const amount = parseFloat(document.getElementById('withdrawAmount').value) || 0;
   const btn = document.getElementById('withdrawBtn');
   const status = document.getElementById('withdrawStatus');
+  const isUsd = depositCurrency === 'usd';
+  const minWithdraw = isUsd ? 1 : 100;
 
-  if (amount < 100) { status.innerHTML = '<span style="color:var(--red)">Minimum withdrawal is KES 100</span>'; return; }
+  if (amount < minWithdraw) { status.innerHTML = '<span style="color:var(--red)">Minimum withdrawal is ' + formatCurrency(minWithdraw) + '</span>'; return; }
   if (amount > balance) { status.innerHTML = '<span style="color:var(--red)">Amount exceeds available balance</span>'; return; }
 
   btn.disabled = true; btn.textContent = 'Processing...';
-  status.innerHTML = '<span style="color:var(--gold)">Submitting M-Pesa B2C payout...</span>';
+  status.innerHTML = '<span style="color:var(--gold)">Submitting ' + (isUsd ? 'Global Payout' : 'M-Pesa B2C') + ' payout...</span>';
 
   setTimeout(()=>{
     balance -= amount;
@@ -1770,8 +1922,8 @@ function submitWithdrawal(){
     closeWithdraw();
     btn.disabled = false; btn.textContent = 'Submit Request';
     showHeroToast(
-      'Withdrawal of KES ' + amount.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' Sent',
-      'Dispatched directly to your registered Safaricom M-Pesa line',
+      'Withdrawal of ' + formatCurrency(amount) + ' Sent',
+      isUsd ? 'Dispatched directly to your linked account' : 'Dispatched directly to your registered Safaricom M-Pesa line',
       4000
     );
   }, 1500);
@@ -1805,9 +1957,9 @@ function toggleDemoMode(){
   btn.classList.toggle('demo-on', isDemoMode);
   updateHUD();
   if(isDemoMode){
-    showToast('MaliCrush Demo Mode Active', {sub:'Trading with virtual KES '+demoBalance.toLocaleString('en-US',{minimumFractionDigits:2}), kind:'info'});
+    showToast('MaliCrush Demo Mode Active', {sub:'Trading with virtual ' + formatCurrency(demoBalance), kind:'info'});
   } else {
-    showToast('Real Money Trading Active', {sub:'Trading with your MaliCrush real wallet', kind:'warn'});
+    showToast('Real Money Trading Active', {sub:'Trading with your MaliCrush wallet (' + formatCurrency(balance) + ')', kind:'warn'});
   }
 }
 
@@ -1853,19 +2005,25 @@ function sendUserChat(){
 
 NAMES.slice(0,10).forEach((n,i)=>{
   const a=AMTS[Math.floor(Math.random()*AMTS.length)];
-  setTimeout(()=>addMsg(`System: CONGRATULATIONS @${n} on withdrawal of ${a}.00 KES 🎉🎉`,'win'),i*120);
+  const displayAmt = depositCurrency === 'usd' ? '$' + (a/100).toFixed(2) : a + '.00 KES';
+  setTimeout(()=>addMsg(`System: CONGRATULATIONS @${n} on withdrawal of ${displayAmt} 🎉🎉`,'win'),i*120);
 });
-setTimeout(()=>addMsg('Jojo25paul: MaliCrush bonus of 10.00 KES received! 🎁','bonus'),1200);
+setTimeout(()=>{
+  const bAmt = depositCurrency === 'usd' ? '$0.10' : '10.00 KES';
+  addMsg(`Jojo25paul: MaliCrush bonus of ${bAmt} received! 🎁`,'bonus');
+},1200);
 
 setInterval(()=>{
   const n=NAMES[Math.floor(Math.random()*NAMES.length)],a=AMTS[Math.floor(Math.random()*AMTS.length)];
-  addMsg(`System: CONGRATULATIONS @${n} on withdrawal of ${a}.00 KES 🎉🎉`,'win');
+  const displayAmt = depositCurrency === 'usd' ? '$' + (a/100).toFixed(2) : a + '.00 KES';
+  addMsg(`System: CONGRATULATIONS @${n} on withdrawal of ${displayAmt} 🎉🎉`,'win');
 },3200+Math.random()*2500);
 
 setInterval(()=>{
   if(Math.random()>.6){
     const n=NAMES[Math.floor(Math.random()*NAMES.length)];
-    addMsg(`${n}: Bonus of 10.00 KES has been credited 🎁`,'bonus');
+    const bAmt = depositCurrency === 'usd' ? '$0.10' : '10.00 KES';
+    addMsg(`${n}: Bonus of ${bAmt} has been credited 🎁`,'bonus');
   }
 },8000);
 

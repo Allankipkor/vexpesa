@@ -127,6 +127,17 @@ if (!user) {
   localStorage.setItem('maliUser', JSON.stringify(user));
 }
 
+function getCurrencyPrefix(){
+  const cfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
+  const curr = (cfg.currency || localStorage.getItem('maliDepositCurrency') || 'kes').toLowerCase();
+  return curr === 'usd' ? '$' : 'KES ';
+}
+
+function formatProfileMoney(amount){
+  const prefix = getCurrencyPrefix();
+  return prefix + parseFloat(amount || 0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
 function loadProfileUI(){
   document.getElementById('profUsername').value = user.username || '';
   document.getElementById('profEmail').value = user.email || '';
@@ -136,10 +147,16 @@ function loadProfileUI(){
 
   const realBal = parseFloat(localStorage.getItem('maliRealBalance') || '2500.00');
   const demoBal = parseFloat(localStorage.getItem('maliDemoBalance') || '10000.00');
-  document.getElementById('realBalCard').textContent = 'KES ' + realBal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  document.getElementById('demoBalCard').textContent = 'KES ' + demoBal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('realBalCard').textContent = formatProfileMoney(realBal);
+  document.getElementById('demoBalCard').textContent = formatProfileMoney(demoBal);
 }
 loadProfileUI();
+
+window.addEventListener('storage', (e) => {
+  if (e.key === 'maliPlatformConfig' || e.key === 'maliDepositCurrency' || e.key === 'maliRealBalance' || e.key === 'maliDemoBalance') {
+    loadProfileUI();
+  }
+});
 
 function saveProfile(e){
   e.preventDefault();
@@ -158,9 +175,11 @@ function saveProfile(e){
 }
 
 function resetDemoBal(){
-  localStorage.setItem('maliDemoBalance', '10000.00');
+  const prefix = getCurrencyPrefix();
+  const resetAmt = prefix === '$' ? '100.00' : '10000.00';
+  localStorage.setItem('maliDemoBalance', resetAmt);
   loadProfileUI();
-  alert('Demo balance reset to KES 10,000.00 virtual funds.');
+  alert('Demo balance reset to ' + prefix + resetAmt + ' virtual funds.');
 }
 
 function logoutProfile(){

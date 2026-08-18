@@ -72,16 +72,24 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
 <script>
 let currentFilter = 'all';
 
+function getCurrencyPrefix(){
+  const cfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
+  const curr = (cfg.currency || localStorage.getItem('maliDepositCurrency') || 'kes').toLowerCase();
+  return curr === 'usd' ? '$' : 'KES ';
+}
+
+function formatTxMoney(amount){
+  const prefix = getCurrencyPrefix();
+  return prefix + parseFloat(amount || 0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
 function renderTransactions(){
-  const list = JSON.parse(localStorage.getItem('maliTransactions') || '[]');
+  const txs = JSON.parse(localStorage.getItem('maliTransactions') || '[]');
   const tbody = document.getElementById('txTableBody');
-  const empty = document.getElementById('emptyState');
+  const empty = document.getElementById('txEmpty');
   tbody.innerHTML = '';
 
-  const filtered = list.filter(item => {
-    if (currentFilter === 'all') return true;
-    return item.type === currentFilter;
-  });
+  const filtered = txs.filter(t => currentFilter === 'all' || t.type === currentFilter);
 
   if (filtered.length === 0) {
     empty.classList.remove('hidden');
@@ -103,23 +111,23 @@ function renderTransactions(){
 
     if (item.type === 'trade') {
       typeBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold ${item.tradeType === 'buy' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'} uppercase">🎯 ${item.tradeType}</span>`;
-      details = `Stake: KES ${item.stake.toFixed(2)}`;
+      details = `Stake: ${formatTxMoney(item.stake)}`;
       if (item.won) {
-        amountStr = `<span class="text-green-400 font-bold">+ KES ${item.payout.toFixed(2)}</span>`;
+        amountStr = `<span class="text-green-400 font-bold">+ ${formatTxMoney(item.payout)}</span>`;
         statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-green-500/20 text-green-300 font-bold">WON</span>`;
       } else {
-        amountStr = `<span class="text-red-400 font-bold">- KES ${item.stake.toFixed(2)}</span>`;
+        amountStr = `<span class="text-red-400 font-bold">- ${formatTxMoney(item.stake)}</span>`;
         statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-red-500/20 text-red-300 font-bold">LOST</span>`;
       }
     } else if (item.type === 'deposit') {
       typeBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">💳 Deposit</span>`;
-      details = `Via ${item.method || 'M-PESA'}`;
-      amountStr = `<span class="text-blue-400 font-bold">+ KES ${item.amount.toLocaleString('en-US',{minimumFractionDigits:2})}</span>`;
+      details = `Via ${item.method || (getCurrencyPrefix() === '$' ? 'Card / Crypto / PesaPal' : 'M-PESA')}`;
+      amountStr = `<span class="text-blue-400 font-bold">+ ${formatTxMoney(item.amount)}</span>`;
       statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-bold">COMPLETED</span>`;
     } else if (item.type === 'withdrawal') {
       typeBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase">↓ Withdrawal</span>`;
-      details = `M-Pesa B2C Payout`;
-      amountStr = `<span class="text-amber-400 font-bold">- KES ${item.amount.toLocaleString('en-US',{minimumFractionDigits:2})}</span>`;
+      details = getCurrencyPrefix() === '$' ? 'Global Payout' : 'M-Pesa B2C Payout';
+      amountStr = `<span class="text-amber-400 font-bold">- ${formatTxMoney(item.amount)}</span>`;
       statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-bold">PROCESSED</span>`;
     }
 
@@ -133,6 +141,12 @@ function renderTransactions(){
     tbody.appendChild(tr);
   });
 }
+
+window.addEventListener('storage', (e) => {
+  if (e.key === 'maliPlatformConfig' || e.key === 'maliDepositCurrency' || e.key === 'maliTransactions') {
+    renderTransactions();
+  }
+});
 
 function filterType(type){
   currentFilter = type;
