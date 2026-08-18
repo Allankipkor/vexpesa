@@ -89,13 +89,10 @@ async function handleLogin(e){
     
     let userObj = found;
     if (!userObj) {
-      const username = email.includes('@') ? email.split('@')[0] : (email.match(/^\d+$/) ? 'Trader' + email.slice(-4) : email);
-      userObj = {
-        username,
-        email: email.includes('@') ? email : `${username}@malicrush.com`,
-        phone: email.match(/^254\d{9}$/) ? email : '254712345678',
-        password
-      };
+      alert('Invalid login credentials or user not found. Please sign up for an account.');
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      return;
     }
 
     localStorage.setItem('maliUser', JSON.stringify(userObj));

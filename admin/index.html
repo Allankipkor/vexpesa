@@ -394,11 +394,11 @@ async function renderTradersList(){
                   ${t.username}
                   ${t.role === 'admin' ? '<span class="text-[9px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded font-mono">ADMIN</span>' : ''}
                 </div>
-                <div class="text-[10px] text-gray-500 font-sans">${t.email || 'trader@malicrush.com'}</div>
+                <div class="text-[10px] text-gray-500 font-sans">${t.email || ''}</div>
               </div>
             </div>
           </td>
-          <td class="px-4 py-3 text-gray-300 font-sans">${t.phone || '254712345678'}</td>
+          <td class="px-4 py-3 text-gray-300 font-sans">${t.phone || ''}</td>
           <td class="px-4 py-3 font-bold text-green-400">${prefix}${parseFloat(t.balance || 0).toLocaleString('en-US',{minimumFractionDigits:2})}</td>
           <td class="px-4 py-3 text-amber-400">${prefix}${parseFloat(t.demo_balance || 0).toLocaleString('en-US',{minimumFractionDigits:2})}</td>
           <td class="px-4 py-3 text-right">
@@ -418,11 +418,15 @@ async function renderTradersList(){
 
   // Fallback to local accounts if database not yet connected
   const users = JSON.parse(localStorage.getItem('maliUsersList') || '[]');
-  const currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null') || { username: 'Allano', email: 'allano@malicrush.com', phone: '254712345678' };
-  const allTraders = [currentUser, ...users.filter(u => u.username !== currentUser.username)];
+  const currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
+  const allTraders = currentUser ? [currentUser, ...users.filter(u => u.username !== currentUser.username)] : users;
   
   tbody.innerHTML = '';
-  const realBal = parseFloat(localStorage.getItem('maliRealBalance') || '2500.00');
+  if (allTraders.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 font-sans">No registered traders yet. Accounts will appear here automatically when users register.</td></tr>`;
+    return;
+  }
+  const realBal = parseFloat(localStorage.getItem('maliRealBalance') || '0.00');
   const demoBal = parseFloat(localStorage.getItem('maliDemoBalance') || '10000.00');
 
   allTraders.forEach((t, idx) => {
@@ -435,12 +439,12 @@ async function renderTradersList(){
           <div class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[10px]">${(t.username||'T').charAt(0).toUpperCase()}</div>
           <div>
             <div class="font-bold text-white">${t.username}</div>
-            <div class="text-[10px] text-gray-500 font-sans">${t.email || 'trader@malicrush.com'}</div>
+            <div class="text-[10px] text-gray-500 font-sans">${t.email || ''}</div>
           </div>
         </div>
       </td>
-      <td class="px-4 py-3 text-gray-300 font-sans">${t.phone || '254712345678'}</td>
-      <td class="px-4 py-3 font-bold text-green-400">${prefix}${isCurrent ? realBal.toLocaleString('en-US',{minimumFractionDigits:2}) : '1,500.00'}</td>
+      <td class="px-4 py-3 text-gray-300 font-sans">${t.phone || ''}</td>
+      <td class="px-4 py-3 font-bold text-green-400">${prefix}${isCurrent ? realBal.toLocaleString('en-US',{minimumFractionDigits:2}) : '0.00'}</td>
       <td class="px-4 py-3 text-amber-400">${prefix}${isCurrent ? demoBal.toLocaleString('en-US',{minimumFractionDigits:2}) : '10,000.00'}</td>
       <td class="px-4 py-3 text-right">
         <button onclick="creditTraderBalance('${t.username}', null)" class="text-[10px] bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 px-2 py-1 rounded-md transition-all font-sans">

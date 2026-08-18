@@ -93,6 +93,22 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg-primary);col
 .btn-withdraw:hover{border-color:var(--text-secondary);color:#fff}
 .deposit-icon, .withdraw-icon{font-weight:800;font-size:14px;line-height:1;display:inline-block}
 
+/* Demo vs Real Toggle */
+.demo-toggle-btn{
+  padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;
+  cursor:pointer;transition:all .2s;border:1px solid var(--border);
+  background:var(--bg-card);color:var(--text-secondary);
+  text-transform:uppercase;letter-spacing:.5px;display:inline-flex;align-items:center;
+}
+.demo-toggle-btn.demo-active{
+  background:rgba(255,193,7,.15);border-color:var(--gold);color:var(--gold);
+  box-shadow:0 0 10px rgba(255,193,7,.25);
+}
+.demo-toggle-btn.real-active{
+  background:rgba(0,200,83,.15);border-color:var(--green);color:var(--green);
+  box-shadow:0 0 10px rgba(0,200,83,.25);
+}
+
 /* User menu dropdown */
 .user-menu{position:relative}
 .user-menu-trigger{cursor:pointer}
@@ -511,14 +527,14 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
     </div>
 
     <!-- Dynamic auth buttons -->
-    <div id="authButtonsWrap" style="display:none;gap:6px">
+    <div id="authButtonsWrap" style="display:flex;gap:6px">
       <a href="login.html" class="btn-sm btn-ghost" id="loginBtnNav">Login</a>
       <a href="register.html" class="btn-sm btn-green" id="signUpBtnNav">Sign Up</a>
     </div>
 
-    <div class="user-menu" id="userMenuWrap" style="display:block">
+    <div class="user-menu" id="userMenuWrap" style="display:none">
       <button class="btn-sm btn-ghost user-menu-trigger" onclick="toggleUserMenu(event)">
-        <span id="userNameNav">Trader</span> ▾
+        <span id="userNameNav">Account</span> ▾
       </button>
       <div class="user-menu-dropdown" id="userMenuDropdown">
         <a href="profile.html" class="user-menu-item">
@@ -765,7 +781,13 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
 // ═══════════════════════════════════════════
 // MALICRUSH CLIENT STATE & PERSISTENCE
 // ═══════════════════════════════════════════
+// Clean up any legacy test accounts stored in browser cache
 let currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
+if (currentUser && (currentUser.email === 'allano@malicrush.com' || currentUser.email === 'trader@malicrush.com' || currentUser.username === 'Allano' || currentUser.username === 'Trader' || currentUser.username === 'Trader254')) {
+  localStorage.removeItem('maliUser');
+  localStorage.removeItem('maliRealBalance');
+  currentUser = null;
+}
 let balance = parseFloat(localStorage.getItem('maliRealBalance') || '0.00');
 const DEMO_START_BALANCE = 10000;
 let isDemoMode = !currentUser; // Default to demo mode if not logged in
@@ -1304,6 +1326,27 @@ function draw(){
 }
 
 // ═══════════════════════════════════════════
+// PRICE ENGINE TICK & WAVE RENDERING
+// ═══════════════════════════════════════════
+function tick(){
+  const p = nextP();
+  prices.push(p);
+  if (prices.length > CFG.MAX_PTS) prices.shift();
+  draw();
+  updateHUD();
+  if (activeTrade && tradePhase === 'active') {
+    updateActiveButton();
+    updateAutosellHud();
+  }
+}
+
+// Pre-fill wave buffer so graph renders immediately on page load!
+for (let i = 0; i < CFG.MAX_PTS; i++) {
+  prices.push(nextP());
+}
+draw();
+
+// ═══════════════════════════════════════════
 // HUD UPDATES
 // ═══════════════════════════════════════════
 function updateHUD(){
@@ -1316,6 +1359,12 @@ function updateHUD(){
   
   const displayBal = isDemoMode ? demoBalance : balance;
   document.getElementById('headerBalance').textContent=displayBal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  const demoBtn = document.getElementById('demoToggleBtn');
+  if (demoBtn) {
+    demoBtn.textContent = isDemoMode ? 'Demo' : 'Real';
+    demoBtn.className = 'demo-toggle-btn ' + (isDemoMode ? 'demo-active' : 'real-active');
+  }
   
   if(activeTrade){
     const diff=rate-activeTrade.entryRate;
@@ -1916,16 +1965,17 @@ function setTF(b,s){
 function toggleDemoMode(){
   playSound('click');
   if(activeTrade){ showToast('Finish your active trade first','',{kind:'warn'}); return; }
+  if(!currentUser && isDemoMode){
+    showToast('Sign in required', {sub:'Please login or create an account to trade with real money', kind:'info'});
+    setTimeout(()=>{ window.location.href = 'login.html'; }, 900);
+    return;
+  }
   isDemoMode = !isDemoMode;
-  document.body.classList.toggle('demo-active', isDemoMode);
-  const btn = document.getElementById('demoToggleBtn');
-  btn.textContent = isDemoMode ? 'Demo' : 'Real';
-  btn.classList.toggle('demo-on', isDemoMode);
   updateHUD();
   if(isDemoMode){
     showToast('MaliCrush Demo Mode Active', {sub:'Trading with virtual ' + formatCurrency(demoBalance), kind:'info'});
   } else {
-    showToast('Real Money Trading Active', {sub:'Trading with your MaliCrush wallet (' + formatCurrency(balance) + ')', kind:'warn'});
+    showToast('Real Money Trading Active', {sub:'Trading with your live balance (' + formatCurrency(balance) + ')', kind:'success'});
   }
 }
 
