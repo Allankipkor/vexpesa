@@ -70,35 +70,35 @@ body.light-mode ::-webkit-scrollbar-thumb{background:#c4cbd8}
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg-primary);color:var(--text-primary);transition:background .35s ease,color .35s ease}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:var(--bg-secondary)}::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:2px}
 
-.header{height:52px;background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;position:relative;z-index:100;transition:background .35s,border-color .35s}
-.logo-area{display:flex;align-items:center;gap:8px;text-decoration:none}
+.header{height:52px;background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 14px;gap:8px;position:relative;z-index:100;transition:background .35s,border-color .35s}
+.logo-area{display:flex;align-items:center;gap:6px;text-decoration:none;flex-shrink:0}
 .logo-icon{width:32px;height:32px;background:linear-gradient(135deg,#00c853,#00e676,#2979ff);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#000;font-family:'Space Grotesk';flex-shrink:0;box-shadow:0 0 12px rgba(0,200,83,.4)}
-.logo-text{font-family:'Space Grotesk';font-weight:700;font-size:16px;color:#fff;letter-spacing:-.5px;white-space:nowrap}
+.logo-text{font-family:'Space Grotesk';font-weight:700;font-size:15px;color:#fff;letter-spacing:-.5px;white-space:nowrap;flex-shrink:0}
 .logo-text span{color:var(--green)}
 .header-center{flex:1;display:flex;align-items:center;justify-content:center;gap:20px}
 .header-stat{display:flex;flex-direction:column;align-items:center}
 .header-stat-label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:600}
 .header-stat-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600}
-.header-right{display:flex;align-items:center;gap:8px}
-.balance-pill{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:4px 14px;display:flex;align-items:center;gap:6px;cursor:pointer}
+.header-right{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
+.balance-pill{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:4px 12px;display:flex;align-items:center;gap:5px;cursor:pointer;flex-shrink:0}
 .balance-pill .icon{width:18px;height:18px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#000}
-.balance-pill .val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--gold)}
-.btn-sm{padding:6px 14px;border-radius:6px;border:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.balance-pill .val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--gold)}
+.btn-sm{padding:6px 12px;border-radius:6px;border:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .btn-green{background:var(--green);color:#000}.btn-green:hover{background:var(--green-dark)}
 .btn-ghost{background:transparent;color:var(--text-secondary);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--text-secondary);color:#fff}
-.header-actions{display:flex;align-items:center;gap:6px}
-.btn-deposit{background:var(--green);color:#000;font-weight:700;gap:4px;white-space:nowrap;padding:6px 12px;cursor:pointer}
+.header-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.btn-deposit{background:var(--green);color:#000;font-weight:700;gap:4px;white-space:nowrap;padding:6px 10px;cursor:pointer;flex-shrink:0}
 .btn-deposit:hover{background:var(--green-dark)}
-.btn-withdraw{background:transparent;color:var(--text-secondary);border:1px solid var(--border);font-weight:600;gap:4px;white-space:nowrap;padding:6px 12px;cursor:pointer}
+.btn-withdraw{background:transparent;color:var(--text-secondary);border:1px solid var(--border);font-weight:600;gap:4px;white-space:nowrap;padding:6px 10px;cursor:pointer;flex-shrink:0}
 .btn-withdraw:hover{border-color:var(--text-secondary);color:#fff}
 .deposit-icon, .withdraw-icon{font-weight:800;font-size:14px;line-height:1;display:inline-block}
 
 /* Demo vs Real Toggle */
 .demo-toggle-btn{
-  padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;
+  padding:5px 11px;border-radius:18px;font-size:11px;font-weight:700;
   cursor:pointer;transition:all .2s;border:1px solid var(--border);
   background:var(--bg-card);color:var(--text-secondary);
-  text-transform:uppercase;letter-spacing:.5px;display:inline-flex;align-items:center;
+  text-transform:uppercase;letter-spacing:.5px;display:inline-flex;align-items:center;flex-shrink:0;
 }
 .demo-toggle-btn.demo-active{
   background:rgba(255,193,7,.15);border-color:var(--gold);color:var(--gold);
@@ -426,21 +426,25 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
 @media(max-width:640px){
   .main-layout{height:calc(100vh - 48px - 56px - 28px);min-height:460px;overflow-y:auto}
   @supports (height:100svh){.main-layout{height:calc(100svh - 48px - 56px - 28px)}}
-  .header{padding:0 10px;height:48px;gap:8px}
-  .logo-area{gap:6px;flex-shrink:1;min-width:0}
-  .logo-icon{width:28px;height:28px;font-size:13px}
-  .logo-text{font-size:14px;overflow:hidden;text-overflow:ellipsis;max-width:120px}
-  .header-right{gap:6px;flex-shrink:0}
-  .header-actions{gap:4px}
-  .btn-sm{padding:6px 10px;font-size:11px;white-space:nowrap}
-  .btn-deposit{padding:4px 9px;font-size:15px;font-weight:800;min-width:30px;height:30px;border-radius:6px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+  .header{padding:0 8px;height:48px;gap:6px;justify-content:space-between}
+  .logo-area{gap:5px;flex-shrink:0}
+  .logo-icon{width:28px;height:28px;font-size:13px;border-radius:6px}
+  .logo-text{font-size:13px;white-space:nowrap;flex-shrink:0}
+  .theme-toggle{width:28px;height:28px;font-size:12px;flex-shrink:0}
+  .demo-toggle-btn{padding:3px 7px;font-size:10px;border-radius:12px;flex-shrink:0}
+  .balance-pill{padding:3px 6px;gap:4px;flex-shrink:0}
+  .balance-pill .icon{width:16px;height:16px;font-size:9px}
+  .balance-pill .val{font-size:11px}
+  .header-actions{gap:3px;flex-shrink:0}
+  .btn-deposit{padding:3px 7px;font-size:14px;min-width:26px;height:26px;border-radius:5px;flex-shrink:0}
   .btn-deposit .deposit-label{display:none}
   .btn-deposit .deposit-icon{display:inline-block}
-  .btn-withdraw{padding:4px 9px;font-size:15px;font-weight:800;min-width:30px;height:30px;border-radius:6px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+  .btn-withdraw{padding:3px 7px;font-size:14px;min-width:26px;height:26px;border-radius:5px;flex-shrink:0}
   .btn-withdraw .withdraw-label{display:none}
   .btn-withdraw .withdraw-icon{display:inline-block}
-  .balance-pill{padding:3px 10px;gap:5px}
-  .balance-pill .val{font-size:12px}
+  .header-right{gap:4px;flex-shrink:0}
+  #authButtonsWrap{gap:3px;flex-shrink:0}
+  #authButtonsWrap .btn-sm{padding:4px 7px;font-size:10px}
   .instrument-bar{padding:8px 12px;gap:10px}
   .rate-val{font-size:18px}
   .rate-change{font-size:10px;padding:2px 5px}
@@ -474,13 +478,13 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
 }
 
 @media(max-width:380px){
-  .header{padding:0 8px;gap:6px}
-  .logo-text{max-width:78px;font-size:12px}
-  .header-right{gap:4px}
-  .btn-sm{padding:5px 8px;font-size:10px}
-  .balance-pill{padding:3px 8px;gap:4px}
-  .balance-pill .icon{width:15px;height:15px;font-size:9px}
-  .balance-pill .val{font-size:11px}
+  .header{padding:0 6px;gap:4px}
+  .logo-text{font-size:12px}
+  .header-right{gap:3px}
+  .btn-sm{padding:4px 6px;font-size:9px}
+  .balance-pill{padding:2px 5px;gap:3px}
+  .balance-pill .icon{width:14px;height:14px;font-size:8px}
+  .balance-pill .val{font-size:10px}
   .rate-val{font-size:16px}
   .amount-input{width:64px}
   .quick-amt{padding:7px 2px;font-size:10px}
@@ -790,7 +794,8 @@ if (currentUser && (currentUser.email === 'allano@malicrush.com' || currentUser.
 }
 let balance = parseFloat(localStorage.getItem('maliRealBalance') || '0.00');
 const DEMO_START_BALANCE = 10000;
-let isDemoMode = !currentUser; // Default to demo mode if not logged in
+const savedDemoPref = localStorage.getItem('maliIsDemoMode');
+let isDemoMode = savedDemoPref !== null ? (savedDemoPref === 'true') : (!currentUser);
 let demoBalance = parseFloat(localStorage.getItem('maliDemoBalance') || DEMO_START_BALANCE);
 if (isNaN(demoBalance) || demoBalance < 0) demoBalance = DEMO_START_BALANCE;
 
@@ -852,11 +857,11 @@ function formatCurrency(amount, includeSymbol = true){
 }
 
 // ═══════════════════════════════════════════
-// CONFIG
+// PLATFORM CONFIGURATION & STATE
 // ═══════════════════════════════════════════
 const CFG = {
-  TICK: 300, MAX_PTS: 80, TRADE_DUR: 60, PAYOUT: 0.148, Y_MAX: 0.12,
-  SPIKE_FREQ: 0.10, CRASH_FREQ: 0.02, BASE_LEVEL: 0.025, SPIKE_MAX: 0.105, CRASH_DEPTH: -0.17,
+  TICK: 120, MAX_PTS: 80, TRADE_DUR: 60, PAYOUT: 0.148, Y_MAX: 3.0,
+  SPIKE_FREQ: 0.12, CRASH_FREQ: 0.02, BASE_LEVEL: 0.5, SPIKE_MAX: 2.8, CRASH_DEPTH: -2.8,
   MIN_STAKE: 10, MAX_STAKE: 50000, MIN_DEPOSIT: 50,
   MAX_MULT: 5.0,
   PRESTART_WAIT: 3,
@@ -864,177 +869,22 @@ const CFG = {
   SCALE: 1,
 };
 
-function applyPlatformConfig(){
-  const savedCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
-  if (savedCfg.speed) CFG.TICK = savedCfg.speed;
-  if (savedCfg.spikeFreq) CFG.SPIKE_FREQ = savedCfg.spikeFreq;
-  if (savedCfg.spikeMax) CFG.SPIKE_MAX = savedCfg.spikeMax;
-  if (savedCfg.crashFreq) CFG.CRASH_FREQ = savedCfg.crashFreq;
-  if (savedCfg.crashDepth) CFG.CRASH_DEPTH = savedCfg.crashDepth;
-  if (savedCfg.maxMult) CFG.MAX_MULT = savedCfg.maxMult;
-  if (savedCfg.prestart) CFG.PRESTART_WAIT = savedCfg.prestart;
-  if (savedCfg.autosell) CFG.AUTOSELL_MULT = savedCfg.autosell;
-  if (savedCfg.minStake) CFG.MIN_STAKE = savedCfg.minStake;
-  if (savedCfg.maxStake) CFG.MAX_STAKE = savedCfg.maxStake;
-  if (savedCfg.minDep) CFG.MIN_DEPOSIT = savedCfg.minDep;
-  if (savedCfg.usdRate) usdRate = parseFloat(savedCfg.usdRate) || 129.00;
-
-  if (savedCfg.currency) {
-    depositCurrency = savedCfg.currency.toLowerCase();
-  } else if (localStorage.getItem('maliDepositCurrency')) {
-    depositCurrency = localStorage.getItem('maliDepositCurrency').toLowerCase();
-  }
-
-  const isUsd = depositCurrency === 'usd';
-
-  // Update Top Nav Header
-  const headerBalIcon = document.getElementById('headerBalIcon');
-  if (headerBalIcon) headerBalIcon.textContent = isUsd ? '$' : 'K';
-
-  const statVol = document.getElementById('stat24Volume');
-  if (statVol) statVol.textContent = isUsd ? '$37.5K' : 'KES 4.8M';
-
-  const statPay = document.getElementById('statTotalPayouts');
-  if (statPay) statPay.textContent = isUsd ? '$251.8K' : 'KES 32.4M';
-
-  // Update Stake Controls
-  const stakeCur = document.getElementById('stakeCurrency');
-  if (stakeCur) stakeCur.textContent = isUsd ? 'USD' : 'KES';
-
-  const stakeInput = document.getElementById('stakeInput');
-  const quickWrap = document.getElementById('quickAmountsWrap');
-  if (isUsd) {
-    if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) >= 50)) {
-      stakeInput.value = '1';
-      stakeInput.min = '1';
-      stakeInput.step = '1';
-    }
-    if (quickWrap) {
-      quickWrap.innerHTML = `
-        <button class="quick-amt" onclick="setStake(1)">$1</button>
-        <button class="quick-amt" onclick="setStake(2)">$2</button>
-        <button class="quick-amt" onclick="setStake(5)">$5</button>
-        <button class="quick-amt" onclick="setStake(10)">$10</button>
-      `;
-    }
-  } else {
-    if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) < 10)) {
-      stakeInput.value = '100';
-      stakeInput.min = '10';
-      stakeInput.step = '10';
-    }
-    if (quickWrap) {
-      quickWrap.innerHTML = `
-        <button class="quick-amt" onclick="setStake(50)">50</button>
-        <button class="quick-amt" onclick="setStake(100)">100</button>
-        <button class="quick-amt" onclick="setStake(200)">200</button>
-        <button class="quick-amt" onclick="setStake(500)">500</button>
-      `;
-    }
-  }
-
-  // Update Profit Bar
-  const profitDisplay = document.getElementById('profitDisplay');
-  if (profitDisplay && (!activeTrade || tradePhase === 'idle')) {
-    profitDisplay.textContent = formatCurrency(0);
-    profitDisplay.className = 'profit-val neutral';
-  }
-
-  // Update Withdraw Modal
-  const wBal = document.getElementById('withdrawBalance');
-  if (wBal) wBal.textContent = formatCurrency(balance);
-  const wLabel = document.getElementById('withdrawAmtLabel');
-  if (wLabel) wLabel.textContent = isUsd ? 'Amount ($ USD)' : 'Amount (KES)';
-  const wHint = document.getElementById('withdrawHint');
-  if (wHint) {
-    wHint.innerHTML = isUsd
-      ? '<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is $1.00 USD. Dispatched instantly via Global Payout / M-Pesa conversion.'
-      : '<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is KES 100. Dispatched instantly via M-Pesa B2C.';
-  }
-
-  updateHUD();
-}
-
-// Initial application of config from localStorage
-applyPlatformConfig();
-
-// Listen to changes from Admin Panel in other tabs or storage updates
-window.addEventListener('storage', (e) => {
-  if (e.key === 'maliPlatformConfig' || e.key === 'maliDepositCurrency') {
-    applyPlatformConfig();
-  }
-});
-
-// Fetch live settings if running on backend server
-fetch('api/settings').then(r=>r.json()).then(s=>{
-  const localCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
-  if(s.graph){
-    CFG.TICK = localCfg.speed || s.graph.speed || 300;
-    CFG.Y_MAX = s.graph.y_max || 0.12;
-    CFG.SPIKE_FREQ = localCfg.spikeFreq || s.graph.spike_frequency || 0.10;
-    CFG.CRASH_FREQ = localCfg.crashFreq || s.graph.crash_frequency || 0.02;
-    CFG.BASE_LEVEL = s.graph.base_level || 0.025;
-    CFG.SPIKE_MAX = localCfg.spikeMax || s.graph.spike_max || 0.105;
-    CFG.CRASH_DEPTH = localCfg.crashDepth || s.graph.crash_depth || -0.17;
-    CFG.SCALE = CFG.BASE_LEVEL / 0.025;
-    eng.base = CFG.BASE_LEVEL * 0.5; rate = CFG.BASE_LEVEL * 0.6;
-    high24 = CFG.Y_MAX * 0.8; low24 = -CFG.Y_MAX * 0.8;
-  }
-  if(s.trade){
-    CFG.TRADE_DUR = s.trade.duration || 60;
-    CFG.MIN_STAKE = localCfg.minStake || s.trade.min_stake || 10;
-    CFG.MAX_STAKE = localCfg.maxStake || s.trade.max_stake || 50000;
-    CFG.MIN_DEPOSIT = localCfg.minDep || s.trade.min_deposit || 50;
-    CFG.MAX_MULT = localCfg.maxMult || s.trade.max_multiplier || 5.0;
-    CFG.PRESTART_WAIT = localCfg.prestart || s.trade.prestart_wait || 3;
-    CFG.AUTOSELL_MULT = localCfg.autosell || s.trade.autosell_multiplier || 2.5;
-    document.getElementById('timerVal').textContent = CFG.TRADE_DUR;
-  }
-  if (s.payments) {
-    usdRate = parseFloat(localCfg.usdRate || s.payments.usd_rate) || 129;
-    depositCurrency = (localCfg.currency || s.payments.deposit_currency || 'kes').toLowerCase();
-    checkoutMethod = s.payments.checkout_method || 'both';
-  }
-  applyPlatformConfig();
-  clearInterval(tickInterval);
-  tickInterval = setInterval(tick, CFG.TICK);
-}).catch(()=>{});
-
-// Check user session
-function checkUserSession(){
-  if (currentUser) {
-    document.getElementById('authButtonsWrap').style.display = 'none';
-    document.getElementById('userMenuWrap').style.display = 'block';
-    document.getElementById('userNameNav').textContent = currentUser.username || 'Trader';
-    if (currentUser.phone) {
-      document.getElementById('depositPhone').value = currentUser.phone;
-      document.getElementById('withdrawPhoneDisplay').textContent = currentUser.phone;
-    }
-  } else {
-    document.getElementById('authButtonsWrap').style.display = 'flex';
-    document.getElementById('userMenuWrap').style.display = 'none';
-  }
-}
-checkUserSession();
-
-function logoutUser(){
-  localStorage.removeItem('maliUser');
-  localStorage.setItem('maliUserLoggedOut', 'true');
-  currentUser = null;
-  checkUserSession();
-  showToast('Signed out', {sub: 'You have been logged out of MaliCrush', kind: 'info'});
-}
-
-// ═══════════════════════════════════════════
-// PRICE ENGINE v3 — High-Fidelity Wave & Spike Generator
-// ═══════════════════════════════════════════
-let prices=[], rate=0.015, prevRate=rate, activeTrade=null, tradeTimer=CFG.TRADE_DUR;
-let high24=0.098, low24=-0.12;
+let prices = [];
+let rate = 0.5;
+let prevRate = rate;
+let activeTrade = null;
+let tradeTimer = CFG.TRADE_DUR;
+let high24 = 2.8;
+let low24 = -2.8;
+let tradePhase = 'idle';
+let prestartLeft = 0;
+let prestartInterval = null;
+let tickInterval = null;
 
 let eng = {
   mode: 'active',
   tick: 0,
-  base: 0.012,
+  base: 0.5,
   clusterLeft: 0,
   lastSpikeH: 0,
   crashFloor: 0,
@@ -1045,6 +895,16 @@ let eng = {
   wobblePhase: Math.random() * 100,
   wobbleSpeed: 0.15 + Math.random() * 0.1,
 };
+
+function generateSpikeHeight() {
+  const M = CFG.SPIKE_MAX || 2.8, r = Math.random();
+  if (r < 0.15) return M * (0.20 + Math.random() * 0.18);
+  if (r < 0.35) return M * (0.35 + Math.random() * 0.22);
+  if (r < 0.55) return M * (0.50 + Math.random() * 0.25);
+  if (r < 0.75) return M * (0.70 + Math.random() * 0.20);
+  if (r < 0.90) return M * (0.85 + Math.random() * 0.15);
+  return M * (0.95 + Math.random() * 0.10);
+}
 
 function nextP(){
   eng.tick++;
@@ -1058,14 +918,14 @@ function nextP(){
         eng.tick = 0;
         eng.clusterLeft = 0;
         eng.lastSpikeH = 0;
-        const dipScale = CFG.SPIKE_MAX || 0.105;
+        const dipScale = CFG.SPIKE_MAX || 2.8;
         eng.dipTarget = -(0.08 + Math.random() * 0.35) * dipScale;
         eng.dipLen = 3 + Math.floor(Math.random() * 6);
         p = eng.dipTarget;
         break;
       }
       if (eng.tick > 12 && Math.random() < CFG.CRASH_FREQ * 2.0) {
-        eng.crashFloor = CFG.CRASH_DEPTH + Math.random() * 0.04 * S;
+        eng.crashFloor = CFG.CRASH_DEPTH + Math.random() * 0.4 * S;
         eng.mode = 'crash';
         eng.tick = 0;
         eng.clusterLeft = 0;
@@ -1075,12 +935,12 @@ function nextP(){
       }
 
       eng.wobblePhase += eng.wobbleSpeed;
-      const wobble = Math.sin(eng.wobblePhase) * 0.004 * S
-                   + Math.sin(eng.wobblePhase * 2.3) * 0.002 * S
-                   + (Math.random() - 0.5) * 0.005 * S;
+      const wobble = Math.sin(eng.wobblePhase) * 0.04 * S
+                   + Math.sin(eng.wobblePhase * 2.3) * 0.02 * S
+                   + (Math.random() - 0.5) * 0.05 * S;
       
-      eng.base += (Math.random() - 0.5) * 0.0008 * S;
-      eng.base = Math.max(CFG.BASE_LEVEL * 0.2, Math.min(CFG.BASE_LEVEL, eng.base));
+      eng.base += (Math.random() - 0.5) * 0.008 * S;
+      eng.base = Math.max(0.1, Math.min(1.2, eng.base));
 
       if (eng.clusterLeft > 0) {
         if (Math.random() < 0.55) {
@@ -1098,43 +958,26 @@ function nextP(){
       if (eng.lastSpikeH > eng.base * 2) {
         p = eng.base + (rate - eng.base) * (0.25 + Math.random() * 0.2);
         eng.lastSpikeH *= 0.3;
-        p += wobble * 0.3;
-        if (Math.random() < 0.22) eng.clusterLeft = 1 + Math.floor(Math.random() * 2);
+        break;
+      }
+
+      if (Math.random() < CFG.SPIKE_FREQ) {
+        p = generateSpikeHeight();
+        eng.lastSpikeH = p;
+        if (Math.random() < 0.45) {
+          eng.clusterLeft = 1 + Math.floor(Math.random() * 3);
+        }
         break;
       }
 
       p = eng.base + wobble;
-      p += (eng.base - rate) * 0.08;
-      eng.lastSpikeH = 0;
-
-      const spikeChance = CFG.SPIKE_FREQ * 3.5;
-      if (Math.random() < spikeChance && eng.tick > 1) {
-        const r = Math.random();
-        if (r < 0.20) eng.clusterLeft = 1;
-        else if (r < 0.45) eng.clusterLeft = 2;
-        else if (r < 0.70) eng.clusterLeft = 3;
-        else if (r < 0.88) eng.clusterLeft = 4;
-        else eng.clusterLeft = 5;
-
-        p = generateSpikeHeight();
-        eng.lastSpikeH = p;
-        eng.clusterLeft--;
-        eng.tick = 0;
-        break;
-      }
       break;
     }
 
     case 'dip': {
-      const dipScale = CFG.SPIKE_MAX || 0.105;
-      if (eng.tick === 1) {
-        p = eng.dipTarget * (1.0 + Math.random() * 0.4);
-      } else if (eng.tick < eng.dipLen) {
-        p = eng.dipTarget + (Math.random() - 0.4) * 0.06 * dipScale;
-        if (Math.random() < 0.25) p = eng.dipTarget * (1.1 + Math.random() * 0.3);
-      } else {
-        p = eng.base + (Math.random() - 0.3) * 0.02 * dipScale;
-        if (Math.random() < 0.40) p = generateSpikeHeight() * (0.3 + Math.random() * 0.4);
+      const S = CFG.SCALE;
+      p += (eng.dipTarget - p) * 0.35 + (Math.random() - 0.5) * 0.01 * S;
+      if (eng.tick >= eng.dipLen) {
         eng.mode = 'active';
         eng.tick = 0;
       }
@@ -1155,10 +998,10 @@ function nextP(){
     case 'crash_floor': {
       const S = CFG.SCALE;
       if (eng.crashBounces > 0 && Math.random() < 0.15) {
-        p = eng.crashFloor + (0.012 + Math.random() * 0.025) * S;
+        p = eng.crashFloor + (0.12 + Math.random() * 0.25) * S;
         eng.crashBounces--;
       } else {
-        p = eng.crashFloor + (Math.random() - 0.3) * 0.006 * S;
+        p = eng.crashFloor + (Math.random() - 0.3) * 0.06 * S;
         p += (eng.crashFloor - p) * 0.12;
       }
       if (eng.tick >= eng.crashTicks) {
@@ -1171,7 +1014,7 @@ function nextP(){
     case 'recover': {
       const S = CFG.SCALE;
       p += (eng.base - p) * (0.10 + Math.random() * 0.06);
-      if (Math.random() < 0.12 && p > -0.01 * S) p += (0.008 + Math.random() * 0.015) * S;
+      if (Math.random() < 0.12 && p > -0.1 * S) p += (0.08 + Math.random() * 0.15) * S;
       if (p >= eng.base * 0.5 && eng.tick > 6) {
         eng.mode = 'active';
         eng.tick = 0;
@@ -1182,8 +1025,8 @@ function nextP(){
     }
   }
 
-  p += (Math.random() - 0.5) * 0.0008 * CFG.SCALE;
-  p = Math.max(CFG.CRASH_DEPTH * 1.2, Math.min(CFG.Y_MAX * 1.25, p));
+  p += (Math.random() - 0.5) * 0.008 * CFG.SCALE;
+  p = Math.max(CFG.CRASH_DEPTH * 1.05, Math.min(CFG.Y_MAX * 1.05, p));
 
   prevRate = rate;
   rate = p;
@@ -1192,170 +1035,213 @@ function nextP(){
   return p;
 }
 
-function generateSpikeHeight() {
-  const M = CFG.SPIKE_MAX, r = Math.random();
-  if (r < 0.15) return M * (0.20 + Math.random() * 0.18);
-  if (r < 0.35) return M * (0.35 + Math.random() * 0.22);
-  if (r < 0.55) return M * (0.50 + Math.random() * 0.25);
-  if (r < 0.75) return M * (0.70 + Math.random() * 0.20);
-  if (r < 0.90) return M * (0.85 + Math.random() * 0.15);
-  return M * (0.95 + Math.random() * 0.10);
-}
-
 // ═══════════════════════════════════════════
 // CANVAS CHART
 // ═══════════════════════════════════════════
-const cv=document.getElementById('chartCanvas'),cx=cv.getContext('2d');let W,H;
+const cv = document.getElementById('chartCanvas');
+const cx = cv.getContext('2d');
+let W = 0, H = 0;
+
 function chartColors(){
-  const s=getComputedStyle(document.body);
-  const v=k=>s.getPropertyValue(k).trim();
-  return{
-    bg:v('--chart-bg'),
-    greenFill:v('--chart-green-fill'),
-    redFill:v('--chart-red-fill'),
-    line:v('--chart-line'),
-    dot:v('--chart-dot'),
-    grid:v('--chart-grid'),
-    gridZero:v('--chart-grid-zero'),
-    label:v('--chart-label'),
-    rateBox:v('--chart-ratebox'),
-    rateBoxBorder:v('--chart-ratebox-border'),
-    rateText:v('--chart-rate-text'),
+  const s = getComputedStyle(document.body);
+  const v = k => s.getPropertyValue(k).trim();
+  return {
+    bg: v('--chart-bg') || '#000',
+    greenFill: v('--chart-green-fill') || 'rgba(16,96,16,0.85)',
+    redFill: v('--chart-red-fill') || 'rgba(80,16,16,0.85)',
+    line: v('--chart-line') || '#40D040',
+    dot: v('--chart-dot') || 'rgba(64,208,64,0.25)',
+    grid: v('--chart-grid') || 'rgba(255,255,255,.07)',
+    gridZero: v('--chart-grid-zero') || 'rgba(255,255,255,.22)',
+    label: v('--chart-label') || 'rgba(255,255,255,.35)',
+    rateBox: v('--chart-ratebox') || 'rgba(0,0,0,.75)',
+    rateBoxBorder: v('--chart-ratebox-border') || 'rgba(255,255,255,.45)',
+    rateText: v('--chart-rate-text') || '#fff',
   };
 }
 
 function resize(){
-  const r=cv.parentElement.getBoundingClientRect(),d=window.devicePixelRatio||1;
-  W=r.width; H=r.height;
-  cv.width=W*d; cv.height=H*d;
-  cv.style.width=W+'px'; cv.style.height=H+'px';
-  cx.setTransform(d,0,0,d,0,0);
+  if (!cv || !cv.parentElement) return;
+  const r = cv.parentElement.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  W = r.width; H = r.height;
+  cv.width = W * d; cv.height = H * d;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  cx.setTransform(d, 0, 0, d, 0, 0);
 }
-window.addEventListener('resize',resize);
-resize();
+window.addEventListener('resize', resize);
 
 function draw(){
-  const cc=chartColors();
-  cx.fillStyle=cc.bg; cx.fillRect(0,0,W,H);
-  if(prices.length<2)return;
-  const pad={t:30,b:16,l:46,r:12},cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
-  const yMax=CFG.Y_MAX,yMin=-CFG.Y_MAX,yRange=yMax-yMin;
-  const xStep=cW/(CFG.MAX_PTS-1),si=CFG.MAX_PTS-prices.length;
-  const toX=i=>pad.l+(si+i)*xStep,toY=v=>pad.t+cH-((v-yMin)/yRange)*cH;
-  const zeroY=toY(0);
+  if (!cx || W === 0 || H === 0) return;
+  const cc = chartColors();
+  cx.fillStyle = cc.bg;
+  cx.fillRect(0, 0, W, H);
+  if (prices.length < 2) return;
+  const pad = { t: 30, b: 16, l: 46, r: 12 }, cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  const yMax = CFG.Y_MAX, yMin = -CFG.Y_MAX, yRange = yMax - yMin;
+  const xStep = cW / (CFG.MAX_PTS - 1), si = CFG.MAX_PTS - prices.length;
+  const toX = i => pad.l + (si + i) * xStep, toY = v => pad.t + cH - ((v - yMin) / yRange) * cH;
+  const zeroY = toY(0);
 
   // Grid
   const half = CFG.Y_MAX / 2;
-  const levels=[-CFG.Y_MAX, -half, 0, half, CFG.Y_MAX];
+  const levels = [-CFG.Y_MAX, -half, 0, half, CFG.Y_MAX];
   const dp = CFG.Y_MAX < 1 ? 2 : 1;
-  cx.font='11px JetBrains Mono';cx.textAlign='right';
-  for(const lv of levels){
-    const y=toY(lv);cx.save();
-    if(lv===0){cx.strokeStyle=cc.gridZero;cx.lineWidth=1;cx.setLineDash([]);}
-    else{cx.strokeStyle=cc.grid;cx.lineWidth=.5;cx.setLineDash([2,5]);}
-    cx.beginPath();cx.moveTo(pad.l,y);cx.lineTo(W-pad.r,y);cx.stroke();cx.restore();
-    cx.fillStyle=cc.label;cx.fillText(lv.toFixed(dp),pad.l-6,y+4);
+  cx.font = '11px JetBrains Mono';
+  cx.textAlign = 'right';
+  for (const lv of levels) {
+    const y = toY(lv);
+    cx.save();
+    if (lv === 0) {
+      cx.strokeStyle = cc.gridZero;
+      cx.lineWidth = 1;
+      cx.setLineDash([]);
+    } else {
+      cx.strokeStyle = cc.grid;
+      cx.lineWidth = 0.5;
+      cx.setLineDash([2, 5]);
+    }
+    cx.beginPath();
+    cx.moveTo(pad.l, y);
+    cx.lineTo(W - pad.r, y);
+    cx.stroke();
+    cx.restore();
+    cx.fillStyle = cc.label;
+    cx.fillText(lv.toFixed(dp), pad.l - 6, y + 4);
   }
 
-  const pts=[];for(let i=0;i<prices.length;i++)pts.push({x:toX(i),y:toY(prices[i]),v:prices[i]});
+  const pts = [];
+  for (let i = 0; i < prices.length; i++) pts.push({ x: toX(i), y: toY(prices[i]), v: prices[i] });
 
-  function traceSmooth(){
+  function traceSmooth() {
     cx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length - 1; i++) {
-      const mx = (pts[i].x + pts[i+1].x) / 2;
-      const my = (pts[i].y + pts[i+1].y) / 2;
+      const mx = (pts[i].x + pts[i + 1].x) / 2;
+      const my = (pts[i].y + pts[i + 1].y) / 2;
       cx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
     }
-    cx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+    cx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
   }
 
   // Green fill above zero
-  cx.save();cx.beginPath();cx.rect(pad.l,pad.t,cW,zeroY-pad.t);cx.clip();
-  cx.beginPath();cx.moveTo(pts[0].x,zeroY);cx.lineTo(pts[0].x,pts[0].y);
+  cx.save();
+  cx.beginPath();
+  cx.rect(pad.l, pad.t, cW, Math.max(0, zeroY - pad.t));
+  cx.clip();
+  cx.beginPath();
+  cx.moveTo(pts[0].x, zeroY);
+  cx.lineTo(pts[0].x, pts[0].y);
   for (let i = 1; i < pts.length - 1; i++) {
-    const mx = (pts[i].x + pts[i+1].x) / 2;
-    const my = (pts[i].y + pts[i+1].y) / 2;
+    const mx = (pts[i].x + pts[i + 1].x) / 2;
+    const my = (pts[i].y + pts[i + 1].y) / 2;
     cx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
   }
-  cx.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
-  cx.lineTo(pts[pts.length-1].x,zeroY);cx.closePath();
-  cx.fillStyle=cc.greenFill;cx.fill();cx.restore();
+  cx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+  cx.lineTo(pts[pts.length - 1].x, zeroY);
+  cx.closePath();
+  cx.fillStyle = cc.greenFill;
+  cx.fill();
+  cx.restore();
 
   // Red fill below zero
-  cx.save();cx.beginPath();cx.rect(pad.l,zeroY,cW,cH+pad.t-zeroY);cx.clip();
-  cx.beginPath();cx.moveTo(pts[0].x,zeroY);cx.lineTo(pts[0].x,pts[0].y);
+  cx.save();
+  cx.beginPath();
+  cx.rect(pad.l, zeroY, cW, Math.max(0, cH + pad.t - zeroY));
+  cx.clip();
+  cx.beginPath();
+  cx.moveTo(pts[0].x, zeroY);
+  cx.lineTo(pts[0].x, pts[0].y);
   for (let i = 1; i < pts.length - 1; i++) {
-    const mx = (pts[i].x + pts[i+1].x) / 2;
-    const my = (pts[i].y + pts[i+1].y) / 2;
+    const mx = (pts[i].x + pts[i + 1].x) / 2;
+    const my = (pts[i].y + pts[i + 1].y) / 2;
     cx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
   }
-  cx.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
-  cx.lineTo(pts[pts.length-1].x,zeroY);cx.closePath();
-  cx.fillStyle=cc.redFill;cx.fill();cx.restore();
+  cx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+  cx.lineTo(pts[pts.length - 1].x, zeroY);
+  cx.closePath();
+  cx.fillStyle = cc.redFill;
+  cx.fill();
+  cx.restore();
 
   // Smooth line
-  cx.beginPath();traceSmooth();
-  cx.strokeStyle=cc.line;cx.lineWidth=2.5;cx.lineJoin='round';cx.lineCap='round';cx.stroke();
+  cx.beginPath();
+  traceSmooth();
+  cx.strokeStyle = cc.line;
+  cx.lineWidth = 2.5;
+  cx.lineJoin = 'round';
+  cx.lineCap = 'round';
+  cx.stroke();
 
   // Dot
-  const lp=pts[pts.length-1];
-  cx.beginPath();cx.arc(lp.x,lp.y,7,0,Math.PI*2);cx.fillStyle=cc.dot;cx.fill();
-  cx.beginPath();cx.arc(lp.x,lp.y,3.5,0,Math.PI*2);cx.fillStyle=cc.line;cx.fill();
+  const lp = pts[pts.length - 1];
+  cx.beginPath();
+  cx.arc(lp.x, lp.y, 7, 0, Math.PI * 2);
+  cx.fillStyle = cc.dot;
+  cx.fill();
+  cx.beginPath();
+  cx.arc(lp.x, lp.y, 3.5, 0, Math.PI * 2);
+  cx.fillStyle = cc.line;
+  cx.fill();
 
   // Rate box
   const isMobile = W < 640;
-  const rText='Rate: '+rate.toFixed(4);
+  const rText = 'Rate: ' + rate.toFixed(4);
   cx.font = isMobile ? 'bold 12px JetBrains Mono' : 'bold 15px JetBrains Mono';
-  const tw=cx.measureText(rText).width;
+  const tw = cx.measureText(rText).width;
   const bx = isMobile ? (W - tw - 28) : (W - tw - 20) / 2;
   const by = isMobile ? 6 : 5;
   const bh = isMobile ? 22 : 26;
   const bTextY = isMobile ? by + 15 : by + 18;
-  cx.fillStyle=cc.rateBox;cx.strokeStyle=cc.rateBoxBorder;cx.lineWidth=1.5;
-  cx.beginPath();cx.roundRect(bx,by,tw+16,bh,3);cx.fill();cx.stroke();
-  cx.fillStyle=cc.rateText;cx.textAlign='center';cx.fillText(rText, bx + (tw+16)/2, bTextY);cx.textAlign='right';
+  cx.fillStyle = cc.rateBox;
+  cx.strokeStyle = cc.rateBoxBorder;
+  cx.lineWidth = 1.5;
+  cx.beginPath();
+  cx.roundRect(bx, by, tw + 16, bh, 3);
+  cx.fill();
+  cx.stroke();
+  cx.fillStyle = cc.rateText;
+  cx.textAlign = 'center';
+  cx.fillText(rText, bx + (tw + 16) / 2, bTextY);
+  cx.textAlign = 'right';
 
   // Entry line
-  if(activeTrade){
-    const ey=toY(activeTrade.entryRate);
-    cx.setLineDash([6,3]);cx.strokeStyle=isDarkMode?'rgba(255,193,7,.55)':'rgba(200,150,0,.7)';cx.lineWidth=1;
-    cx.beginPath();cx.moveTo(pad.l,ey);cx.lineTo(W-pad.r,ey);cx.stroke();cx.setLineDash([]);
-    cx.fillStyle=isDarkMode?'#ffc107':'#b8860b';cx.font='10px JetBrains Mono';cx.textAlign='left';
-    cx.fillText('ENTRY '+activeTrade.entryRate.toFixed(4),pad.l+4,ey-5);cx.textAlign='right';
+  if (activeTrade) {
+    const ey = toY(activeTrade.entryRate);
+    cx.setLineDash([6, 3]);
+    cx.strokeStyle = document.body.classList.contains('light-mode') ? 'rgba(200,150,0,.7)' : 'rgba(255,193,7,.55)';
+    cx.lineWidth = 1;
+    cx.beginPath();
+    cx.moveTo(pad.l, ey);
+    cx.lineTo(W - pad.r, ey);
+    cx.stroke();
+    cx.setLineDash([]);
+    cx.fillStyle = document.body.classList.contains('light-mode') ? '#b8860b' : '#ffc107';
+    cx.font = '10px JetBrains Mono';
+    cx.textAlign = 'left';
+    cx.fillText('ENTRY ' + activeTrade.entryRate.toFixed(4), pad.l + 4, ey - 5);
+    cx.textAlign = 'right';
   }
 }
 
 // ═══════════════════════════════════════════
-// PRICE ENGINE TICK & WAVE RENDERING
-// ═══════════════════════════════════════════
-function tick(){
-  const p = nextP();
-  prices.push(p);
-  if (prices.length > CFG.MAX_PTS) prices.shift();
-  draw();
-  updateHUD();
-  if (activeTrade && tradePhase === 'active') {
-    updateActiveButton();
-    updateAutosellHud();
-  }
-}
-
-// Pre-fill wave buffer so graph renders immediately on page load!
-for (let i = 0; i < CFG.MAX_PTS; i++) {
-  prices.push(nextP());
-}
-draw();
-
-// ═══════════════════════════════════════════
-// HUD UPDATES
+// HUD UPDATES & ENGINE TICK
 // ═══════════════════════════════════════════
 function updateHUD(){
-  const isUp=rate>=0,el=document.getElementById('mainRate');
-  el.textContent=rate.toFixed(4);el.className='rate-val '+(isUp?'up':'down');
-  const cp=rate*100,ce=document.getElementById('rateChange');
-  ce.textContent=(cp>=0?'+':'')+cp.toFixed(2)+'%';ce.className='rate-change '+(cp>=0?'up':'down');
-  document.getElementById('stat24High').textContent=high24.toFixed(4);
-  document.getElementById('stat24Low').textContent=low24.toFixed(4);
+  const isUp = rate >= 0;
+  const el = document.getElementById('mainRate');
+  if (el) {
+    el.textContent = rate.toFixed(4);
+    el.className = 'rate-val ' + (isUp ? 'up' : 'down');
+  }
+  const cp = rate * 100;
+  const ce = document.getElementById('rateChange');
+  if (ce) {
+    ce.textContent = (cp >= 0 ? '+' : '') + cp.toFixed(2) + '%';
+    ce.className = 'rate-change ' + (cp >= 0 ? 'up' : 'down');
+  }
+  const highEl = document.getElementById('stat24High');
+  if (highEl) highEl.textContent = high24.toFixed(4);
+  const lowEl = document.getElementById('stat24Low');
+  if (lowEl) lowEl.textContent = low24.toFixed(4);
   
   const displayBal = isDemoMode ? demoBalance : balance;
   document.getElementById('headerBalance').textContent=displayBal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1965,17 +1851,13 @@ function setTF(b,s){
 function toggleDemoMode(){
   playSound('click');
   if(activeTrade){ showToast('Finish your active trade first','',{kind:'warn'}); return; }
-  if(!currentUser && isDemoMode){
-    showToast('Sign in required', {sub:'Please login or create an account to trade with real money', kind:'info'});
-    setTimeout(()=>{ window.location.href = 'login.html'; }, 900);
-    return;
-  }
   isDemoMode = !isDemoMode;
+  localStorage.setItem('maliIsDemoMode', isDemoMode ? 'true' : 'false');
   updateHUD();
   if(isDemoMode){
-    showToast('MaliCrush Demo Mode Active', {sub:'Trading with virtual ' + formatCurrency(demoBalance), kind:'info'});
+    showToast('Demo Account Active', {sub:'Trading with virtual practice funds (' + formatCurrency(demoBalance) + ')', kind:'info'});
   } else {
-    showToast('Real Money Trading Active', {sub:'Trading with your live balance (' + formatCurrency(balance) + ')', kind:'success'});
+    showToast('Real Account Active', {sub:'Trading with live wallet balance (' + formatCurrency(balance) + ')', kind:'success'});
   }
 }
 
