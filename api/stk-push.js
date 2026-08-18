@@ -55,17 +55,20 @@ export default async function handler(req, res) {
         if (configuredMin !== null && !isNaN(configuredMin) && configuredMin > 0) {
           minDep = configuredMin;
         }
+        const isUsd = (saved.currency || saved.payments?.deposit_currency || 'kes').toLowerCase() === 'usd';
+        const usdRate = parseFloat(saved.usdRate || saved.payments?.usd_rate || 129.0);
+        const minDepKes = isUsd ? (minDep * usdRate) : minDep;
+
+        if (amount < minDepKes) {
+          return res.status(400).json({
+            success: false,
+            error: `Minimum deposit amount is ${isUsd ? '$' + minDep.toFixed(2) + ' (≈ KES ' + Math.round(minDepKes).toLocaleString() + ')' : 'KES ' + minDep.toLocaleString('en-US', { minimumFractionDigits: 0 })}.`
+          });
+        }
       }
     } catch (err) {
       console.error('Error fetching settings for STK push:', err);
     }
-  }
-
-  if (amount < minDep) {
-    return res.status(400).json({
-      success: false,
-      error: `Minimum deposit amount is KES ${minDep.toLocaleString('en-US', { minimumFractionDigits: 0 })}.`
-    });
   }
 
   const reference = 'MALI-' + Math.random().toString(36).substring(2, 10).toUpperCase();

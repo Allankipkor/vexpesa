@@ -2100,11 +2100,16 @@ function openDeposit(){
   document.getElementById('depositModal').classList.add('show');
   document.getElementById('depositStatus').textContent='';
   const isUsd = depositCurrency === 'usd';
-  const minDep = isUsd ? 1 : (CFG.MIN_DEPOSIT || 50);
+  const minDep = CFG.MIN_DEPOSIT || (isUsd ? 10 : 50);
   const kesInput = document.getElementById('depAmtKes');
+  const usdInput = document.getElementById('depAmtUsd');
   if (kesInput) {
     kesInput.min = minDep.toString();
-    kesInput.placeholder = `e.g. ${minDep >= 50 ? minDep * 5 : 500}`;
+    kesInput.placeholder = `Min: KES ${minDep}`;
+  }
+  if (usdInput) {
+    usdInput.min = minDep.toString();
+    usdInput.placeholder = `Min: $${minDep}`;
   }
   selectedAmount=0; _resetChips(); _applyDeposit();
 }
@@ -2115,8 +2120,29 @@ function closeDeposit(){
 
 function _applyDeposit(){
   const isUsd = depositCurrency === 'usd';
+  const minDep = CFG.MIN_DEPOSIT || (isUsd ? 10 : 50);
   document.getElementById('amtKes').style.display = isUsd ? 'none' : 'block';
   document.getElementById('amtUsd').style.display = isUsd ? 'block' : 'none';
+
+  if (isUsd) {
+    const base = minDep;
+    const amounts = [base, Math.round(base * 1.5), base * 2, base * 5, base * 10]
+      .filter((v, i, a) => a.indexOf(v) === i && v >= base);
+    const grid = document.querySelector('#amtUsd .usd-quick-grid');
+    if (grid) {
+      grid.innerHTML = amounts.map(a => `<button class="d-chip usd-chip" onclick="selectChip(this,${a})">$${a}</button>`).join('')
+        + `<button class="d-chip usd-chip usd-chip-custom" id="usdChipCustom" onclick="selectCustomChip('usdCustomWrap','depAmtUsd')">Custom</button>`;
+    }
+  } else {
+    const base = minDep;
+    const amounts = [base, base * 2, base * 5, base * 10, base * 20]
+      .filter((v, i, a) => a.indexOf(v) === i && v >= base);
+    const grid = document.querySelector('#amtKes .usd-quick-grid');
+    if (grid) {
+      grid.innerHTML = amounts.map(a => `<button class="d-chip kes-chip" onclick="selectChip(this,${a})">${a.toLocaleString()}</button>`).join('')
+        + `<button class="d-chip kes-chip kes-chip-custom" id="kesChipCustom" onclick="selectCustomChip('kesCustomWrap','depAmtKes')">Custom</button>`;
+    }
+  }
   _disableDepBtn('Select an amount');
 }
 
@@ -2141,15 +2167,28 @@ function selectCustomChip(wrapId, inputId){
 function onCustomInput(el){
   const v = parseFloat(el.value)||0;
   selectedAmount = v;
-  if(v>0){ _updateBtn(); if(depositCurrency==='usd') _showUsdPreview(v); }
-  else _disableDepBtn('Enter amount above');
+  _updateBtn();
 }
 
 function _updateBtn(){
+  const isUsd = depositCurrency === 'usd';
+  const minDep = CFG.MIN_DEPOSIT || (isUsd ? 10 : 50);
   if(selectedAmount<=0){ _disableDepBtn('Select an amount'); return; }
-  const kesAmt = depositCurrency==='usd' ? selectedAmount*usdRate : selectedAmount;
-  if(depositCurrency==='usd') _showUsdPreview(selectedAmount);
-  const label = depositCurrency==='usd'
+  
+  if(selectedAmount < minDep) {
+    const minLabel = isUsd ? `$${minDep} USD` : `KES ${minDep}`;
+    _disableDepBtn(`Minimum deposit is ${minLabel}`);
+    const status = document.getElementById('depositStatus');
+    if (status) status.innerHTML = `<span style="color:var(--red)">Minimum deposit is ${minLabel}</span>`;
+    if(isUsd) _showUsdPreview(selectedAmount);
+    return;
+  }
+  const status = document.getElementById('depositStatus');
+  if (status) status.innerHTML = '';
+
+  const kesAmt = isUsd ? selectedAmount*usdRate : selectedAmount;
+  if(isUsd) _showUsdPreview(selectedAmount);
+  const label = isUsd
     ? `$${selectedAmount} USD (≈ KES ${Math.round(kesAmt).toLocaleString()})`
     : `KES ${Math.round(selectedAmount).toLocaleString()}`;
   _enableDepBtn(`Pay via M-Pesa STK — ${label} →`);
@@ -2185,13 +2224,14 @@ async function requestSTK(){
   }
 
   const isUsd = depositCurrency === 'usd';
-  const minDep = isUsd ? 1 : (CFG.MIN_DEPOSIT || 50);
+  const minDep = CFG.MIN_DEPOSIT || (isUsd ? 10 : 50);
   if (selectedAmount < minDep) {
-    status.innerHTML = `<span style="color:var(--red)">Minimum deposit is ${formatCurrency(minDep)}</span>`;
+    const minLabel = isUsd ? `$${minDep} USD` : `KES ${minDep}`;
+    status.innerHTML = `<span style="color:var(--red)">Minimum deposit is ${minLabel}</span>`;
     return;
   }
 
-  const kesAmount = depositCurrency==='usd' ? Math.round(selectedAmount*usdRate) : Math.round(selectedAmount);
+  const kesAmount = isUsd ? Math.round(selectedAmount*usdRate) : Math.round(selectedAmount);
   btn.disabled=true; btn.textContent='Sending M-Pesa STK...';
   status.innerHTML='<span style="color:var(--gold)">⚡ Sending M-Pesa prompt to ' + phone + '...</span>';
 

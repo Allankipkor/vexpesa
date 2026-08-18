@@ -489,16 +489,8 @@ function onCurrencySelectChange() {
   const curr = document.getElementById('cfgCurrency') ? document.getElementById('cfgCurrency').value : 'kes';
   const isUsd = curr === 'usd';
 
-  const minDepInput = document.getElementById('cfgMinDep');
   const lblDep = document.getElementById('lblMinDep');
-
   if (lblDep) lblDep.textContent = isUsd ? 'Deposit Modal Min ($ USD)' : 'Minimum Deposit (KES)';
-
-  if (isUsd) {
-    if (minDepInput && parseFloat(minDepInput.value) >= 50) minDepInput.value = 1;
-  } else {
-    if (minDepInput && parseFloat(minDepInput.value) < 10) minDepInput.value = 50;
-  }
 }
 
 function updateAdminKPIDisplay(){
