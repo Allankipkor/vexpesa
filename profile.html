@@ -127,9 +127,7 @@ if (!user) {
 }
 
 function getCurrencyPrefix(){
-  const cfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
-  const curr = (cfg.currency || localStorage.getItem('maliDepositCurrency') || 'kes').toLowerCase();
-  return curr === 'usd' ? '$' : 'KES ';
+  return 'KES ';
 }
 
 function formatProfileMoney(amount){

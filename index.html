@@ -841,18 +841,18 @@ function playSound(type){
   } catch(e){}
 }
 
-// Currency Formatting Helpers
+// Currency Formatting Helpers - Platform trading and wallet balances are strictly in KES
 function getCurrencyCode(){
-  return (depositCurrency || 'kes').toUpperCase();
+  return 'KES';
 }
 function getCurrencyPrefix(){
-  return depositCurrency === 'usd' ? '$' : 'KES ';
+  return 'KES ';
 }
 function formatCurrency(amount, includeSymbol = true){
   const num = parseFloat(amount) || 0;
   const formatted = num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (!includeSymbol) return formatted;
-  return depositCurrency === 'usd' ? `$${formatted}` : `KES ${formatted}`;
+  return `KES ${formatted}`;
 }
 
 // ═══════════════════════════════════════════
@@ -1495,52 +1495,34 @@ function applyPlatformConfig(){
     depositCurrency = localStorage.getItem('maliDepositCurrency').toLowerCase();
   }
 
-  const isUsd = depositCurrency === 'usd';
-
-  // Update Top Nav Header
+  // Keep platform Trading UI, Stakes and Balances strictly in KES
   const headerBalIcon = document.getElementById('headerBalIcon');
-  if (headerBalIcon) headerBalIcon.textContent = isUsd ? '$' : 'K';
+  if (headerBalIcon) headerBalIcon.textContent = 'K';
 
   const statVol = document.getElementById('stat24Volume');
-  if (statVol) statVol.textContent = isUsd ? '$37.5K' : 'KES 4.8M';
+  if (statVol) statVol.textContent = 'KES 4.8M';
 
   const statPay = document.getElementById('statTotalPayouts');
-  if (statPay) statPay.textContent = isUsd ? '$251.8K' : 'KES 32.4M';
+  if (statPay) statPay.textContent = 'KES 32.4M';
 
-  // Update Stake Controls
+  // Update Stake Controls in KES
   const stakeCur = document.getElementById('stakeCurrency');
-  if (stakeCur) stakeCur.textContent = isUsd ? 'USD' : 'KES';
+  if (stakeCur) stakeCur.textContent = 'KES';
 
   const stakeInput = document.getElementById('stakeInput');
   const quickWrap = document.getElementById('quickAmountsWrap');
-  if (isUsd) {
-    if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) >= 50)) {
-      stakeInput.value = '1';
-      stakeInput.min = '1';
-      stakeInput.step = '1';
-    }
-    if (quickWrap) {
-      quickWrap.innerHTML = `
-        <button class="quick-amt" onclick="setStake(1)">$1</button>
-        <button class="quick-amt" onclick="setStake(2)">$2</button>
-        <button class="quick-amt" onclick="setStake(5)">$5</button>
-        <button class="quick-amt" onclick="setStake(10)">$10</button>
-      `;
-    }
-  } else {
-    if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) < 10)) {
-      stakeInput.value = '100';
-      stakeInput.min = '10';
-      stakeInput.step = '10';
-    }
-    if (quickWrap) {
-      quickWrap.innerHTML = `
-        <button class="quick-amt" onclick="setStake(50)">50</button>
-        <button class="quick-amt" onclick="setStake(100)">100</button>
-        <button class="quick-amt" onclick="setStake(200)">200</button>
-        <button class="quick-amt" onclick="setStake(500)">500</button>
-      `;
-    }
+  if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) < 10)) {
+    stakeInput.value = '100';
+    stakeInput.min = (CFG.MIN_STAKE || 10).toString();
+    stakeInput.step = '10';
+  }
+  if (quickWrap) {
+    quickWrap.innerHTML = `
+      <button class="quick-amt" onclick="setStake(50)">50</button>
+      <button class="quick-amt" onclick="setStake(100)">100</button>
+      <button class="quick-amt" onclick="setStake(200)">200</button>
+      <button class="quick-amt" onclick="setStake(500)">500</button>
+    `;
   }
 
   // Update Profit Bar
@@ -1554,12 +1536,11 @@ function applyPlatformConfig(){
   const wBal = document.getElementById('withdrawBalance');
   if (wBal) wBal.textContent = formatCurrency(balance);
   const wLabel = document.getElementById('withdrawAmtLabel');
-  if (wLabel) wLabel.textContent = isUsd ? 'Amount ($ USD)' : 'Amount (KES)';
+  if (wLabel) wLabel.textContent = 'Amount (KES)';
   const wHint = document.getElementById('withdrawHint');
   if (wHint) {
-    wHint.innerHTML = isUsd
-      ? '<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is $1.00 USD. Dispatched instantly via Global Payout / M-Pesa conversion.'
-      : '<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is KES 100. Dispatched instantly via M-Pesa B2C.';
+    const minW = CFG.MIN_WITHDRAW || 100;
+    wHint.innerHTML = `<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is ${formatCurrency(minW)}. Dispatched instantly to your M-Pesa number.`;
   }
 
   updateHUD();
@@ -2492,24 +2473,24 @@ function sendUserChat(){
 
 NAMES.slice(0,10).forEach((n,i)=>{
   const a=AMTS[Math.floor(Math.random()*AMTS.length)];
-  const displayAmt = depositCurrency === 'usd' ? '$' + (a/100).toFixed(2) : a + '.00 KES';
+  const displayAmt = a + '.00 KES';
   setTimeout(()=>addMsg(`System: CONGRATULATIONS @${n} on withdrawal of ${displayAmt} 🎉🎉`,'win'),i*120);
 });
 setTimeout(()=>{
-  const bAmt = depositCurrency === 'usd' ? '$0.10' : '10.00 KES';
+  const bAmt = '10.00 KES';
   addMsg(`Jojo25paul: MaliCrush bonus of ${bAmt} received! 🎁`,'bonus');
 },1200);
 
 setInterval(()=>{
   const n=NAMES[Math.floor(Math.random()*NAMES.length)],a=AMTS[Math.floor(Math.random()*AMTS.length)];
-  const displayAmt = depositCurrency === 'usd' ? '$' + (a/100).toFixed(2) : a + '.00 KES';
+  const displayAmt = a + '.00 KES';
   addMsg(`System: CONGRATULATIONS @${n} on withdrawal of ${displayAmt} 🎉🎉`,'win');
 },3200+Math.random()*2500);
 
 setInterval(()=>{
   if(Math.random()>.6){
     const n=NAMES[Math.floor(Math.random()*NAMES.length)];
-    const bAmt = depositCurrency === 'usd' ? '$0.10' : '10.00 KES';
+    const bAmt = '10.00 KES';
     addMsg(`${n}: Bonus of ${bAmt} has been credited 🎁`,'bonus');
   }
 },8000);

@@ -73,9 +73,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
 let currentFilter = 'all';
 
 function getCurrencyPrefix(){
-  const cfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
-  const curr = (cfg.currency || localStorage.getItem('maliDepositCurrency') || 'kes').toLowerCase();
-  return curr === 'usd' ? '$' : 'KES ';
+  return 'KES ';
 }
 
 function formatTxMoney(amount){

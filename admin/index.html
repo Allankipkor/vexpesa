@@ -294,11 +294,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
 
                 <div class="pt-2 border-t border-gray-800 space-y-3">
                     <div>
-                        <label class="block text-xs text-gray-400 mb-1">Primary Deposit Currency</label>
+                        <label class="block text-xs text-gray-400 mb-1">Deposit Modal Packages</label>
                         <select id="cfgCurrency" onchange="onCurrencySelectChange()" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500">
-                            <option value="kes">KES (Kenyan Shillings)</option>
-                            <option value="usd">USD ($ Dollars)</option>
+                            <option value="kes">KES (Kenyan Shillings — 100, 200, 500, 1000 KES)</option>
+                            <option value="usd">USD ($ Dollars — $1, $5, $10, $25, $50)</option>
                         </select>
+                        <p class="text-[10px] text-gray-500 mt-1">Player trading wallets remain in KES; USD deposits convert automatically via exchange rate.</p>
                     </div>
 
                     <div>
@@ -473,50 +474,26 @@ function onCurrencySelectChange() {
   const curr = document.getElementById('cfgCurrency') ? document.getElementById('cfgCurrency').value : 'kes';
   const isUsd = curr === 'usd';
 
-  const lblMinStake = document.getElementById('lblMinStake');
-  const lblMaxStake = document.getElementById('lblMaxStake');
-  if (lblMinStake) lblMinStake.textContent = isUsd ? 'Minimum Stake (USD $)' : 'Minimum Stake (KES)';
-  if (lblMaxStake) lblMaxStake.textContent = isUsd ? 'Maximum Stake (USD $)' : 'Maximum Stake (KES)';
-  const minStakeInput = document.getElementById('cfgMinStake');
-  const maxStakeInput = document.getElementById('cfgMaxStake');
   const minDepInput = document.getElementById('cfgMinDep');
-  const minWithdrawInput = document.getElementById('cfgMinWithdraw');
   const lblDep = document.getElementById('lblMinDep');
-  const lblWithdraw = document.getElementById('lblMinWithdraw');
 
-  if (lblDep) lblDep.textContent = isUsd ? 'Minimum Deposit ($ USD)' : 'Minimum Deposit (KES)';
-  if (lblWithdraw) lblWithdraw.textContent = isUsd ? 'Minimum Withdrawal ($ USD)' : 'Minimum Withdrawal (KES)';
+  if (lblDep) lblDep.textContent = isUsd ? 'Deposit Modal Min ($ USD)' : 'Minimum Deposit (KES)';
 
   if (isUsd) {
-    if (minStakeInput && parseFloat(minStakeInput.value) >= 10) minStakeInput.value = 1;
-    if (maxStakeInput && parseFloat(maxStakeInput.value) >= 5000) maxStakeInput.value = 500;
     if (minDepInput && parseFloat(minDepInput.value) >= 50) minDepInput.value = 1;
-    if (minWithdrawInput && parseFloat(minWithdrawInput.value) >= 100) minWithdrawInput.value = 1;
   } else {
-    if (minStakeInput && parseFloat(minStakeInput.value) < 10) minStakeInput.value = 10;
-    if (maxStakeInput && parseFloat(maxStakeInput.value) < 5000) maxStakeInput.value = 50000;
     if (minDepInput && parseFloat(minDepInput.value) < 10) minDepInput.value = 50;
-    if (minWithdrawInput && parseFloat(minWithdrawInput.value) < 10) minWithdrawInput.value = 100;
   }
-
-  updateAdminKPIDisplay(curr);
 }
 
-function updateAdminKPIDisplay(curr){
-  const isUsd = curr === 'usd';
+function updateAdminKPIDisplay(){
   const volEl = document.getElementById('adminStatVol');
   const payEl = document.getElementById('adminStatPayouts');
   const subEl = document.getElementById('adminStatPayoutSub');
 
-  if (isUsd) {
-    if (volEl) volEl.textContent = '$37,500.00';
-    if (payEl) payEl.textContent = '$251,800.00';
-    if (subEl) subEl.textContent = 'Global Payouts instant';
-  } else {
-    if (volEl) volEl.textContent = 'KES 4,820,400';
-    if (payEl) payEl.textContent = 'KES 32,491,000';
-    if (subEl) subEl.textContent = 'M-Pesa B2C instant';
-  }
+  if (volEl) volEl.textContent = 'KES 4,820,400';
+  if (payEl) payEl.textContent = 'KES 32,491,000';
+  if (subEl) subEl.textContent = 'M-Pesa B2C instant';
 }
 
 let currentGlobalOutcome = 'auto'; // 'auto' | 'force_win' | 'force_loss'
