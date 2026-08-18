@@ -927,7 +927,7 @@ window.addEventListener('storage', (e) => {
 });
 
 // Fetch live settings if running on backend server
-fetch('api/settings.php').then(r=>r.json()).then(s=>{
+fetch('api/settings').then(r=>r.json()).then(s=>{
   const localCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
   if(s.graph){
     CFG.TICK = localCfg.speed || s.graph.speed || 300;
@@ -1781,7 +1781,7 @@ async function requestSTK(){
   const adminCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
 
   try {
-    const res = await fetch('api/stk-push.php', {
+    const res = await fetch('api/stk-push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

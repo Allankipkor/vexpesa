@@ -1,12 +1,3 @@
 {
-  "version": 2,
-  "cleanUrls": true,
-  "trailingSlash": false,
-  "rewrites": [
-    { "source": "/api/settings.php", "destination": "/api/settings.js" },
-    { "source": "/api/stk-push.php", "destination": "/api/stk-push.js" },
-    { "source": "/api/payhero-callback.php", "destination": "/api/payhero-callback.js" },
-    { "source": "/api/withdraw.php", "destination": "/api/withdraw.js" },
-    { "source": "/api/trade.php", "destination": "/api/trade.js" }
-  ]
+  "cleanUrls": true
 }

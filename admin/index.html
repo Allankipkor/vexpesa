@@ -306,7 +306,7 @@ function loadAdminConfig(){
   onCurrencySelectChange();
 
   // Also fetch backend API if running
-  fetch('../api/settings.php').then(r=>r.json()).then(s=>{
+  fetch('../api/settings').then(r=>r.json()).then(s=>{
     if (!cfg.currency && s.payments && s.payments.deposit_currency) {
       document.getElementById('cfgCurrency').value = s.payments.deposit_currency;
       onCurrencySelectChange();
@@ -351,8 +351,8 @@ function saveAdminConfig(){
   localStorage.setItem('maliPlatformConfig', JSON.stringify(cfg));
   localStorage.setItem('maliDepositCurrency', cfg.currency);
 
-  // Sync to Backend PHP Server API
-  fetch('../api/settings.php', {
+  // Sync to Backend Server API
+  fetch('../api/settings', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(cfg)
