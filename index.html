@@ -2138,6 +2138,17 @@ async function submitWithdrawal(){
   const uname = currentUser ? (currentUser.username || currentUser.name || currentUser.email) : 'Trader';
   const phone = currentUser?.phone || '254712345678';
 
+  const nowTime = new Date();
+  const day = nowTime.getDate();
+  const month = nowTime.getMonth() + 1;
+  const year = nowTime.getFullYear().toString().slice(-2);
+  let hours = nowTime.getHours();
+  const minutes = nowTime.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const localDate = `${day}/${month}/${year}`;
+  const localTime = `${hours}:${minutes} ${ampm}`;
+
   try {
     const res = await fetch('/api/withdraw', {
       method: 'POST',
@@ -2147,7 +2158,9 @@ async function submitWithdrawal(){
         amount,
         phone,
         currency: depositCurrency,
-        method: 'mpesa'
+        method: 'mpesa',
+        localDate,
+        localTime
       })
     });
     const data = await res.json();

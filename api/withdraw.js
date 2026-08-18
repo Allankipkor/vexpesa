@@ -156,13 +156,13 @@ export default async function handler(req, res) {
       }
     }
 
-    // Generate authentic Safaricom M-Pesa SMS timestamp & details
-    const now = new Date();
-    const day = now.getDate();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear().toString().slice(-2);
-    let hours = now.getHours();
-    const minutes = now.getMinutes().toString().padStart(2, '0');
+    // Generate authentic Safaricom M-Pesa SMS timestamp & details in Africa/Nairobi (Kenya Time)
+    const nairobiDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+    const day = nairobiDate.getDate();
+    const month = nairobiDate.getMonth() + 1;
+    const year = nairobiDate.getFullYear().toString().slice(-2);
+    let hours = nairobiDate.getHours();
+    const minutes = nairobiDate.getMinutes().toString().padStart(2, '0');
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
     hours = hours ? hours : 12;

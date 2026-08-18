@@ -411,7 +411,8 @@ let activeThreadId = null;
 let searchQuery = "";
 
 function formatThreadTime(isoString) {
-  const date = new Date(isoString || Date.now());
+  if (!isoString) return 'Just now';
+  const date = new Date(isoString);
   const now = new Date();
   if (date.toDateString() === now.toDateString()) {
     let hours = date.getHours();
@@ -429,12 +430,29 @@ function formatThreadTime(isoString) {
 }
 
 function formatBubbleDate(isoString) {
-  const date = new Date(isoString || Date.now());
+  if (!isoString) return `Today • Just now`;
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffDays = Math.floor(Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
   let hours = date.getHours();
   const minutes = date.getMinutes().toString().padStart(2, "0");
   const ampm = hours >= 12 ? "pm" : "am";
   hours = hours % 12 || 12;
-  return `Today • ${hours}:${minutes} ${ampm}`;
+  const timeStr = `${hours}:${minutes} ${ampm}`;
+  
+  if (diffDays === 0) {
+    return `Today • ${timeStr}`;
+  } else if (diffDays === 1) {
+    return `Yesterday • ${timeStr}`;
+  } else if (diffDays < 7) {
+    const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
+    return `${weekday} • ${timeStr}`;
+  } else {
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year} • ${timeStr}`;
+  }
 }
 
 function getThreads() {
