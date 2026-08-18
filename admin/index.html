@@ -1229,6 +1229,8 @@ function displayFilteredDeposits() {
   const prefix = curr === 'usd' ? '$' : 'KES ';
 
   const filtered = allAdminDeposits.filter(d => {
+    const isCompleted = (d.status || '').toLowerCase() === 'completed' || (d.status || '').toLowerCase() === 'success' || (d.status || '').toLowerCase() === 'successful';
+    if (!isCompleted) return false;
     if (!depositSearchQuery) return true;
     const ref = (d.deposit_ref || '').toLowerCase();
     const user = (d.username || '').toLowerCase();

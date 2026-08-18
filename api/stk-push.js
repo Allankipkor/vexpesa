@@ -81,6 +81,19 @@ export default async function handler(req, res) {
         body: JSON.stringify(payload)
       });
 
+      // Record pending deposit in Neon DB
+      if (db) {
+        try {
+          await db`
+            INSERT INTO deposits (deposit_ref, username, amount_kes, phone, method, status)
+            VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa STK', 'pending')
+            ON CONFLICT (deposit_ref) DO NOTHING
+          `;
+        } catch (dbErr) {
+          console.error('Error inserting pending deposit record:', dbErr);
+        }
+      }
+
       const resData = await response.json();
       if (response.ok && (!resData.status || resData.status !== 'Failed')) {
         return res.status(200).json({
@@ -91,6 +104,12 @@ export default async function handler(req, res) {
           response: resData
         });
       } else {
+        // If PayHero rejected request immediately, mark failed
+        if (db) {
+          try {
+            await db`UPDATE deposits SET status = 'failed' WHERE deposit_ref = ${reference}`;
+          } catch(e) {}
+        }
         const msg = resData.message || resData.error || 'M-Pesa transaction request could not be completed';
         return res.status(400).json({
           success: false,
@@ -99,6 +118,11 @@ export default async function handler(req, res) {
         });
       }
     } catch (err) {
+      if (db) {
+        try {
+          await db`UPDATE deposits SET status = 'failed' WHERE deposit_ref = ${reference}`;
+        } catch(e) {}
+      }
       return res.status(500).json({
         success: false,
         error: 'M-Pesa network connection timeout. Please try again.'
@@ -106,27 +130,19 @@ export default async function handler(req, res) {
     }
   }
 
-  // Record deposit in Neon DB
+  // Fallback simulation mode - record as pending
   if (db) {
     try {
       await db`
         INSERT INTO deposits (deposit_ref, username, amount_kes, phone, method, status)
-        VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa STK', 'completed')
+        VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa STK', 'pending')
         ON CONFLICT (deposit_ref) DO NOTHING
       `;
-      if (username) {
-        await db`
-          UPDATE users 
-          SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
-          WHERE username = ${username} OR name = ${username} OR phone = ${formattedPhone}
-        `;
-      }
     } catch (dbErr) {
-      console.error('Error inserting deposit record:', dbErr);
+      console.error('Error inserting pending deposit record:', dbErr);
     }
   }
 
-  // Simulation mode
   return res.status(200).json({
     success: true,
     live: false,

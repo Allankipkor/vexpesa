@@ -12,16 +12,53 @@ export default async function handler(req, res) {
   await initDb();
   const db = getDb();
 
-  // 1. GET ALL DEPOSITS & STATS
+  const action = req.query.action || (req.body ? req.body.action : '') || '';
+  const ref = (req.query.reference || req.query.ref || (req.body ? req.body.reference : '') || '').trim();
+
+  // 1. SINGLE DEPOSIT STATUS CHECK (Client Polling)
+  if (action === 'check' && ref) {
+    if (db) {
+      try {
+        const rows = await db`SELECT * FROM deposits WHERE deposit_ref = ${ref} LIMIT 1`;
+        if (rows.length > 0) {
+          const d = rows[0];
+          return res.status(200).json({
+            success: true,
+            status: d.status || 'pending', // 'completed' | 'pending' | 'failed'
+            amount: parseFloat(d.amount_kes || 0),
+            method: d.method || 'M-Pesa STK',
+            deposit_ref: d.deposit_ref
+          });
+        }
+      } catch (err) {
+        console.error('Error checking deposit status:', err);
+      }
+    }
+    return res.status(200).json({ success: true, status: 'pending', deposit_ref: ref });
+  }
+
+  // 2. GET ALL DEPOSITS & STATS (Strictly Successful Deposits for Admin Ledger)
   if (req.method === 'GET') {
     if (db) {
       try {
-        const deposits = await db`
-          SELECT id, deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, created_at
-          FROM deposits
-          ORDER BY created_at DESC
-          LIMIT 100
-        `;
+        const onlySuccess = req.query.all !== 'true';
+        let deposits;
+        if (onlySuccess) {
+          deposits = await db`
+            SELECT id, deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, created_at
+            FROM deposits
+            WHERE status = 'completed' OR status = 'success' OR status = 'successful'
+            ORDER BY created_at DESC
+            LIMIT 100
+          `;
+        } else {
+          deposits = await db`
+            SELECT id, deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, created_at
+            FROM deposits
+            ORDER BY created_at DESC
+            LIMIT 100
+          `;
+        }
 
         let totalKes = 0;
         let totalCount = deposits.length;
@@ -50,7 +87,7 @@ export default async function handler(req, res) {
             currency: d.currency || 'kes',
             method: d.method || 'M-Pesa STK',
             phone: d.phone || '',
-            status: d.status || 'completed',
+            status: d.status || 'pending',
             created_at: d.created_at || new Date().toISOString()
           })),
           stats: {
@@ -80,8 +117,8 @@ export default async function handler(req, res) {
     const amountUsd = input.amount_usd ? parseFloat(input.amount_usd) : null;
     const currency = (input.currency || 'kes').toLowerCase();
     const method = input.method || 'M-Pesa STK';
-    const phone = (input.phone || '').trim();
-    const status = input.status || 'completed';
+    // Client submissions default strictly to 'pending' unless admin-authorized
+    const status = (input.admin_auth === true || input.admin === true) ? (input.status || 'completed') : 'pending';
 
     if (amountKes <= 0) {
       return res.status(400).json({ success: false, error: 'Invalid deposit amount' });
@@ -98,7 +135,7 @@ export default async function handler(req, res) {
           RETURNING *
         `;
 
-        // 2. If status is completed, credit user's real balance in users table
+        // 2. If status is completed (admin authorized), credit user's real balance in users table
         if (status === 'completed' || status === 'success' || status === 'successful') {
           await db`
             UPDATE users 

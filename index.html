@@ -2240,79 +2240,71 @@ async function requestSTK(){
     });
     const data = await res.json();
     if (data.success) {
-      status.innerHTML='<span style="color:var(--green)">✓ STK Push sent! Please enter your M-Pesa PIN on your phone.</span>';
-      setTimeout(async ()=>{
-        balance += kesAmount;
-        localStorage.setItem('maliRealBalance', balance);
-        updateHUD();
-        saveTransaction({
-          type: 'deposit',
-          amount: kesAmount,
-          method: 'M-Pesa STK',
-          ref: data.reference || 'MALI-' + Date.now(),
-          date: new Date().toISOString()
-        });
+      const depRef = data.reference;
+      let pollCount = 0;
+      const maxPolls = 24; // 24 * 2.5s = 60s total
 
-        // Record in Neon DB deposits table
+      status.innerHTML = `<span style="color:var(--gold)">⏳ STK Prompt dispatched to <strong>${phone}</strong>! Enter your M-Pesa PIN on your phone (<span id="depCountdown">60</span>s)...</span>`;
+      btn.disabled = true;
+      btn.textContent = 'Waiting for M-Pesa PIN...';
+
+      if (_ppPollInterval) clearInterval(_ppPollInterval);
+      _ppPollInterval = setInterval(async () => {
+        pollCount++;
+        const remaining = Math.max(0, Math.round(60 - pollCount * 2.5));
+        const cdEl = document.getElementById('depCountdown');
+        if (cdEl) cdEl.textContent = remaining.toString();
+
         try {
-          await fetch('/api/deposits', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              deposit_ref: data.reference || 'MALI-' + Date.now(),
-              username: uname,
-              amount_kes: kesAmount,
-              currency: depositCurrency,
-              phone: phone,
-              method: 'M-Pesa STK',
-              status: 'completed'
-            })
-          });
+          let chkRes = await fetch(`/api/deposits?action=check&reference=${encodeURIComponent(depRef)}`);
+          if (!chkRes.ok) chkRes = await fetch(`api/deposits?action=check&reference=${encodeURIComponent(depRef)}`);
+          const chkData = await chkRes.json();
+
+          if (chkData && chkData.success && (chkData.status === 'completed' || chkData.status === 'success' || chkData.status === 'successful')) {
+            clearInterval(_ppPollInterval);
+            _ppPollInterval = null;
+
+            // Sync verified balance from backend
+            await syncUserBalance();
+            status.innerHTML = `<span style="color:var(--green)">✓ Payment of KES ${kesAmount.toLocaleString()} Confirmed! Balance updated.</span>`;
+            btn.textContent = 'Payment Received! ✓';
+            launchCelebration();
+            saveTransaction({
+              type: 'deposit',
+              amount: kesAmount,
+              method: chkData.method || 'M-Pesa STK',
+              ref: depRef,
+              date: new Date().toISOString()
+            });
+            setTimeout(closeDeposit, 2000);
+            return;
+          } else if (chkData && chkData.status === 'failed') {
+            clearInterval(_ppPollInterval);
+            _ppPollInterval = null;
+            status.innerHTML = '<span style="color:var(--red)">✕ M-Pesa transaction was cancelled or declined.</span>';
+            btn.disabled = false;
+            btn.textContent = 'Try Again';
+            return;
+          }
         } catch(e) {}
 
-        status.innerHTML=`<span style="color:var(--green)">✓ KES ${kesAmount.toLocaleString()} credited successfully!</span>`;
-        launchCelebration();
-        setTimeout(closeDeposit, 1800);
-      }, 3500);
+        if (pollCount >= maxPolls) {
+          clearInterval(_ppPollInterval);
+          _ppPollInterval = null;
+          status.innerHTML = '<span style="color:var(--red)">✕ M-Pesa prompt timed out. If you already entered your PIN, your balance will update automatically once confirmed.</span>';
+          btn.disabled = false;
+          btn.textContent = 'Retry Deposit';
+        }
+      }, 2500);
     } else {
-      status.innerHTML=`<span style="color:var(--red)">✕ ${data.error || 'Payment failed. Please try again.'}</span>`;
-      btn.disabled=false;
-      btn.textContent='Try Again';
+      status.innerHTML = `<span style="color:var(--red)">✕ ${data.error || 'Payment request failed. Please try again.'}</span>`;
+      btn.disabled = false;
+      btn.textContent = 'Try Again';
     }
   } catch (err) {
-    // Client-side fallback simulation if backend is static
-    status.innerHTML='<span style="color:var(--green)">✓ STK Push sent! Please enter your M-Pesa PIN.</span>';
-    setTimeout(async ()=>{
-      balance += kesAmount;
-      localStorage.setItem('maliRealBalance', balance);
-      updateHUD();
-      saveTransaction({
-        type: 'deposit',
-        amount: kesAmount,
-        method: 'M-Pesa STK',
-        date: new Date().toISOString()
-      });
-
-      try {
-        await fetch('/api/deposits', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            deposit_ref: 'DEP-' + Date.now(),
-            username: uname,
-            amount_kes: kesAmount,
-            currency: depositCurrency,
-            phone: phone,
-            method: 'M-Pesa STK',
-            status: 'completed'
-          })
-        });
-      } catch(e) {}
-
-      status.innerHTML=`<span style="color:var(--green)">✓ KES ${kesAmount.toLocaleString()} credited successfully!</span>`;
-      launchCelebration();
-      setTimeout(closeDeposit, 1800);
-    }, 2500);
+    status.innerHTML = '<span style="color:var(--red)">✕ Network error connecting to payment gateway. Please try again.</span>';
+    btn.disabled = false;
+    btn.textContent = 'Try Again';
   }
 }
 
