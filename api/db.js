@@ -46,6 +46,13 @@ export async function initDb() {
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`;
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
     await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+
+    // Ensure ID column has an auto-increment sequence
+    try {
+      await db`CREATE SEQUENCE IF NOT EXISTS users_id_seq`;
+      await db`ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq')`;
+      await db`ALTER SEQUENCE users_id_seq OWNED BY users.id`;
+    } catch (seqErr) {}
   } catch (e) { console.error('Error creating/migrating users table:', e); }
 
   try {

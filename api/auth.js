@@ -33,11 +33,25 @@ export default async function handler(req, res) {
           return res.status(400).json({ success: false, error: 'Username or email is already registered.' });
         }
 
-        const [newUser] = await db`
-          INSERT INTO users (username, email, phone, password_hash, balance, demo_balance, role)
-          VALUES (${username}, ${email}, ${phone}, ${password}, 0.00, 10000.00, 'user')
-          RETURNING id, username, email, phone, balance, demo_balance, role, created_at
-        `;
+        let newUser;
+        try {
+          const res = await db`
+            INSERT INTO users (username, email, phone, password_hash, balance, demo_balance, role)
+            VALUES (${username}, ${email}, ${phone}, ${password}, 0.00, 10000.00, 'user')
+            RETURNING id, username, email, phone, balance, demo_balance, role, created_at
+          `;
+          newUser = res[0];
+        } catch (insertErr) {
+          // If ID column lacks a sequence default, calculate next ID automatically
+          const maxIdRes = await db`SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM users`;
+          const nextId = parseInt(maxIdRes[0]?.next_id || 1);
+          const res = await db`
+            INSERT INTO users (id, username, email, phone, password_hash, balance, demo_balance, role)
+            VALUES (${nextId}, ${username}, ${email}, ${phone}, ${password}, 0.00, 10000.00, 'user')
+            RETURNING id, username, email, phone, balance, demo_balance, role, created_at
+          `;
+          newUser = res[0];
+        }
 
         return res.status(200).json({
           success: true,
