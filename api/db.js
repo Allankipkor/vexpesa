@@ -120,6 +120,26 @@ export async function initDb() {
 
   try {
     await db`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(100),
+        username VARCHAR(50),
+        title VARCHAR(50) NOT NULL DEFAULT 'MPESA',
+        body TEXT NOT NULL,
+        read BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS username VARCHAR(50)`;
+    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS user_id VARCHAR(100)`;
+    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS title VARCHAR(50) DEFAULT 'MPESA'`;
+    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS body TEXT DEFAULT ''`;
+    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS read BOOLEAN DEFAULT FALSE`;
+    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+  } catch (e) { console.error('Error creating messages table:', e); }
+
+  try {
+    await db`
       CREATE TABLE IF NOT EXISTS settings (
         key VARCHAR(50) PRIMARY KEY,
         value TEXT NOT NULL
