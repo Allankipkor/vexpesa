@@ -88,51 +88,92 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
             <!-- Mode 1: Auto -->
             <div id="cardModeAuto" onclick="setGlobalOutcomeMode('auto')" class="cursor-pointer border border-blue-500/60 bg-blue-500/15 rounded-xl p-4 transition-all hover:scale-[1.02] shadow-lg ring-1 ring-blue-500/40">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5 font-mono">
-                        ⚡ Dynamic Math (Auto)
+                    <span id="titleModeAuto" class="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5 font-mono">
+                        ⚡ Dynamic Math (45% Auto)
                     </span>
                     <span id="dotModeAuto" class="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-md shadow-blue-400"></span>
                 </div>
-                <p class="text-[11px] text-gray-300">Natural wave algorithm with realistic spike clusters, dips, and fair margin spread.</p>
+                <p class="text-[11px] text-gray-300">Natural wave algorithm balancing spikes, dips, and fair margins with target win rate.</p>
             </div>
 
             <!-- Mode 2: Force Win -->
             <div id="cardModeWin" onclick="setGlobalOutcomeMode('force_win')" class="cursor-pointer border border-gray-700/60 bg-gray-800/40 rounded-xl p-4 transition-all hover:scale-[1.02]">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-green-400 flex items-center gap-1.5 font-mono">
-                        🟢 Force Win (100% Win)
+                    <span id="titleModeWin" class="text-xs font-bold uppercase tracking-wider text-green-400 flex items-center gap-1.5 font-mono">
+                        🟢 Force Win (85% Win)
                     </span>
                     <span id="dotModeWin" class="w-2.5 h-2.5 rounded-full bg-gray-600"></span>
                 </div>
-                <p class="text-[11px] text-gray-300">Forces massive green waves, guarantees positive multipliers, and lets users cash out in profit.</p>
+                <p class="text-[11px] text-gray-300">Surges green waves with adjustable win percentage & realistic natural variance.</p>
             </div>
 
             <!-- Mode 3: Force Loss -->
             <div id="cardModeLoss" onclick="setGlobalOutcomeMode('force_loss')" class="cursor-pointer border border-gray-700/60 bg-gray-800/40 rounded-xl p-4 transition-all hover:scale-[1.02]">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-red-400 flex items-center gap-1.5 font-mono">
-                        🔴 Force Loss (100% Crash)
+                    <span id="titleModeLoss" class="text-xs font-bold uppercase tracking-wider text-red-400 flex items-center gap-1.5 font-mono">
+                        🔴 Force Loss (85% Crash)
                     </span>
                     <span id="dotModeLoss" class="w-2.5 h-2.5 rounded-full bg-gray-600"></span>
                 </div>
-                <p class="text-[11px] text-gray-300">Forces instant crash reversals and red drops against trader entries, guaranteeing house retention.</p>
+                <p class="text-[11px] text-gray-300">Dips & crashes against trader entries with adjustable crash rate & small hook wins.</p>
             </div>
         </div>
 
-        <!-- Win Rate Slider & Quick Presets -->
-        <div class="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+        <!-- Adaptive Percentage Adjustment Box for Current Mode -->
+        <div id="panelPercentAuto" class="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex-1 w-full">
                 <div class="flex justify-between items-center mb-1.5">
-                    <label class="text-xs font-semibold text-gray-300">Auto Win Rate Target</label>
-                    <span class="text-xs font-mono font-bold text-green-400" id="lblWinRate">45% Trader Wins</span>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-200">Auto Win Rate Target</label>
+                        <p class="text-[11px] text-gray-400">Algorithmic natural balance between player wins and house margins</p>
+                    </div>
+                    <span class="text-sm font-mono font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 rounded-lg" id="lblWinRate">45% Wins</span>
                 </div>
                 <input type="range" id="sliderWinRate" min="5" max="95" value="45" oninput="onWinRateSliderChange(this.value)" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
             </div>
             <div class="flex items-center gap-1.5 flex-wrap">
-                <button type="button" onclick="setWinRatePreset(20)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">20% (Strict)</button>
-                <button type="button" onclick="setWinRatePreset(40)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">40% (Balanced)</button>
-                <button type="button" onclick="setWinRatePreset(60)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">60% (Generous)</button>
+                <button type="button" onclick="setWinRatePreset(25)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">25% (Strict)</button>
+                <button type="button" onclick="setWinRatePreset(45)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">45% (Normal)</button>
+                <button type="button" onclick="setWinRatePreset(65)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">65% (High)</button>
                 <button type="button" onclick="setWinRatePreset(85)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">85% (Promo)</button>
+            </div>
+        </div>
+
+        <div id="panelPercentWin" class="hidden bg-gray-800/50 border border-green-500/30 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex-1 w-full">
+                <div class="flex justify-between items-center mb-1.5">
+                    <div>
+                        <label class="text-xs font-semibold text-green-400">Force Win Probability (%)</label>
+                        <p class="text-[11px] text-gray-400" id="subForceWinRate">85% guaranteed wins + 15% natural variance for realism</p>
+                    </div>
+                    <span class="text-sm font-mono font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-0.5 rounded-lg" id="lblForceWinRate">85% Win Chance</span>
+                </div>
+                <input type="range" id="sliderForceWinRate" min="50" max="100" value="85" oninput="onForceWinSliderChange(this.value)" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500">
+            </div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <button type="button" onclick="setForceWinPreset(70)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">70% (Natural)</button>
+                <button type="button" onclick="setForceWinPreset(80)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">80% (High)</button>
+                <button type="button" onclick="setForceWinPreset(90)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">90% (Very High)</button>
+                <button type="button" onclick="setForceWinPreset(100)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-green-500/40 text-green-400 font-bold">100% (Absolute)</button>
+            </div>
+        </div>
+
+        <div id="panelPercentLoss" class="hidden bg-gray-800/50 border border-red-500/30 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex-1 w-full">
+                <div class="flex justify-between items-center mb-1.5">
+                    <div>
+                        <label class="text-xs font-semibold text-red-400">Force Loss Probability (%)</label>
+                        <p class="text-[11px] text-gray-400" id="subForceLossRate">85% entry crash reversals + 15% hook wins to retain player deposits</p>
+                    </div>
+                    <span class="text-sm font-mono font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-0.5 rounded-lg" id="lblForceLossRate">85% Crash Chance</span>
+                </div>
+                <input type="range" id="sliderForceLossRate" min="50" max="100" value="85" oninput="onForceLossSliderChange(this.value)" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500">
+            </div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <button type="button" onclick="setForceLossPreset(70)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">70% (Hook)</button>
+                <button type="button" onclick="setForceLossPreset(80)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">80% (Strict)</button>
+                <button type="button" onclick="setForceLossPreset(90)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300">90% (Heavy)</button>
+                <button type="button" onclick="setForceLossPreset(100)" class="px-2.5 py-1 text-[11px] font-mono bg-gray-800 hover:bg-gray-700 border border-red-500/40 text-red-400 font-bold">100% (Wipeout)</button>
             </div>
         </div>
     </div>
@@ -480,12 +521,47 @@ function updateAdminKPIDisplay(curr){
 
 let currentGlobalOutcome = 'auto'; // 'auto' | 'force_win' | 'force_loss'
 let currentWinRate = 45;
-let currentUserOutcomes = {}; // { [username]: 'auto' | 'force_win' | 'force_loss' }
+let currentForceWinRate = 85;
+let currentForceLossRate = 85;
+let currentUserOutcomes = {}; // { [username]: 'auto' | 'force_win' | 'force_loss' | 'force_win:80' | 'force_loss:85' }
 
 function setGlobalOutcomeMode(mode) {
   currentGlobalOutcome = mode;
   updateGlobalOutcomeUI();
   saveAdminConfig();
+}
+
+function onWinRateSliderChange(val) {
+  currentWinRate = parseInt(val) || 45;
+  updateGlobalOutcomeUI();
+  saveAdminConfig();
+}
+function setWinRatePreset(val) {
+  const slider = document.getElementById('sliderWinRate');
+  if (slider) slider.value = val;
+  onWinRateSliderChange(val);
+}
+
+function onForceWinSliderChange(val) {
+  currentForceWinRate = parseInt(val) || 85;
+  updateGlobalOutcomeUI();
+  saveAdminConfig();
+}
+function setForceWinPreset(val) {
+  const slider = document.getElementById('sliderForceWinRate');
+  if (slider) slider.value = val;
+  onForceWinSliderChange(val);
+}
+
+function onForceLossSliderChange(val) {
+  currentForceLossRate = parseInt(val) || 85;
+  updateGlobalOutcomeUI();
+  saveAdminConfig();
+}
+function setForceLossPreset(val) {
+  const slider = document.getElementById('sliderForceLossRate');
+  if (slider) slider.value = val;
+  onForceLossSliderChange(val);
 }
 
 function updateGlobalOutcomeUI() {
@@ -497,6 +573,35 @@ function updateGlobalOutcomeUI() {
   const dLoss = document.getElementById('dotModeLoss');
   const badge = document.getElementById('badgeActiveMode');
 
+  const pAuto = document.getElementById('panelPercentAuto');
+  const pWin = document.getElementById('panelPercentWin');
+  const pLoss = document.getElementById('panelPercentLoss');
+
+  const tAuto = document.getElementById('titleModeAuto');
+  const tWin = document.getElementById('titleModeWin');
+  const tLoss = document.getElementById('titleModeLoss');
+
+  if (tAuto) tAuto.textContent = `⚡ Dynamic Math (${currentWinRate}% Auto)`;
+  if (tWin) tWin.textContent = `🟢 Force Win (${currentForceWinRate}% Win)`;
+  if (tLoss) tLoss.textContent = `🔴 Force Loss (${currentForceLossRate}% Crash)`;
+
+  const lblWin = document.getElementById('lblWinRate');
+  if (lblWin) lblWin.textContent = `${currentWinRate}% Wins`;
+
+  const lblForceWin = document.getElementById('lblForceWinRate');
+  if (lblForceWin) lblForceWin.textContent = `${currentForceWinRate}% Win Chance`;
+  const subForceWin = document.getElementById('subForceWinRate');
+  if (subForceWin) subForceWin.textContent = currentForceWinRate === 100 
+    ? '100% guaranteed player wins on all trades.' 
+    : `${currentForceWinRate}% guaranteed wins + ${100 - currentForceWinRate}% natural variance for realism`;
+
+  const lblForceLoss = document.getElementById('lblForceLossRate');
+  if (lblForceLoss) lblForceLoss.textContent = `${currentForceLossRate}% Crash Chance`;
+  const subForceLoss = document.getElementById('subForceLossRate');
+  if (subForceLoss) subForceLoss.textContent = currentForceLossRate === 100
+    ? '100% guaranteed crash/loss on all trades.'
+    : `${currentForceLossRate}% entry crash reversals + ${100 - currentForceLossRate}% hook wins to retain player deposits`;
+
   [cAuto, cWin, cLoss].forEach(c => {
     if (c) {
       c.className = 'cursor-pointer border border-gray-700/60 bg-gray-800/40 rounded-xl p-4 transition-all hover:scale-[1.02]';
@@ -506,53 +611,48 @@ function updateGlobalOutcomeUI() {
   if (dWin) dWin.className = 'w-2.5 h-2.5 rounded-full bg-gray-600';
   if (dLoss) dLoss.className = 'w-2.5 h-2.5 rounded-full bg-gray-600';
 
+  if (pAuto) pAuto.classList.add('hidden');
+  if (pWin) pWin.classList.add('hidden');
+  if (pLoss) pLoss.classList.add('hidden');
+
   if (currentGlobalOutcome === 'force_win') {
     if (cWin) cWin.className = 'cursor-pointer border border-green-500/60 bg-green-500/15 rounded-xl p-4 transition-all scale-[1.02] shadow-lg shadow-green-500/10 ring-1 ring-green-500/40';
     if (dWin) dWin.className = 'w-2.5 h-2.5 rounded-full bg-green-400 shadow-md shadow-green-400 animate-pulse';
     if (badge) {
-      badge.textContent = 'FORCE WIN ACTIVE (100%)';
+      badge.textContent = `FORCE WIN (${currentForceWinRate}%)`;
       badge.className = 'text-[10px] px-2.5 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 font-mono font-bold';
     }
+    if (pWin) pWin.classList.remove('hidden');
   } else if (currentGlobalOutcome === 'force_loss') {
     if (cLoss) cLoss.className = 'cursor-pointer border border-red-500/60 bg-red-500/15 rounded-xl p-4 transition-all scale-[1.02] shadow-lg shadow-red-500/10 ring-1 ring-red-500/40';
     if (dLoss) dLoss.className = 'w-2.5 h-2.5 rounded-full bg-red-400 shadow-md shadow-red-400 animate-pulse';
     if (badge) {
-      badge.textContent = 'FORCE LOSS ACTIVE (100%)';
+      badge.textContent = `FORCE LOSS (${currentForceLossRate}%)`;
       badge.className = 'text-[10px] px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-mono font-bold';
     }
+    if (pLoss) pLoss.classList.remove('hidden');
   } else {
     if (cAuto) cAuto.className = 'cursor-pointer border border-blue-500/60 bg-blue-500/15 rounded-xl p-4 transition-all scale-[1.02] shadow-lg shadow-blue-500/10 ring-1 ring-blue-500/40';
     if (dAuto) dAuto.className = 'w-2.5 h-2.5 rounded-full bg-blue-400 shadow-md shadow-blue-400';
     if (badge) {
-      badge.textContent = 'DYNAMIC AUTO';
+      badge.textContent = `DYNAMIC AUTO (${currentWinRate}%)`;
       badge.className = 'text-[10px] px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono font-bold';
     }
+    if (pAuto) pAuto.classList.remove('hidden');
   }
 }
 
-function onWinRateSliderChange(val) {
-  currentWinRate = parseInt(val) || 45;
-  const lbl = document.getElementById('lblWinRate');
-  if (lbl) lbl.textContent = currentWinRate + '% Trader Wins';
-  saveAdminConfig();
-}
-
-function setWinRatePreset(val) {
-  const slider = document.getElementById('sliderWinRate');
-  if (slider) slider.value = val;
-  onWinRateSliderChange(val);
-}
-
-async function setUserOutcomeOverride(username, outcome) {
+async function setUserOutcomeOverride(username, outcome, rate) {
   const safeUser = decodeURIComponent(username || '');
-  currentUserOutcomes[safeUser] = outcome;
+  const outcomeVal = (rate !== undefined && outcome !== 'auto') ? `${outcome}:${rate}` : outcome;
+  currentUserOutcomes[safeUser] = outcomeVal;
 
   try {
     let res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_override: { username: safeUser, outcome }
+        user_override: { username: safeUser, outcome, rate }
       })
     });
     if (!res.ok) {
@@ -560,7 +660,7 @@ async function setUserOutcomeOverride(username, outcome) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_override: { username: safeUser, outcome }
+          user_override: { username: safeUser, outcome, rate }
         })
       });
     }
@@ -568,6 +668,25 @@ async function setUserOutcomeOverride(username, outcome) {
 
   localStorage.setItem('maliUserOutcomes', JSON.stringify(currentUserOutcomes));
   renderTradersList();
+}
+
+function promptCustomUserRate(username, mode) {
+  const safeUser = decodeURIComponent(username || '');
+  const currentVal = currentUserOutcomes[safeUser] || 'auto';
+  let defaultRate = mode === 'force_win' ? currentForceWinRate : currentForceLossRate;
+  if (currentVal.startsWith(mode + ':')) {
+    defaultRate = parseInt(currentVal.split(':')[1]) || defaultRate;
+  }
+  const promptText = mode === 'force_win' 
+    ? `Enter target Win % for @${safeUser} (e.g. 85 for 85% Win / 15% Loss):`
+    : `Enter target Loss % for @${safeUser} (e.g. 85 for 85% Crash / 15% Win):`;
+  const input = prompt(promptText, defaultRate.toString());
+  if (input !== null) {
+    const rate = Math.min(100, Math.max(10, parseInt(input) || defaultRate));
+    setUserOutcomeOverride(username, mode, rate);
+  } else if (!currentVal.startsWith(mode)) {
+    setUserOutcomeOverride(username, mode, defaultRate);
+  }
 }
 
 function loadAdminConfig(){
@@ -595,8 +714,16 @@ function loadAdminConfig(){
     currentWinRate = cfg.target_win_rate;
     const s = document.getElementById('sliderWinRate');
     if (s) s.value = currentWinRate;
-    const lbl = document.getElementById('lblWinRate');
-    if (lbl) lbl.textContent = currentWinRate + '% Trader Wins';
+  }
+  if (cfg.force_win_rate) {
+    currentForceWinRate = cfg.force_win_rate;
+    const s = document.getElementById('sliderForceWinRate');
+    if (s) s.value = currentForceWinRate;
+  }
+  if (cfg.force_loss_rate) {
+    currentForceLossRate = cfg.force_loss_rate;
+    const s = document.getElementById('sliderForceLossRate');
+    if (s) s.value = currentForceLossRate;
   }
   updateGlobalOutcomeUI();
 
@@ -651,8 +778,16 @@ function loadAdminConfig(){
       currentWinRate = s.target_win_rate !== undefined ? s.target_win_rate : s.controls.target_win_rate;
       const sl = document.getElementById('sliderWinRate');
       if (sl) sl.value = currentWinRate;
-      const lbl = document.getElementById('lblWinRate');
-      if (lbl) lbl.textContent = currentWinRate + '% Trader Wins';
+    }
+    if (s.force_win_rate !== undefined || s.controls?.force_win_rate !== undefined) {
+      currentForceWinRate = s.force_win_rate !== undefined ? s.force_win_rate : s.controls.force_win_rate;
+      const sl = document.getElementById('sliderForceWinRate');
+      if (sl) sl.value = currentForceWinRate;
+    }
+    if (s.force_loss_rate !== undefined || s.controls?.force_loss_rate !== undefined) {
+      currentForceLossRate = s.force_loss_rate !== undefined ? s.force_loss_rate : s.controls.force_loss_rate;
+      const sl = document.getElementById('sliderForceLossRate');
+      if (sl) sl.value = currentForceLossRate;
     }
     if (s.user_outcomes || s.controls?.user_outcomes) {
       currentUserOutcomes = { ...currentUserOutcomes, ...(s.user_outcomes || s.controls.user_outcomes) };
@@ -678,6 +813,8 @@ function loadAdminConfig(){
       minWithdraw: parseFloat(document.getElementById('cfgMinWithdraw').value) || 100,
       force_outcome: currentGlobalOutcome,
       target_win_rate: currentWinRate,
+      force_win_rate: currentForceWinRate,
+      force_loss_rate: currentForceLossRate,
       payheroUsername: phUser,
       payheroPassword: phPass,
       payheroChannelId: phChan,
@@ -711,9 +848,13 @@ function saveAdminConfig(){
     minWithdraw: parseFloat(document.getElementById('cfgMinWithdraw').value) || 100,
     force_outcome: currentGlobalOutcome,
     target_win_rate: currentWinRate,
+    force_win_rate: currentForceWinRate,
+    force_loss_rate: currentForceLossRate,
     controls: {
       force_outcome: currentGlobalOutcome,
       target_win_rate: currentWinRate,
+      force_win_rate: currentForceWinRate,
+      force_loss_rate: currentForceLossRate,
       user_outcomes: currentUserOutcomes
     },
     payheroUsername: document.getElementById('cfgPayheroUsername').value.trim(),
@@ -919,7 +1060,22 @@ async function renderTradersList(){
         tr.className = 'hover:bg-gray-800/30 transition-colors';
         const userParam = encodeURIComponent(t.username || '');
         const idParam = encodeURIComponent(t.id || '');
-        const userOutcome = currentUserOutcomes[t.username] || 'auto';
+        const rawOutcome = currentUserOutcomes[t.username] || 'auto';
+        let userMode = rawOutcome;
+        let userRate = null;
+        if (rawOutcome.includes(':')) {
+          const parts = rawOutcome.split(':');
+          userMode = parts[0];
+          userRate = parseInt(parts[1]) || (userMode === 'force_win' ? currentForceWinRate : currentForceLossRate);
+        } else if (userMode === 'force_win') {
+          userRate = currentForceWinRate;
+        } else if (userMode === 'force_loss') {
+          userRate = currentForceLossRate;
+        }
+
+        const isAuto = userMode === 'auto';
+        const isWin = userMode === 'force_win';
+        const isLoss = userMode === 'force_loss';
 
         tr.innerHTML = `
           <td class="px-4 py-3">
@@ -938,15 +1094,15 @@ async function renderTradersList(){
           <td class="px-4 py-3 font-bold text-green-400">${prefix}${parseFloat(t.balance || 0).toLocaleString('en-US',{minimumFractionDigits:2})}</td>
           <td class="px-4 py-3 text-amber-400">${prefix}${parseFloat(t.demo_balance || 0).toLocaleString('en-US',{minimumFractionDigits:2})}</td>
           <td class="px-4 py-3">
-            <div class="flex items-center gap-1">
-              <button onclick="setUserOutcomeOverride('${userParam}', 'auto')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${userOutcome === 'auto' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold' : 'bg-gray-800 text-gray-400 hover:text-white'}" title="Natural math outcome">
+            <div class="flex items-center gap-1.5">
+              <button onclick="setUserOutcomeOverride('${userParam}', 'auto')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${isAuto ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold shadow-sm' : 'bg-gray-800 text-gray-400 hover:text-white'}" title="Natural math outcome">
                 ⚡ Auto
               </button>
-              <button onclick="setUserOutcomeOverride('${userParam}', 'force_win')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${userOutcome === 'force_win' ? 'bg-green-500/20 text-green-400 border border-green-500/30 font-bold shadow-sm shadow-green-500/20' : 'bg-gray-800 text-gray-400 hover:text-green-300'}" title="Force Win for next trades">
-                🟢 Win
+              <button onclick="promptCustomUserRate('${userParam}', 'force_win')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${isWin ? 'bg-green-500/20 text-green-400 border border-green-500/30 font-bold shadow-sm shadow-green-500/20' : 'bg-gray-800 text-gray-400 hover:text-green-300'}" title="Click to adjust target Win % for this trader">
+                🟢 Win ${isWin ? (userRate + '%') : ''}
               </button>
-              <button onclick="setUserOutcomeOverride('${userParam}', 'force_loss')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${userOutcome === 'force_loss' ? 'bg-red-500/20 text-red-400 border border-red-500/30 font-bold shadow-sm shadow-red-500/20' : 'bg-gray-800 text-gray-400 hover:text-red-300'}" title="Force Crash/Loss for next trades">
-                🔴 Loss
+              <button onclick="promptCustomUserRate('${userParam}', 'force_loss')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${isLoss ? 'bg-red-500/20 text-red-400 border border-red-500/30 font-bold shadow-sm shadow-red-500/20' : 'bg-gray-800 text-gray-400 hover:text-red-300'}" title="Click to adjust target Loss % for this trader">
+                🔴 Loss ${isLoss ? (userRate + '%') : ''}
               </button>
             </div>
           </td>
@@ -991,7 +1147,23 @@ async function renderTradersList(){
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-gray-800/30 transition-colors';
     const userParam = encodeURIComponent(t.username || '');
-    const userOutcome = currentUserOutcomes[t.username] || 'auto';
+    const rawOutcome = currentUserOutcomes[t.username] || 'auto';
+    let userMode = rawOutcome;
+    let userRate = null;
+    if (rawOutcome.includes(':')) {
+      const parts = rawOutcome.split(':');
+      userMode = parts[0];
+      userRate = parseInt(parts[1]) || (userMode === 'force_win' ? currentForceWinRate : currentForceLossRate);
+    } else if (userMode === 'force_win') {
+      userRate = currentForceWinRate;
+    } else if (userMode === 'force_loss') {
+      userRate = currentForceLossRate;
+    }
+
+    const isAuto = userMode === 'auto';
+    const isWin = userMode === 'force_win';
+    const isLoss = userMode === 'force_loss';
+
     tr.innerHTML = `
       <td class="px-4 py-3">
         <div class="flex items-center gap-2">
@@ -1006,15 +1178,15 @@ async function renderTradersList(){
       <td class="px-4 py-3 font-bold text-green-400">${prefix}${isCurrent ? realBal.toLocaleString('en-US',{minimumFractionDigits:2}) : '0.00'}</td>
       <td class="px-4 py-3 text-amber-400">${prefix}${isCurrent ? demoBal.toLocaleString('en-US',{minimumFractionDigits:2}) : '10,000.00'}</td>
       <td class="px-4 py-3">
-        <div class="flex items-center gap-1">
-          <button onclick="setUserOutcomeOverride('${userParam}', 'auto')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${userOutcome === 'auto' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold' : 'bg-gray-800 text-gray-400 hover:text-white'}" title="Natural math outcome">
+        <div class="flex items-center gap-1.5">
+          <button onclick="setUserOutcomeOverride('${userParam}', 'auto')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${isAuto ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold shadow-sm' : 'bg-gray-800 text-gray-400 hover:text-white'}" title="Natural math outcome">
             ⚡ Auto
           </button>
-          <button onclick="setUserOutcomeOverride('${userParam}', 'force_win')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${userOutcome === 'force_win' ? 'bg-green-500/20 text-green-400 border border-green-500/30 font-bold' : 'bg-gray-800 text-gray-400 hover:text-green-300'}" title="Force Win for next trades">
-            🟢 Win
+          <button onclick="promptCustomUserRate('${userParam}', 'force_win')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${isWin ? 'bg-green-500/20 text-green-400 border border-green-500/30 font-bold shadow-sm shadow-green-500/20' : 'bg-gray-800 text-gray-400 hover:text-green-300'}" title="Click to adjust target Win % for this trader">
+            🟢 Win ${isWin ? (userRate + '%') : ''}
           </button>
-          <button onclick="setUserOutcomeOverride('${userParam}', 'force_loss')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${userOutcome === 'force_loss' ? 'bg-red-500/20 text-red-400 border border-red-500/30 font-bold' : 'bg-gray-800 text-gray-400 hover:text-red-300'}" title="Force Crash/Loss for next trades">
-            🔴 Loss
+          <button onclick="promptCustomUserRate('${userParam}', 'force_loss')" class="px-2 py-1 text-[10px] rounded font-mono transition-all ${isLoss ? 'bg-red-500/20 text-red-400 border border-red-500/30 font-bold shadow-sm shadow-red-500/20' : 'bg-gray-800 text-gray-400 hover:text-red-300'}" title="Click to adjust target Loss % for this trader">
+            🔴 Loss ${isLoss ? (userRate + '%') : ''}
           </button>
         </div>
       </td>

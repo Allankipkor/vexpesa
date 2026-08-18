@@ -894,11 +894,15 @@ async function syncPlatformSettings() {
 
       if (data.controls) {
         if (data.controls.force_outcome) platformForceOutcome = data.controls.force_outcome;
-        if (data.controls.target_win_rate !== undefined) platformWinRate = data.controls.target_win_rate;
+        if (data.controls.target_win_rate !== undefined) platformWinRate = parseFloat(data.controls.target_win_rate);
+        if (data.controls.force_win_rate !== undefined) platformForceWinRate = parseFloat(data.controls.force_win_rate);
+        if (data.controls.force_loss_rate !== undefined) platformForceLossRate = parseFloat(data.controls.force_loss_rate);
         if (data.controls.user_outcomes) platformUserOutcomes = { ...data.controls.user_outcomes };
       }
       if (data.force_outcome) platformForceOutcome = data.force_outcome;
-      if (data.target_win_rate !== undefined) platformWinRate = data.target_win_rate;
+      if (data.target_win_rate !== undefined) platformWinRate = parseFloat(data.target_win_rate);
+      if (data.force_win_rate !== undefined) platformForceWinRate = parseFloat(data.force_win_rate);
+      if (data.force_loss_rate !== undefined) platformForceLossRate = parseFloat(data.force_loss_rate);
       if (data.user_outcomes) platformUserOutcomes = { ...data.user_outcomes };
 
       if (typeof updateHUD === 'function') updateHUD();
@@ -937,15 +941,34 @@ let eng = {
 
 let platformForceOutcome = 'auto'; // 'auto' | 'force_win' | 'force_loss'
 let platformWinRate = 45;
-let platformUserOutcomes = {};     // { [username]: 'auto' | 'force_win' | 'force_loss' }
+let platformForceWinRate = 85;
+let platformForceLossRate = 85;
+let platformUserOutcomes = {};     // { [username]: 'auto' | 'force_win' | 'force_loss' | 'force_win:80' | 'force_loss:85' }
 
-function getActiveTradeOutcomeRule() {
-  if (!activeTrade) return platformForceOutcome;
+function resolveTradeOutcomeRule() {
   const uname = currentUser ? (currentUser.username || currentUser.name || '') : '';
-  if (uname && platformUserOutcomes[uname] && platformUserOutcomes[uname] !== 'auto') {
-    return platformUserOutcomes[uname];
+  const rawRule = (uname && platformUserOutcomes[uname]) ? platformUserOutcomes[uname] : platformForceOutcome;
+  
+  let mode = rawRule || 'auto';
+  let customRate = null;
+  if (typeof rawRule === 'string' && rawRule.includes(':')) {
+    const parts = rawRule.split(':');
+    mode = parts[0];
+    customRate = parseFloat(parts[1]);
   }
-  return platformForceOutcome;
+
+  const roll = Math.random() * 100;
+  if (mode === 'force_win') {
+    const winProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformForceWinRate || 85);
+    return roll < winProb ? 'force_win' : 'force_loss';
+  } else if (mode === 'force_loss') {
+    const lossProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformForceLossRate || 85);
+    return roll < lossProb ? 'force_loss' : 'force_win';
+  } else {
+    // auto with target win rate
+    const autoWinProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformWinRate || 45);
+    return roll < autoWinProb ? 'force_win' : 'force_loss';
+  }
 }
 
 function generateSpikeHeight() {
@@ -962,7 +985,7 @@ function nextP(){
   eng.tick++;
   let p = rate;
 
-  const outcomeRule = (activeTrade && tradePhase === 'active') ? getActiveTradeOutcomeRule() : 'auto';
+  const outcomeRule = (activeTrade && tradePhase === 'active') ? (activeTrade.plannedOutcome || 'force_win') : 'auto';
 
   if (outcomeRule === 'force_win') {
     // If trade is BUY: force upward trajectory above entryRate, suppress dips & crashes
@@ -1722,11 +1745,12 @@ async function placeTrade(type){
   if(stake < minStake){alert('Minimum stake is ' + formatCurrency(minStake));return;}
   if(stake > maxStake){alert('Maximum stake is ' + formatCurrency(maxStake));return;}
 
+  const plannedOutcome = resolveTradeOutcomeRule();
   if(isDemoMode){
     if(stake>demoBalance){alert('Insufficient demo balance. Reset demo account in profile.');return;}
     demoBalance-=stake;
     localStorage.setItem('maliDemoBalance',demoBalance);
-    activeTrade={type,entryRate:rate,stake,tradeId:'DEMO-'+Date.now(),isDemo:true};
+    activeTrade={type,entryRate:rate,stake,tradeId:'DEMO-'+Date.now(),isDemo:true,plannedOutcome};
     updateHUD();
     showHeroToast('Demo trade: ' + formatCurrency(stake) + ' staked','Virtual funds · No risk',2800);
     _setupTradeButtons(type);
@@ -1742,7 +1766,7 @@ async function placeTrade(type){
 
   balance -= stake;
   localStorage.setItem('maliRealBalance', balance);
-  activeTrade={type,entryRate:rate,stake,tradeId:'MC-'+Date.now(),isDemo:false};
+  activeTrade={type,entryRate:rate,stake,tradeId:'MC-'+Date.now(),isDemo:false,plannedOutcome};
   updateHUD();
 
   showHeroToast(

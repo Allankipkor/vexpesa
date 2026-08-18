@@ -23,7 +23,9 @@ const defaultSettings = {
   controls: {
     force_outcome: "auto", // "auto" | "force_win" | "force_loss"
     target_win_rate: 45,
-    user_outcomes: {} // { [username]: "win" | "loss" | "auto" }
+    force_win_rate: 85,
+    force_loss_rate: 85,
+    user_outcomes: {} // { [username]: "auto" | "force_win" | "force_loss" | "force_win:85" | "force_loss:85" }
   },
   withdraw: {
     min_withdrawal: 100,
@@ -125,7 +127,9 @@ export default async function handler(req, res) {
             ...currentSettings.controls,
             ...(input.controls || {}),
             force_outcome: input.force_outcome || input.controls?.force_outcome || currentSettings.controls.force_outcome,
-            target_win_rate: input.target_win_rate !== undefined ? input.target_win_rate : (input.controls?.target_win_rate ?? currentSettings.controls.target_win_rate),
+            target_win_rate: input.target_win_rate !== undefined ? input.target_win_rate : (input.controls?.target_win_rate ?? currentSettings.controls?.target_win_rate ?? 45),
+            force_win_rate: input.force_win_rate !== undefined ? input.force_win_rate : (input.controls?.force_win_rate ?? currentSettings.controls?.force_win_rate ?? 85),
+            force_loss_rate: input.force_loss_rate !== undefined ? input.force_loss_rate : (input.controls?.force_loss_rate ?? currentSettings.controls?.force_loss_rate ?? 85),
             user_outcomes: {
               ...currentSettings.controls.user_outcomes,
               ...(input.user_outcomes || input.controls?.user_outcomes || {})
@@ -134,9 +138,13 @@ export default async function handler(req, res) {
         };
 
         if (input.user_override) {
-          const { username, outcome } = input.user_override;
+          const { username, outcome, rate } = input.user_override;
           if (username) {
-            updated.controls.user_outcomes[username] = outcome || 'auto';
+            if (rate !== undefined && outcome !== 'auto') {
+              updated.controls.user_outcomes[username] = `${outcome}:${rate}`;
+            } else {
+              updated.controls.user_outcomes[username] = outcome || 'auto';
+            }
           }
         }
 
