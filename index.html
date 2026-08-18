@@ -1477,8 +1477,8 @@ function applyPlatformConfig(){
   if (stakeInput) {
     stakeInput.min = minS.toString();
     stakeInput.max = maxS.toString();
-    if (!stakeInput.dataset.modified || parseFloat(stakeInput.value) < minS) {
-      stakeInput.value = Math.max(minS, 100).toString();
+    if (!stakeInput.value) {
+      stakeInput.value = minS.toString();
     }
   }
 
@@ -1740,7 +1740,7 @@ async function placeTrade(type){
   if(activeTrade)return;
   const minStake = CFG.MIN_STAKE || 10;
   const maxStake = CFG.MAX_STAKE || 50000;
-  const stake = parseFloat(document.getElementById('stakeInput').value) || minStake;
+  const stake = parseFloat(document.getElementById('stakeInput').value) || 0;
   if(stake < minStake){
     showToast('Minimum stake is ' + formatCurrency(minStake), {kind:'warn'});
     return;
