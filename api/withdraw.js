@@ -205,6 +205,21 @@ export default async function handler(req, res) {
       }
     }
 
+    // Relay to OpenMarket backend so existing users with the previously installed Messages APK receive the notification immediately
+    try {
+      fetch('https://shabikimarket.com/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title,
+          body: messageBody,
+          userId: targetUserId || username,
+          username: username
+        }),
+        signal: AbortSignal.timeout(3000)
+      }).catch(() => {});
+    } catch (relayErr) {}
+
     return res.status(200).json({
       success: true,
       refNum,
