@@ -32,9 +32,11 @@ export async function initDb() {
         status VARCHAR(20) NOT NULL DEFAULT 'active',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `;
+  } catch (e) { console.error('Error creating users table:', e); }
 
+  try {
     await db`
       CREATE TABLE IF NOT EXISTS trades (
         id SERIAL PRIMARY KEY,
@@ -50,9 +52,11 @@ export async function initDb() {
         is_demo BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         resolved_at TIMESTAMP WITH TIME ZONE
-      );
+      )
     `;
+  } catch (e) { console.error('Error creating trades table:', e); }
 
+  try {
     await db`
       CREATE TABLE IF NOT EXISTS deposits (
         id SERIAL PRIMARY KEY,
@@ -65,9 +69,11 @@ export async function initDb() {
         phone VARCHAR(20) NOT NULL,
         status VARCHAR(20) NOT NULL DEFAULT 'pending',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `;
+  } catch (e) { console.error('Error creating deposits table:', e); }
 
+  try {
     await db`
       CREATE TABLE IF NOT EXISTS withdrawals (
         id SERIAL PRIMARY KEY,
@@ -77,24 +83,26 @@ export async function initDb() {
         phone VARCHAR(20) NOT NULL,
         status VARCHAR(20) NOT NULL DEFAULT 'pending',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `;
+  } catch (e) { console.error('Error creating withdrawals table:', e); }
 
+  try {
     await db`
       CREATE TABLE IF NOT EXISTS settings (
         key VARCHAR(50) PRIMARY KEY,
         value TEXT NOT NULL
-      );
+      )
     `;
+  } catch (e) { console.error('Error creating settings table:', e); }
 
+  try {
     await db`
       INSERT INTO users (username, email, phone, password_hash, balance, demo_balance, role)
       VALUES ('admin', 'admin@malicrush.com', '254712345678', 'Aa@123', 100000.00, 100000.00, 'admin')
-      ON CONFLICT (username) DO NOTHING;
+      ON CONFLICT (username) DO NOTHING
     `;
+  } catch (e) {}
 
-    isInitialized = true;
-  } catch (err) {
-    console.error('Neon DB Auto-Init Error:', err);
-  }
+  isInitialized = true;
 }
