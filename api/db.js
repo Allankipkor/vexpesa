@@ -148,12 +148,23 @@ export async function initDb() {
   } catch (e) { console.error('Error creating settings table:', e); }
 
   try {
-    await db`
-      INSERT INTO users (username, email, phone, password_hash, balance, demo_balance, role)
-      VALUES ('admin', 'admin@malicrush.com', '254712345678', 'Aa@123', 100000.00, 100000.00, 'admin')
-      ON CONFLICT (username) DO NOTHING
-    `;
-  } catch (e) {}
+    const userCountRes = await db`SELECT COUNT(*) AS cnt FROM users`;
+    const count = parseInt(userCountRes[0]?.cnt || 0);
+    if (count < 2) {
+      await db`
+        INSERT INTO users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
+        VALUES 
+          ('admin', 'Admin Core', 'admin@malicrush.com', '254700000000', 'Aa@123', 'Aa@123', 500000.00, 100000.00, 'admin', 'active'),
+          ('trader254', 'Brian Kip', 'trader254@gmail.com', '254712345678', 'Aa@123', 'Aa@123', 2500.00, 10000.00, 'user', 'active'),
+          ('kamau_fx', 'John Kamau', 'kamau@gmail.com', '254722114455', 'Aa@123', 'Aa@123', 8750.00, 10000.00, 'user', 'active'),
+          ('sarah_mali', 'Sarah Wanjiru', 'sarah.w@yahoo.com', '254733889900', 'Aa@123', 'Aa@123', 14200.00, 10000.00, 'user', 'active'),
+          ('mwangi_trade', 'Peter Mwangi', 'pmwangi@gmail.com', '254799443322', 'Aa@123', 'Aa@123', 600.00, 10000.00, 'user', 'active')
+        ON CONFLICT (username) DO NOTHING
+      `;
+    }
+  } catch (e) {
+    console.error('Error seeding active traders in initDb:', e);
+  }
 
   isInitialized = true;
 }
