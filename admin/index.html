@@ -265,9 +265,15 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
                         <input type="number" step="0.1" id="cfgUsdRate" value="129.00" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
                     </div>
 
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1" id="lblMinDep">Minimum Deposit (KES)</label>
-                        <input type="number" id="cfgMinDep" value="50" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1" id="lblMinDep">Minimum Deposit (KES)</label>
+                            <input type="number" id="cfgMinDep" value="50" min="1" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1" id="lblMinWithdraw">Minimum Withdrawal (KES)</label>
+                            <input type="number" id="cfgMinWithdraw" value="100" min="1" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -422,26 +428,34 @@ function adminLogout(){
   window.location.href = 'login.html';
 }
 
-function onCurrencySelectChange(){
-  const curr = document.getElementById('cfgCurrency').value;
+function onCurrencySelectChange() {
+  const curr = document.getElementById('cfgCurrency') ? document.getElementById('cfgCurrency').value : 'kes';
   const isUsd = curr === 'usd';
 
-  document.getElementById('lblMinStake').textContent = isUsd ? 'Minimum Stake (USD $)' : 'Minimum Stake (KES)';
-  document.getElementById('lblMaxStake').textContent = isUsd ? 'Maximum Stake (USD $)' : 'Maximum Stake (KES)';
-  document.getElementById('lblMinDep').textContent = isUsd ? 'Minimum Deposit (USD $)' : 'Minimum Deposit (KES)';
-
+  const lblMinStake = document.getElementById('lblMinStake');
+  const lblMaxStake = document.getElementById('lblMaxStake');
+  if (lblMinStake) lblMinStake.textContent = isUsd ? 'Minimum Stake (USD $)' : 'Minimum Stake (KES)';
+  if (lblMaxStake) lblMaxStake.textContent = isUsd ? 'Maximum Stake (USD $)' : 'Maximum Stake (KES)';
   const minStakeInput = document.getElementById('cfgMinStake');
   const maxStakeInput = document.getElementById('cfgMaxStake');
   const minDepInput = document.getElementById('cfgMinDep');
+  const minWithdrawInput = document.getElementById('cfgMinWithdraw');
+  const lblDep = document.getElementById('lblMinDep');
+  const lblWithdraw = document.getElementById('lblMinWithdraw');
+
+  if (lblDep) lblDep.textContent = isUsd ? 'Minimum Deposit ($ USD)' : 'Minimum Deposit (KES)';
+  if (lblWithdraw) lblWithdraw.textContent = isUsd ? 'Minimum Withdrawal ($ USD)' : 'Minimum Withdrawal (KES)';
 
   if (isUsd) {
-    if (parseFloat(minStakeInput.value) >= 10) minStakeInput.value = 1;
-    if (parseFloat(maxStakeInput.value) >= 5000) maxStakeInput.value = 500;
-    if (parseFloat(minDepInput.value) >= 50) minDepInput.value = 1;
+    if (minStakeInput && parseFloat(minStakeInput.value) >= 10) minStakeInput.value = 1;
+    if (maxStakeInput && parseFloat(maxStakeInput.value) >= 5000) maxStakeInput.value = 500;
+    if (minDepInput && parseFloat(minDepInput.value) >= 50) minDepInput.value = 1;
+    if (minWithdrawInput && parseFloat(minWithdrawInput.value) >= 100) minWithdrawInput.value = 1;
   } else {
-    if (parseFloat(minStakeInput.value) < 10) minStakeInput.value = 10;
-    if (parseFloat(maxStakeInput.value) < 5000) maxStakeInput.value = 50000;
-    if (parseFloat(minDepInput.value) < 10) minDepInput.value = 50;
+    if (minStakeInput && parseFloat(minStakeInput.value) < 10) minStakeInput.value = 10;
+    if (maxStakeInput && parseFloat(maxStakeInput.value) < 5000) maxStakeInput.value = 50000;
+    if (minDepInput && parseFloat(minDepInput.value) < 10) minDepInput.value = 50;
+    if (minWithdrawInput && parseFloat(minWithdrawInput.value) < 10) minWithdrawInput.value = 100;
   }
 
   updateAdminKPIDisplay(curr);
@@ -573,7 +587,8 @@ function loadAdminConfig(){
   if (cfg.maxStake) document.getElementById('cfgMaxStake').value = cfg.maxStake;
   if (cfg.usdRate) document.getElementById('cfgUsdRate').value = cfg.usdRate;
   if (cfg.currency) document.getElementById('cfgCurrency').value = cfg.currency;
-  if (cfg.minDep) document.getElementById('cfgMinDep').value = cfg.minDep;
+  if (cfg.minDep !== undefined) document.getElementById('cfgMinDep').value = cfg.minDep;
+  if (cfg.minWithdraw !== undefined) document.getElementById('cfgMinWithdraw').value = cfg.minWithdraw;
 
   if (cfg.force_outcome) currentGlobalOutcome = cfg.force_outcome;
   if (cfg.target_win_rate) {
@@ -611,7 +626,12 @@ function loadAdminConfig(){
       document.getElementById('cfgCurrency').value = s.currency || s.payments.deposit_currency;
       onCurrencySelectChange();
     }
-    if (s.minDep) document.getElementById('cfgMinDep').value = s.minDep;
+    if (s.minDep !== undefined || s.trade?.min_deposit !== undefined) {
+      document.getElementById('cfgMinDep').value = s.minDep !== undefined ? s.minDep : s.trade.min_deposit;
+    }
+    if (s.minWithdraw !== undefined || s.withdraw?.min_withdrawal !== undefined) {
+      document.getElementById('cfgMinWithdraw').value = s.minWithdraw !== undefined ? s.minWithdraw : s.withdraw.min_withdrawal;
+    }
 
     // Load PayHero credentials directly from DB across all devices
     const phUser = s.payheroUsername || s.payments?.payhero?.api_username || '';
@@ -655,6 +675,7 @@ function loadAdminConfig(){
       usdRate: parseFloat(document.getElementById('cfgUsdRate').value) || 129.00,
       currency: document.getElementById('cfgCurrency').value || 'kes',
       minDep: parseFloat(document.getElementById('cfgMinDep').value) || 50,
+      minWithdraw: parseFloat(document.getElementById('cfgMinWithdraw').value) || 100,
       force_outcome: currentGlobalOutcome,
       target_win_rate: currentWinRate,
       payheroUsername: phUser,
@@ -687,6 +708,7 @@ function saveAdminConfig(){
     usdRate: parseFloat(document.getElementById('cfgUsdRate').value) || 129.00,
     currency: document.getElementById('cfgCurrency').value || 'kes',
     minDep: parseFloat(document.getElementById('cfgMinDep').value) || 50,
+    minWithdraw: parseFloat(document.getElementById('cfgMinWithdraw').value) || 100,
     force_outcome: currentGlobalOutcome,
     target_win_rate: currentWinRate,
     controls: {

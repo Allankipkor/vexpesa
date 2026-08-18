@@ -861,12 +861,52 @@ function formatCurrency(amount, includeSymbol = true){
 const CFG = {
   TICK: 120, MAX_PTS: 80, TRADE_DUR: 60, PAYOUT: 0.148, Y_MAX: 3.0,
   SPIKE_FREQ: 0.12, CRASH_FREQ: 0.02, BASE_LEVEL: 0.5, SPIKE_MAX: 2.8, CRASH_DEPTH: -2.8,
-  MIN_STAKE: 10, MAX_STAKE: 50000, MIN_DEPOSIT: 50,
+  MIN_STAKE: 10, MAX_STAKE: 50000, MIN_DEPOSIT: 50, MIN_WITHDRAW: 100,
   MAX_MULT: 5.0,
   PRESTART_WAIT: 3,
   AUTOSELL_MULT: 2.5,
   SCALE: 1,
 };
+
+async function syncPlatformSettings() {
+  try {
+    let res = await fetch('/api/settings');
+    if (!res.ok) res = await fetch('api/settings');
+    const data = await res.json();
+    if (data) {
+      if (data.trade) {
+        if (data.trade.min_deposit !== undefined) CFG.MIN_DEPOSIT = parseFloat(data.trade.min_deposit);
+        if (data.trade.min_stake !== undefined) CFG.MIN_STAKE = parseFloat(data.trade.min_stake);
+        if (data.trade.max_stake !== undefined) CFG.MAX_STAKE = parseFloat(data.trade.max_stake);
+        if (data.trade.max_multiplier !== undefined) CFG.MAX_MULT = parseFloat(data.trade.max_multiplier);
+        if (data.trade.autosell_multiplier !== undefined) CFG.AUTOSELL_MULT = parseFloat(data.trade.autosell_multiplier);
+      }
+      if (data.minDep !== undefined) CFG.MIN_DEPOSIT = parseFloat(data.minDep);
+      if (data.minWithdraw !== undefined) CFG.MIN_WITHDRAW = parseFloat(data.minWithdraw);
+      if (data.withdraw && data.withdraw.min_withdrawal !== undefined) CFG.MIN_WITHDRAW = parseFloat(data.withdraw.min_withdrawal);
+
+      if (data.payments) {
+        if (data.payments.deposit_currency) depositCurrency = data.payments.deposit_currency;
+        if (data.payments.usd_rate) usdRate = parseFloat(data.payments.usd_rate);
+      }
+      if (data.currency) depositCurrency = data.currency;
+      if (data.usdRate) usdRate = parseFloat(data.usdRate);
+
+      if (data.controls) {
+        if (data.controls.force_outcome) platformForceOutcome = data.controls.force_outcome;
+        if (data.controls.target_win_rate !== undefined) platformWinRate = data.controls.target_win_rate;
+        if (data.controls.user_outcomes) platformUserOutcomes = { ...data.controls.user_outcomes };
+      }
+      if (data.force_outcome) platformForceOutcome = data.force_outcome;
+      if (data.target_win_rate !== undefined) platformWinRate = data.target_win_rate;
+      if (data.user_outcomes) platformUserOutcomes = { ...data.user_outcomes };
+
+      if (typeof updateHUD === 'function') updateHUD();
+    }
+  } catch(e) {}
+}
+
+syncPlatformSettings();
 
 let prices = [];
 let rate = 0.5;
@@ -1968,8 +2008,16 @@ function closeResult(){document.getElementById('resultModal').classList.remove('
 // DEPOSIT MODAL LOGIC
 // ═══════════════════════════════════════════
 function openDeposit(){
+  syncPlatformSettings();
   document.getElementById('depositModal').classList.add('show');
   document.getElementById('depositStatus').textContent='';
+  const isUsd = depositCurrency === 'usd';
+  const minDep = isUsd ? 1 : (CFG.MIN_DEPOSIT || 50);
+  const kesInput = document.getElementById('depAmtKes');
+  if (kesInput) {
+    kesInput.min = minDep.toString();
+    kesInput.placeholder = `e.g. ${minDep >= 50 ? minDep * 5 : 500}`;
+  }
   selectedAmount=0; _resetChips(); _applyDeposit();
 }
 function closeDeposit(){
@@ -2045,6 +2093,13 @@ async function requestSTK(){
 
   if(!phone.match(/^(254|0)\d{9}$/)){
     status.innerHTML='<span style="color:var(--red)">Enter valid Safaricom phone (07XXXXXXXX or 2547XXXXXXXX)</span>';
+    return;
+  }
+
+  const isUsd = depositCurrency === 'usd';
+  const minDep = isUsd ? 1 : (CFG.MIN_DEPOSIT || 50);
+  if (selectedAmount < minDep) {
+    status.innerHTML = `<span style="color:var(--red)">Minimum deposit is ${formatCurrency(minDep)}</span>`;
     return;
   }
 
@@ -2153,6 +2208,18 @@ async function requestSTK(){
 // WITHDRAWAL
 // ═══════════════════════════════════════════
 function openWithdraw(){
+  syncPlatformSettings();
+  const isUsd = depositCurrency === 'usd';
+  const minWithdraw = isUsd ? 1 : (CFG.MIN_WITHDRAW || 100);
+  const hintEl = document.getElementById('withdrawHint');
+  if (hintEl) {
+    hintEl.innerHTML = `<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is ${formatCurrency(minWithdraw)}. Dispatched instantly via ${isUsd ? 'Global Payout' : 'M-Pesa B2C'}.`;
+  }
+  const input = document.getElementById('withdrawAmount');
+  if (input) {
+    input.min = minWithdraw.toString();
+    input.placeholder = `e.g. ${minWithdraw >= 100 ? minWithdraw * 5 : 50}`;
+  }
   document.getElementById('withdrawBalance').textContent = formatCurrency(balance);
   document.getElementById('withdrawStatus').textContent = '';
   document.getElementById('withdrawModal').classList.add('show');
@@ -2165,7 +2232,7 @@ async function submitWithdrawal(){
   const btn = document.getElementById('withdrawBtn');
   const status = document.getElementById('withdrawStatus');
   const isUsd = depositCurrency === 'usd';
-  const minWithdraw = isUsd ? 1 : 100;
+  const minWithdraw = isUsd ? 1 : (CFG.MIN_WITHDRAW || 100);
 
   if (amount < minWithdraw) { status.innerHTML = '<span style="color:var(--red)">Minimum withdrawal is ' + formatCurrency(minWithdraw) + '</span>'; return; }
   if (amount > balance) { status.innerHTML = '<span style="color:var(--red)">Amount exceeds available balance</span>'; return; }

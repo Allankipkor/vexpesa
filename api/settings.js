@@ -75,11 +75,13 @@ export default async function handler(req, res) {
           } catch(e) {}
         }
 
-        // Merge inputs & preserve PayHero configuration
+        // Merge inputs & preserve PayHero configuration & payment limits
         const phUser = input.payheroUsername || input.payments?.payhero?.api_username || currentSettings.payheroUsername || currentSettings.payments?.payhero?.api_username || '';
         const phPass = input.payheroPassword || input.payments?.payhero?.api_password || currentSettings.payheroPassword || currentSettings.payments?.payhero?.api_password || '';
         const phChan = input.payheroChannelId || input.payments?.payhero?.channel_id || currentSettings.payheroChannelId || currentSettings.payments?.payhero?.channel_id || '';
         const phCb = input.payheroCallbackUrl || input.payments?.payhero?.callback_url || currentSettings.payheroCallbackUrl || currentSettings.payments?.payhero?.callback_url || '';
+        const minDep = input.minDep !== undefined ? parseFloat(input.minDep) : (input.trade?.min_deposit ?? currentSettings.trade?.min_deposit ?? 50);
+        const minWithdraw = input.minWithdraw !== undefined ? parseFloat(input.minWithdraw) : (input.withdraw?.min_withdrawal ?? currentSettings.withdraw?.min_withdrawal ?? 100);
 
         const updated = {
           ...currentSettings,
@@ -88,6 +90,23 @@ export default async function handler(req, res) {
           payheroPassword: phPass,
           payheroChannelId: phChan,
           payheroCallbackUrl: phCb,
+          minDep: minDep,
+          minWithdraw: minWithdraw,
+          trade: {
+            ...currentSettings.trade,
+            ...(input.trade || {}),
+            min_deposit: minDep,
+            min_stake: input.minStake !== undefined ? parseFloat(input.minStake) : (currentSettings.trade?.min_stake ?? 10),
+            max_stake: input.maxStake !== undefined ? parseFloat(input.maxStake) : (currentSettings.trade?.max_stake ?? 50000),
+            max_multiplier: input.maxMult !== undefined ? parseFloat(input.maxMult) : (currentSettings.trade?.max_multiplier ?? 5.0),
+            autosell_multiplier: input.autosell !== undefined ? parseFloat(input.autosell) : (currentSettings.trade?.autosell_multiplier ?? 2.5),
+            prestart_wait: input.prestart !== undefined ? parseInt(input.prestart) : (currentSettings.trade?.prestart_wait ?? 3)
+          },
+          withdraw: {
+            ...currentSettings.withdraw,
+            ...(input.withdraw || {}),
+            min_withdrawal: minWithdraw
+          },
           payments: {
             ...currentSettings.payments,
             ...(input.payments || {}),

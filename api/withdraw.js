@@ -89,12 +89,25 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Please enter a valid withdrawal amount.' });
     }
 
-    // Min withdrawal check
-    const minRequired = currency.toLowerCase() === 'usd' ? 1.0 : 100.0;
+    // Fetch dynamically configured min withdrawal from settings table
+    let minRequired = currency.toLowerCase() === 'usd' ? 1.0 : 100.0;
+    if (db) {
+      try {
+        const rows = await db`SELECT value FROM settings WHERE key = 'platform_config' LIMIT 1`;
+        if (rows.length > 0) {
+          const cfg = JSON.parse(rows[0].value);
+          const configuredMin = cfg.minWithdraw !== undefined ? parseFloat(cfg.minWithdraw) : (cfg.withdraw?.min_withdrawal !== undefined ? parseFloat(cfg.withdraw.min_withdrawal) : null);
+          if (configuredMin !== null && !isNaN(configuredMin) && configuredMin > 0) {
+            minRequired = configuredMin;
+          }
+        }
+      } catch(e) {}
+    }
+
     if (withdrawAmt < minRequired) {
       return res.status(400).json({
         success: false,
-        error: `Minimum withdrawal is ${currency.toLowerCase() === 'usd' ? '$1.00 USD' : 'KES 100'}.`
+        error: `Minimum withdrawal is ${currency.toLowerCase() === 'usd' ? '$' + minRequired.toFixed(2) : 'KES ' + minRequired.toLocaleString('en-US', {minimumFractionDigits: 0})}.`
       });
     }
 
