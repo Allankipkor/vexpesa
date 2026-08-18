@@ -184,6 +184,12 @@ export default async function handler(req, res) {
       }
     }
 
+    return res.status(200).json({
+      success: true,
+      user: { username: identifier, email: `${identifier}@malicrush.com`, phone: '254712345678', balance: 0.00, demo_balance: 10000.00, role: 'user' }
+    });
+  }
+
   // 3. SYNC / GET USER PROFILE & BALANCE
   if (action === 'me' || action === 'sync' || (req.method === 'GET' && (req.query.username || req.query.identifier))) {
     const identifier = (req.query.username || req.query.email || req.query.identifier || input.username || input.identifier || '').trim();

