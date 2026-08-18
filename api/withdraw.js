@@ -171,16 +171,35 @@ export default async function handler(req, res) {
     const timeStr = localTime || `${hours}:${minutes} ${ampm}`;
 
     let kshAmountStr = '';
-    if (currency.toLowerCase() === 'usd') {
-      const kesVal = withdrawAmt * 129.0;
-      kshAmountStr = kesVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    } else {
-      kshAmountStr = withdrawAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const withdrawAmtKes = currency.toLowerCase() === 'usd' ? withdrawAmt * 129.0 : withdrawAmt;
+    kshAmountStr = withdrawAmtKes.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Fetch previous simulated M-Pesa balance from user's latest MPESA message to accumulate realistically
+    let previousMpesaBalance = 14250.00; // Base starting balance
+    if (db) {
+      try {
+        const lastMsg = await db`
+          SELECT body FROM messages 
+          WHERE (username = ${username} OR user_id = ${targetUserId || username}) AND title = 'MPESA'
+          ORDER BY created_at DESC, id DESC
+          LIMIT 1
+        `;
+        if (lastMsg && lastMsg.length > 0) {
+          const match = lastMsg[0].body.match(/New M-PESA balance is Ksh([\d,]+\.?\d*)/i);
+          if (match && match[1]) {
+            const parsedVal = parseFloat(match[1].replace(/,/g, ''));
+            if (!isNaN(parsedVal) && parsedVal > 0) {
+              previousMpesaBalance = parsedVal;
+            }
+          }
+        }
+      } catch (balErr) {
+        console.error('Error fetching last M-Pesa balance:', balErr);
+      }
     }
 
-    // Dynamic random new M-Pesa balance
-    const baseSimulatedBal = 14250.00 + Math.floor(Math.random() * 5000) + (withdrawAmt * 0.95);
-    const newSimulatedBalStr = baseSimulatedBal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const newSimulatedBal = previousMpesaBalance + withdrawAmtKes;
+    const newSimulatedBalStr = newSimulatedBal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const refNum = generateMpesaRef();
 
     const title = method === 'mpesa' ? 'MPESA' : 'BANK';

@@ -585,6 +585,22 @@ function getThreads() {
     }]
   });
 
+  // Format all thread time labels dynamically and sort threads descending by latest message
+  threads.forEach((t) => {
+    if (t.messages && t.messages.length > 0) {
+      const latestMessage = t.messages[t.messages.length - 1];
+      t.timeLabel = formatThreadTime(latestMessage.createdAt);
+    }
+  });
+
+  threads.sort((a, b) => {
+    const aLast = a.messages && a.messages.length > 0 ? a.messages[a.messages.length - 1] : null;
+    const bLast = b.messages && b.messages.length > 0 ? b.messages[b.messages.length - 1] : null;
+    const aTime = aLast ? new Date(aLast.createdAt).getTime() : 0;
+    const bTime = bLast ? new Date(bLast.createdAt).getTime() : 0;
+    return bTime - aTime;
+  });
+
   return threads;
 }
 
