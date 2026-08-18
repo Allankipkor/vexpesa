@@ -1072,17 +1072,19 @@ async function renderTradersList(){
         tr.className = 'hover:bg-gray-800/30 transition-colors';
         const userParam = encodeURIComponent(t.username || '');
         const idParam = encodeURIComponent(t.id || '');
-        const rawOutcome = currentUserOutcomes[t.username] || `force_loss:${currentForceLossRate || 85}`;
+        const rawOutcome = currentUserOutcomes[t.username] || currentGlobalOutcome || 'auto';
         let userMode = rawOutcome;
         let userRate = null;
         if (rawOutcome.includes(':')) {
           const parts = rawOutcome.split(':');
           userMode = parts[0];
-          userRate = parseInt(parts[1]) || (userMode === 'force_win' ? currentForceWinRate : currentForceLossRate);
+          userRate = parseInt(parts[1]) || (userMode === 'force_win' ? currentForceWinRate : (userMode === 'force_loss' ? currentForceLossRate : currentWinRate));
         } else if (userMode === 'force_win') {
           userRate = currentForceWinRate;
         } else if (userMode === 'force_loss') {
           userRate = currentForceLossRate;
+        } else {
+          userRate = currentWinRate;
         }
 
         const isAuto = userMode === 'auto';

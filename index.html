@@ -904,13 +904,13 @@ let platformUserOutcomes = {};     // { [username]: 'auto' | 'force_win' | 'forc
 function resolveTradeOutcomeRule() {
   const uname = currentUser ? (currentUser.username || currentUser.name || '') : '';
   let rawRule = null;
-  if (uname && platformUserOutcomes && platformUserOutcomes[uname]) {
+
+  // 1. Check if an explicit per-user override exists for this specific trader
+  if (uname && platformUserOutcomes && platformUserOutcomes[uname] && platformUserOutcomes[uname] !== 'auto') {
     rawRule = platformUserOutcomes[uname];
-  } else if (uname) {
-    // All new signups default to force loss first
-    rawRule = `force_loss:${platformForceLossRate || 85}`;
   } else {
-    rawRule = platformForceOutcome;
+    // 2. Otherwise follow the Global Platform Mode & Slider configured by Admin
+    rawRule = platformForceOutcome || 'auto';
   }
   
   let mode = rawRule || 'auto';
@@ -929,7 +929,7 @@ function resolveTradeOutcomeRule() {
     const lossProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformForceLossRate || 85);
     return roll < lossProb ? 'force_loss' : 'force_win';
   } else {
-    // auto with target win rate
+    // 'auto' mode with target win rate slider
     const autoWinProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformWinRate || 45);
     return roll < autoWinProb ? 'force_win' : 'force_loss';
   }
@@ -1605,13 +1605,13 @@ async function syncPlatformSettings() {
       if (s.controls.target_win_rate !== undefined) platformWinRate = parseFloat(s.controls.target_win_rate);
       if (s.controls.force_win_rate !== undefined) platformForceWinRate = parseFloat(s.controls.force_win_rate);
       if (s.controls.force_loss_rate !== undefined) platformForceLossRate = parseFloat(s.controls.force_loss_rate);
-      if (s.controls.user_outcomes) platformUserOutcomes = { ...platformUserOutcomes, ...s.controls.user_outcomes };
+      if (s.controls.user_outcomes) platformUserOutcomes = s.controls.user_outcomes;
     }
     if (s.force_outcome) platformForceOutcome = s.force_outcome;
     if (s.target_win_rate !== undefined) platformWinRate = parseFloat(s.target_win_rate);
     if (s.force_win_rate !== undefined) platformForceWinRate = parseFloat(s.force_win_rate);
     if (s.force_loss_rate !== undefined) platformForceLossRate = parseFloat(s.force_loss_rate);
-    if (s.user_outcomes) platformUserOutcomes = { ...platformUserOutcomes, ...s.user_outcomes };
+    if (s.user_outcomes) platformUserOutcomes = s.user_outcomes;
 
     applyPlatformConfig();
 
