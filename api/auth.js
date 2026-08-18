@@ -42,9 +42,29 @@ export default async function handler(req, res) {
           `;
           newUser = res[0];
         } catch (insertErr) {
-          // If ID column lacks a sequence default, calculate next ID automatically
-          const maxIdRes = await db`SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM users`;
-          const nextId = parseInt(maxIdRes[0]?.next_id || 1);
+          // Detect ID column data type from database schema
+          const colInfo = await db`
+            SELECT data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'id'
+          `;
+          const type = (colInfo[0]?.data_type || '').toLowerCase();
+          let nextId;
+
+          if (type === 'uuid') {
+            const uidRes = await db`SELECT gen_random_uuid() AS uid`;
+            nextId = uidRes[0]?.uid;
+          } else if (type.includes('char') || type.includes('text')) {
+            nextId = 'usr_' + Date.now() + Math.random().toString(36).substring(2, 7);
+          } else {
+            // Integer / Bigint / Numeric
+            const maxIdRes = await db`
+              SELECT COALESCE(MAX(CASE WHEN id ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 0) + 1 AS next_id 
+              FROM users
+            `;
+            nextId = parseInt(maxIdRes[0]?.next_id || 1);
+          }
+
           const res = await db`
             INSERT INTO users (id, username, email, phone, password_hash, balance, demo_balance, role)
             VALUES (${nextId}, ${username}, ${email}, ${phone}, ${password}, 0.00, 10000.00, 'user')
