@@ -21,6 +21,7 @@ node_modules/
 vendor/
 
 # Android build files
+android/local.properties
 android/.gradle/
 android/**/build/
 .gradle/
