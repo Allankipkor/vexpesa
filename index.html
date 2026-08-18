@@ -65,6 +65,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg-primary);col
 .btn-sm{padding:6px 14px;border-radius:6px;border:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
 .btn-green{background:var(--green);color:#000}.btn-green:hover{background:var(--green-dark)}
 .btn-ghost{background:transparent;color:var(--text-secondary);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--text-secondary);color:#fff}
+.header-actions{display:flex;align-items:center;gap:6px}
+.btn-deposit{background:var(--green);color:#000;font-weight:700;gap:4px;white-space:nowrap;padding:6px 12px;cursor:pointer}
+.btn-deposit:hover{background:var(--green-dark)}
+.btn-withdraw{background:transparent;color:var(--text-secondary);border:1px solid var(--border);font-weight:600;gap:4px;white-space:nowrap;padding:6px 12px;cursor:pointer}
+.btn-withdraw:hover{border-color:var(--text-secondary);color:#fff}
+.deposit-icon, .withdraw-icon{font-weight:800;font-size:14px;line-height:1;display:inline-block}
 
 /* User menu dropdown */
 .user-menu{position:relative}
@@ -388,7 +394,14 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
   .logo-icon{width:28px;height:28px;font-size:13px}
   .logo-text{font-size:14px;overflow:hidden;text-overflow:ellipsis;max-width:120px}
   .header-right{gap:6px;flex-shrink:0}
+  .header-actions{gap:4px}
   .btn-sm{padding:6px 10px;font-size:11px;white-space:nowrap}
+  .btn-deposit{padding:4px 9px;font-size:15px;font-weight:800;min-width:30px;height:30px;border-radius:6px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+  .btn-deposit .deposit-label{display:none}
+  .btn-deposit .deposit-icon{display:inline-block}
+  .btn-withdraw{padding:4px 9px;font-size:15px;font-weight:800;min-width:30px;height:30px;border-radius:6px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+  .btn-withdraw .withdraw-label{display:none}
+  .btn-withdraw .withdraw-icon{display:inline-block}
   .balance-pill{padding:3px 10px;gap:5px}
   .balance-pill .val{font-size:12px}
   .instrument-bar{padding:8px 12px;gap:10px}
@@ -464,13 +477,25 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
       <div class="val" id="headerBalance">0.00</div>
     </div>
 
+    <!-- Header Action Buttons (Deposit + and Withdraw -) -->
+    <div class="header-actions" id="headerActionsWrap" style="display:flex">
+      <button class="btn-sm btn-green btn-deposit" onclick="openDeposit()" title="Deposit Funds">
+        <span class="deposit-icon">+</span>
+        <span class="deposit-label">Deposit</span>
+      </button>
+      <button class="btn-sm btn-ghost btn-withdraw" onclick="openWithdraw()" title="Withdraw to M-Pesa">
+        <span class="withdraw-icon">−</span>
+        <span class="withdraw-label">Withdraw</span>
+      </button>
+    </div>
+
     <!-- Dynamic auth buttons -->
-    <div id="authButtonsWrap" style="display:flex;gap:6px">
+    <div id="authButtonsWrap" style="display:none;gap:6px">
       <a href="login.html" class="btn-sm btn-ghost" id="loginBtnNav">Login</a>
       <a href="register.html" class="btn-sm btn-green" id="signUpBtnNav">Sign Up</a>
     </div>
 
-    <div class="user-menu" id="userMenuWrap" style="display:none">
+    <div class="user-menu" id="userMenuWrap" style="display:block">
       <button class="btn-sm btn-ghost user-menu-trigger" onclick="toggleUserMenu(event)">
         <span id="userNameNav">Trader</span> ▾
       </button>
@@ -492,10 +517,6 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
           Withdraw to M-Pesa
         </div>
         <div class="user-menu-divider"></div>
-        <a href="admin/login.html" class="user-menu-item">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-          Admin Portal
-        </a>
         <div class="user-menu-item user-menu-danger" onclick="logoutUser()">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           Sign Out
@@ -760,6 +781,10 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
 // MALICRUSH CLIENT STATE & PERSISTENCE
 // ═══════════════════════════════════════════
 let currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
+if (!currentUser && localStorage.getItem('maliUserLoggedOut') !== 'true') {
+  currentUser = { username: 'Allano', email: 'allano@malicrush.com', phone: '254712345678' };
+  localStorage.setItem('maliUser', JSON.stringify(currentUser));
+}
 let balance = parseFloat(localStorage.getItem('maliRealBalance') || '2500.00');
 const DEMO_START_BALANCE = 10000;
 let isDemoMode = false;
@@ -868,6 +893,7 @@ checkUserSession();
 
 function logoutUser(){
   localStorage.removeItem('maliUser');
+  localStorage.setItem('maliUserLoggedOut', 'true');
   currentUser = null;
   checkUserSession();
   showToast('Signed out', {sub: 'You have been logged out of MaliCrush', kind: 'info'});
