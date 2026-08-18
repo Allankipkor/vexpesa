@@ -35,14 +35,30 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: 'Invalid phone format. Use 07XXXXXXXX or 2547XXXXXXXX' });
   }
 
-  const apiUsername = (input.payheroUsername || '').trim();
-  const apiPassword = (input.payheroPassword || '').trim();
-  const channelId = parseInt(input.payheroChannelId) || 0;
-  const callbackUrl = (input.payheroCallbackUrl || '').trim();
+  let apiUsername = (input.payheroUsername || '').trim();
+  let apiPassword = (input.payheroPassword || '').trim();
+  let channelId = parseInt(input.payheroChannelId) || 0;
+  let callbackUrl = (input.payheroCallbackUrl || '').trim();
+
+  // If not provided in client request, fetch directly from Neon DB settings table (ensures STK push works on all user devices)
+  if (db && (!apiUsername || !apiPassword || !channelId)) {
+    try {
+      const rows = await db`SELECT value FROM settings WHERE key = 'platform_config' LIMIT 1`;
+      if (rows.length > 0) {
+        const saved = JSON.parse(rows[0].value);
+        if (!apiUsername) apiUsername = (saved.payheroUsername || saved.payments?.payhero?.api_username || '').trim();
+        if (!apiPassword) apiPassword = (saved.payheroPassword || saved.payments?.payhero?.api_password || '').trim();
+        if (!channelId) channelId = parseInt(saved.payheroChannelId || saved.payments?.payhero?.channel_id) || 0;
+        if (!callbackUrl) callbackUrl = (saved.payheroCallbackUrl || saved.payments?.payhero?.callback_url || '').trim();
+      }
+    } catch (err) {
+      console.error('Error fetching settings for STK push:', err);
+    }
+  }
 
   const reference = 'MALI-' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
-  // If PayHero credentials are provided, call PayHero official API
+  // If PayHero credentials are configured in Admin/DB, call PayHero official API
   if (apiUsername && apiPassword && channelId) {
     try {
       const auth = Buffer.from(`${apiUsername}:${apiPassword}`).toString('base64');
@@ -52,8 +68,8 @@ export default async function handler(req, res) {
         channel_id: channelId,
         provider: 'm-pesa',
         external_reference: reference,
-        customer_name: 'MaliCrush Trader',
-        callback_url: callbackUrl || `https://${req.headers.host || 'malicrush.vercel.app'}/api/payhero-callback.php`
+        customer_name: username || 'MaliCrush Trader',
+        callback_url: callbackUrl || `https://${req.headers.host || 'malicrush.vercel.app'}/api/payhero-callback.js`
       };
 
       const response = await fetch('https://backend.payhero.co.ke/api/v2/payments', {

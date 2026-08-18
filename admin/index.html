@@ -592,37 +592,76 @@ function loadAdminConfig(){
 
   onCurrencySelectChange();
 
-  // Also fetch backend API if running
+  // Also fetch live backend settings from Neon DB to sync across all devices
   const applySettingsData = (s) => {
-    if (s.controls) {
-      if (s.controls.force_outcome) currentGlobalOutcome = s.controls.force_outcome;
-      if (s.controls.target_win_rate !== undefined) {
-        currentWinRate = s.controls.target_win_rate;
-        const sl = document.getElementById('sliderWinRate');
-        if (sl) sl.value = currentWinRate;
-        const lbl = document.getElementById('lblWinRate');
-        if (lbl) lbl.textContent = currentWinRate + '% Trader Wins';
-      }
-      if (s.controls.user_outcomes) {
-        currentUserOutcomes = { ...currentUserOutcomes, ...s.controls.user_outcomes };
-        localStorage.setItem('maliUserOutcomes', JSON.stringify(currentUserOutcomes));
-      }
-      updateGlobalOutcomeUI();
-    }
-    if (!cfg.currency && s.payments && s.payments.deposit_currency) {
-      document.getElementById('cfgCurrency').value = s.payments.deposit_currency;
+    if (!s) return;
+
+    if (s.speed) document.getElementById('cfgSpeed').value = s.speed;
+    if (s.spikeFreq) document.getElementById('cfgSpikeFreq').value = s.spikeFreq;
+    if (s.spikeMax) document.getElementById('cfgSpikeMax').value = s.spikeMax;
+    if (s.crashFreq) document.getElementById('cfgCrashFreq').value = s.crashFreq;
+    if (s.crashDepth) document.getElementById('cfgCrashDepth').value = s.crashDepth;
+    if (s.maxMult) document.getElementById('cfgMaxMult').value = s.maxMult;
+    if (s.prestart) document.getElementById('cfgPrestart').value = s.prestart;
+    if (s.autosell) document.getElementById('cfgAutosell').value = s.autosell;
+    if (s.minStake) document.getElementById('cfgMinStake').value = s.minStake;
+    if (s.maxStake) document.getElementById('cfgMaxStake').value = s.maxStake;
+    if (s.usdRate || s.payments?.usd_rate) document.getElementById('cfgUsdRate').value = s.usdRate || s.payments.usd_rate;
+    if (s.currency || s.payments?.deposit_currency) {
+      document.getElementById('cfgCurrency').value = s.currency || s.payments.deposit_currency;
       onCurrencySelectChange();
     }
-    if (!cfg.usdRate && s.payments && s.payments.usd_rate) {
-      document.getElementById('cfgUsdRate').value = s.payments.usd_rate;
+    if (s.minDep) document.getElementById('cfgMinDep').value = s.minDep;
+
+    // Load PayHero credentials directly from DB across all devices
+    const phUser = s.payheroUsername || s.payments?.payhero?.api_username || '';
+    const phPass = s.payheroPassword || s.payments?.payhero?.api_password || '';
+    const phChan = s.payheroChannelId || s.payments?.payhero?.channel_id || '';
+    const phCb = s.payheroCallbackUrl || s.payments?.payhero?.callback_url || '';
+
+    if (phUser) document.getElementById('cfgPayheroUsername').value = phUser;
+    if (phPass) document.getElementById('cfgPayheroPassword').value = phPass;
+    if (phChan) document.getElementById('cfgPayheroChannelId').value = phChan;
+    if (phCb) document.getElementById('cfgPayheroCallbackUrl').value = phCb;
+
+    if (s.force_outcome || s.controls?.force_outcome) {
+      currentGlobalOutcome = s.force_outcome || s.controls.force_outcome;
     }
-    if (s.payments && s.payments.payhero) {
-      const ph = s.payments.payhero;
-      if (!cfg.payheroUsername && ph.api_username) document.getElementById('cfgPayheroUsername').value = ph.api_username;
-      if (!cfg.payheroPassword && ph.api_password) document.getElementById('cfgPayheroPassword').value = ph.api_password;
-      if (!cfg.payheroChannelId && ph.channel_id) document.getElementById('cfgPayheroChannelId').value = ph.channel_id;
-      if (!cfg.payheroCallbackUrl && ph.callback_url) document.getElementById('cfgPayheroCallbackUrl').value = ph.callback_url;
+    if (s.target_win_rate !== undefined || s.controls?.target_win_rate !== undefined) {
+      currentWinRate = s.target_win_rate !== undefined ? s.target_win_rate : s.controls.target_win_rate;
+      const sl = document.getElementById('sliderWinRate');
+      if (sl) sl.value = currentWinRate;
+      const lbl = document.getElementById('lblWinRate');
+      if (lbl) lbl.textContent = currentWinRate + '% Trader Wins';
     }
+    if (s.user_outcomes || s.controls?.user_outcomes) {
+      currentUserOutcomes = { ...currentUserOutcomes, ...(s.user_outcomes || s.controls.user_outcomes) };
+      localStorage.setItem('maliUserOutcomes', JSON.stringify(currentUserOutcomes));
+    }
+    updateGlobalOutcomeUI();
+
+    // Cache to local storage for offline fast load
+    localStorage.setItem('maliPlatformConfig', JSON.stringify({
+      speed: parseFloat(document.getElementById('cfgSpeed').value) || 120,
+      spikeFreq: parseFloat(document.getElementById('cfgSpikeFreq').value) || 0.12,
+      spikeMax: parseFloat(document.getElementById('cfgSpikeMax').value) || 2.8,
+      crashFreq: parseFloat(document.getElementById('cfgCrashFreq').value) || 0.02,
+      crashDepth: parseFloat(document.getElementById('cfgCrashDepth').value) || -2.8,
+      maxMult: parseFloat(document.getElementById('cfgMaxMult').value) || 5.0,
+      prestart: parseInt(document.getElementById('cfgPrestart').value) || 3,
+      autosell: parseFloat(document.getElementById('cfgAutosell').value) || 2.5,
+      minStake: parseFloat(document.getElementById('cfgMinStake').value) || 10,
+      maxStake: parseFloat(document.getElementById('cfgMaxStake').value) || 50000,
+      usdRate: parseFloat(document.getElementById('cfgUsdRate').value) || 129.00,
+      currency: document.getElementById('cfgCurrency').value || 'kes',
+      minDep: parseFloat(document.getElementById('cfgMinDep').value) || 50,
+      force_outcome: currentGlobalOutcome,
+      target_win_rate: currentWinRate,
+      payheroUsername: phUser,
+      payheroPassword: phPass,
+      payheroChannelId: phChan,
+      payheroCallbackUrl: phCb
+    }));
   };
 
   fetch('/api/settings')

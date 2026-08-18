@@ -75,10 +75,33 @@ export default async function handler(req, res) {
           } catch(e) {}
         }
 
-        // Merge inputs
+        // Merge inputs & preserve PayHero configuration
+        const phUser = input.payheroUsername || input.payments?.payhero?.api_username || currentSettings.payheroUsername || currentSettings.payments?.payhero?.api_username || '';
+        const phPass = input.payheroPassword || input.payments?.payhero?.api_password || currentSettings.payheroPassword || currentSettings.payments?.payhero?.api_password || '';
+        const phChan = input.payheroChannelId || input.payments?.payhero?.channel_id || currentSettings.payheroChannelId || currentSettings.payments?.payhero?.channel_id || '';
+        const phCb = input.payheroCallbackUrl || input.payments?.payhero?.callback_url || currentSettings.payheroCallbackUrl || currentSettings.payments?.payhero?.callback_url || '';
+
         const updated = {
           ...currentSettings,
           ...input,
+          payheroUsername: phUser,
+          payheroPassword: phPass,
+          payheroChannelId: phChan,
+          payheroCallbackUrl: phCb,
+          payments: {
+            ...currentSettings.payments,
+            ...(input.payments || {}),
+            deposit_currency: input.currency || input.payments?.deposit_currency || currentSettings.payments.deposit_currency,
+            usd_rate: input.usdRate || input.payments?.usd_rate || currentSettings.payments.usd_rate,
+            payhero: {
+              ...(currentSettings.payments?.payhero || {}),
+              ...(input.payments?.payhero || {}),
+              api_username: phUser,
+              api_password: phPass,
+              channel_id: phChan,
+              callback_url: phCb
+            }
+          },
           controls: {
             ...currentSettings.controls,
             ...(input.controls || {}),
