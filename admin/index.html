@@ -306,7 +306,7 @@ function loadAdminConfig(){
   onCurrencySelectChange();
 
   // Also fetch backend API if running
-  fetch('../api/settings').then(r=>r.json()).then(s=>{
+  const applySettingsData = (s) => {
     if (!cfg.currency && s.payments && s.payments.deposit_currency) {
       document.getElementById('cfgCurrency').value = s.payments.deposit_currency;
       onCurrencySelectChange();
@@ -321,18 +321,23 @@ function loadAdminConfig(){
       if (!cfg.payheroChannelId && ph.channel_id) document.getElementById('cfgPayheroChannelId').value = ph.channel_id;
       if (!cfg.payheroCallbackUrl && ph.callback_url) document.getElementById('cfgPayheroCallbackUrl').value = ph.callback_url;
     }
-  }).catch(()=>{});
+  };
+
+  fetch('/api/settings')
+    .then(r => r.ok ? r.json() : fetch('../api/settings').then(r2 => r2.json()))
+    .then(applySettingsData)
+    .catch(() => {});
 
   renderTradersList();
 }
 
 function saveAdminConfig(){
   const cfg = {
-    speed: parseFloat(document.getElementById('cfgSpeed').value) || 300,
-    spikeFreq: parseFloat(document.getElementById('cfgSpikeFreq').value) || 0.10,
-    spikeMax: parseFloat(document.getElementById('cfgSpikeMax').value) || 0.105,
+    speed: parseFloat(document.getElementById('cfgSpeed').value) || 120,
+    spikeFreq: parseFloat(document.getElementById('cfgSpikeFreq').value) || 0.12,
+    spikeMax: parseFloat(document.getElementById('cfgSpikeMax').value) || 2.8,
     crashFreq: parseFloat(document.getElementById('cfgCrashFreq').value) || 0.02,
-    crashDepth: parseFloat(document.getElementById('cfgCrashDepth').value) || -0.17,
+    crashDepth: parseFloat(document.getElementById('cfgCrashDepth').value) || -2.8,
     maxMult: parseFloat(document.getElementById('cfgMaxMult').value) || 5.0,
     prestart: parseInt(document.getElementById('cfgPrestart').value) || 3,
     autosell: parseFloat(document.getElementById('cfgAutosell').value) || 2.5,
@@ -352,11 +357,17 @@ function saveAdminConfig(){
   localStorage.setItem('maliDepositCurrency', cfg.currency);
 
   // Sync to Backend Server API
-  fetch('../api/settings', {
+  fetch('/api/settings', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(cfg)
-  }).catch(()=>{});
+  }).catch(() => {
+    fetch('../api/settings', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(cfg)
+    }).catch(() => {});
+  });
 
   const btn = document.getElementById('saveCfgBtn');
   btn.textContent = 'Saved & Applied! ✓';
@@ -377,7 +388,8 @@ async function renderTradersList(){
   const prefix = curr === 'usd' ? '$' : 'KES ';
 
   try {
-    const res = await fetch('../api/users');
+    let res = await fetch('/api/users');
+    if (!res.ok) res = await fetch('../api/users');
     const data = await res.json();
 
     if (data.success && data.users && data.users.length > 0) {
@@ -411,10 +423,18 @@ async function renderTradersList(){
       });
 
       const statUsers = document.getElementById('adminStatUsers');
-      if (statUsers) statUsers.textContent = (1280 + data.users.length).toLocaleString();
+      if (statUsers) statUsers.textContent = data.users.length.toLocaleString();
+      if (data.stats) {
+        const statVol = document.getElementById('adminStatVol');
+        if (statVol && data.stats.total_volume) statVol.textContent = prefix + data.stats.total_volume.toLocaleString('en-US',{minimumFractionDigits:2});
+        const statPay = document.getElementById('adminStatPayouts');
+        if (statPay && data.stats.total_payouts) statPay.textContent = prefix + data.stats.total_payouts.toLocaleString('en-US',{minimumFractionDigits:2});
+      }
       return;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('Failed to fetch traders list:', e);
+  }
 
   // Fallback to local accounts if database not yet connected
   const users = JSON.parse(localStorage.getItem('maliUsersList') || '[]');
@@ -457,7 +477,7 @@ async function renderTradersList(){
 }
 
 async function creditTraderBalance(username, userId){
-  const curr = document.getElementById('cfgCurrency').value;
+  const curr = document.getElementById('cfgCurrency') ? document.getElementById('cfgCurrency').value : 'kes';
   const defCredit = curr === 'usd' ? '50' : '1000';
   const amtStr = prompt(`Enter amount to credit to ${username}'s wallet (${curr.toUpperCase()}):`, defCredit);
   if (!amtStr) return;
@@ -465,11 +485,18 @@ async function creditTraderBalance(username, userId){
   if (isNaN(amt) || amt <= 0) { alert('Invalid amount'); return; }
 
   try {
-    await fetch('../api/users', {
+    let res = await fetch('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'credit', username, userId, amount: amt, wallet_type: 'real' })
     });
+    if (!res.ok) {
+      res = await fetch('../api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'credit', username, userId, amount: amt, wallet_type: 'real' })
+      });
+    }
   } catch(e){}
 
   const curBal = parseFloat(localStorage.getItem('maliRealBalance') || '2500.00');

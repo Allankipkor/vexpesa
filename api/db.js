@@ -4,7 +4,12 @@ let sql = null;
 let isInitialized = false;
 
 export function getDb() {
-  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL;
+  const dbUrl = process.env.DATABASE_URL || 
+                process.env.POSTGRES_URL || 
+                process.env.NEON_DATABASE_URL || 
+                process.env.POSTGRES_URL_NON_POOLING || 
+                process.env.DATABASE_URL_UNPOOLED ||
+                process.env.POSTGRES_PRISMA_URL;
   if (!dbUrl) {
     return null;
   }
