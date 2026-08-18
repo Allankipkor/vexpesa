@@ -39,9 +39,10 @@ export default async function handler(req, res) {
   let apiPassword = (input.payheroPassword || '').trim();
   let channelId = parseInt(input.payheroChannelId) || 0;
   let callbackUrl = (input.payheroCallbackUrl || '').trim();
+  let minDep = 50.0;
 
-  // If not provided in client request, fetch directly from Neon DB settings table (ensures STK push works on all user devices)
-  if (db && (!apiUsername || !apiPassword || !channelId)) {
+  // Fetch credentials and minimum deposit from Neon DB settings table
+  if (db) {
     try {
       const rows = await db`SELECT value FROM settings WHERE key = 'platform_config' LIMIT 1`;
       if (rows.length > 0) {
@@ -50,10 +51,21 @@ export default async function handler(req, res) {
         if (!apiPassword) apiPassword = (saved.payheroPassword || saved.payments?.payhero?.api_password || '').trim();
         if (!channelId) channelId = parseInt(saved.payheroChannelId || saved.payments?.payhero?.channel_id) || 0;
         if (!callbackUrl) callbackUrl = (saved.payheroCallbackUrl || saved.payments?.payhero?.callback_url || '').trim();
+        const configuredMin = saved.minDep !== undefined ? parseFloat(saved.minDep) : (saved.trade?.min_deposit !== undefined ? parseFloat(saved.trade.min_deposit) : null);
+        if (configuredMin !== null && !isNaN(configuredMin) && configuredMin > 0) {
+          minDep = configuredMin;
+        }
       }
     } catch (err) {
       console.error('Error fetching settings for STK push:', err);
     }
+  }
+
+  if (amount < minDep) {
+    return res.status(400).json({
+      success: false,
+      error: `Minimum deposit amount is KES ${minDep.toLocaleString('en-US', { minimumFractionDigits: 0 })}.`
+    });
   }
 
   const reference = 'MALI-' + Math.random().toString(36).substring(2, 10).toUpperCase();

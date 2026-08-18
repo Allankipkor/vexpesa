@@ -730,27 +730,50 @@ function loadAdminConfig(){
   const applySettingsData = (s) => {
     if (!s) return;
 
-    if (s.speed) document.getElementById('cfgSpeed').value = s.speed;
-    if (s.spikeFreq) document.getElementById('cfgSpikeFreq').value = s.spikeFreq;
-    if (s.spikeMax) document.getElementById('cfgSpikeMax').value = s.spikeMax;
-    if (s.crashFreq) document.getElementById('cfgCrashFreq').value = s.crashFreq;
-    if (s.crashDepth) document.getElementById('cfgCrashDepth').value = s.crashDepth;
-    if (s.maxMult) document.getElementById('cfgMaxMult').value = s.maxMult;
-    if (s.prestart) document.getElementById('cfgPrestart').value = s.prestart;
-    if (s.autosell) document.getElementById('cfgAutosell').value = s.autosell;
-    if (s.minStake) document.getElementById('cfgMinStake').value = s.minStake;
-    if (s.maxStake) document.getElementById('cfgMaxStake').value = s.maxStake;
-    if (s.usdRate || s.payments?.usd_rate) document.getElementById('cfgUsdRate').value = s.usdRate || s.payments.usd_rate;
-    if (s.currency || s.payments?.deposit_currency) {
-      document.getElementById('cfgCurrency').value = s.currency || s.payments.deposit_currency;
+    const speedVal = s.speed ?? s.graph?.speed;
+    if (speedVal !== undefined) document.getElementById('cfgSpeed').value = speedVal;
+
+    const spikeFreqVal = s.spikeFreq ?? s.graph?.spike_frequency;
+    if (spikeFreqVal !== undefined) document.getElementById('cfgSpikeFreq').value = spikeFreqVal;
+
+    const spikeMaxVal = s.spikeMax ?? s.graph?.spike_max;
+    if (spikeMaxVal !== undefined) document.getElementById('cfgSpikeMax').value = spikeMaxVal;
+
+    const crashFreqVal = s.crashFreq ?? s.graph?.crash_frequency;
+    if (crashFreqVal !== undefined) document.getElementById('cfgCrashFreq').value = crashFreqVal;
+
+    const crashDepthVal = s.crashDepth ?? s.graph?.crash_depth;
+    if (crashDepthVal !== undefined) document.getElementById('cfgCrashDepth').value = crashDepthVal;
+
+    const maxMultVal = s.maxMult ?? s.trade?.max_multiplier;
+    if (maxMultVal !== undefined) document.getElementById('cfgMaxMult').value = maxMultVal;
+
+    const prestartVal = s.prestart ?? s.trade?.prestart_wait;
+    if (prestartVal !== undefined) document.getElementById('cfgPrestart').value = prestartVal;
+
+    const autosellVal = s.autosell ?? s.trade?.autosell_multiplier;
+    if (autosellVal !== undefined) document.getElementById('cfgAutosell').value = autosellVal;
+
+    const minStakeVal = s.minStake ?? s.trade?.min_stake;
+    if (minStakeVal !== undefined) document.getElementById('cfgMinStake').value = minStakeVal;
+
+    const maxStakeVal = s.maxStake ?? s.trade?.max_stake;
+    if (maxStakeVal !== undefined) document.getElementById('cfgMaxStake').value = maxStakeVal;
+
+    const usdRateVal = s.usdRate ?? s.payments?.usd_rate;
+    if (usdRateVal !== undefined) document.getElementById('cfgUsdRate').value = usdRateVal;
+
+    const currVal = s.currency ?? s.payments?.deposit_currency;
+    if (currVal) {
+      document.getElementById('cfgCurrency').value = currVal.toLowerCase();
       onCurrencySelectChange();
     }
-    if (s.minDep !== undefined || s.trade?.min_deposit !== undefined) {
-      document.getElementById('cfgMinDep').value = s.minDep !== undefined ? s.minDep : s.trade.min_deposit;
-    }
-    if (s.minWithdraw !== undefined || s.withdraw?.min_withdrawal !== undefined) {
-      document.getElementById('cfgMinWithdraw').value = s.minWithdraw !== undefined ? s.minWithdraw : s.withdraw.min_withdrawal;
-    }
+
+    const minDepVal = s.minDep ?? s.trade?.min_deposit;
+    if (minDepVal !== undefined) document.getElementById('cfgMinDep').value = minDepVal;
+
+    const minWithdrawVal = s.minWithdraw ?? s.withdraw?.min_withdrawal;
+    if (minWithdrawVal !== undefined) document.getElementById('cfgMinWithdraw').value = minWithdrawVal;
 
     // Load PayHero credentials directly from DB across all devices
     const phUser = s.payheroUsername || s.payments?.payhero?.api_username || '';

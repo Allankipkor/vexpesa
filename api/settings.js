@@ -84,25 +84,66 @@ export default async function handler(req, res) {
         const phCb = input.payheroCallbackUrl || input.payments?.payhero?.callback_url || currentSettings.payheroCallbackUrl || currentSettings.payments?.payhero?.callback_url || '';
         const minDep = input.minDep !== undefined ? parseFloat(input.minDep) : (input.trade?.min_deposit ?? currentSettings.trade?.min_deposit ?? 50);
         const minWithdraw = input.minWithdraw !== undefined ? parseFloat(input.minWithdraw) : (input.withdraw?.min_withdrawal ?? currentSettings.withdraw?.min_withdrawal ?? 100);
+        const speed = input.speed !== undefined ? parseFloat(input.speed) : (input.graph?.speed ?? currentSettings.graph?.speed ?? 120);
+        const spikeFreq = input.spikeFreq !== undefined ? parseFloat(input.spikeFreq) : (input.graph?.spike_frequency ?? currentSettings.graph?.spike_frequency ?? 0.12);
+        const spikeMax = input.spikeMax !== undefined ? parseFloat(input.spikeMax) : (input.graph?.spike_max ?? currentSettings.graph?.spike_max ?? 2.8);
+        const crashFreq = input.crashFreq !== undefined ? parseFloat(input.crashFreq) : (input.graph?.crash_frequency ?? currentSettings.graph?.crash_frequency ?? 0.02);
+        const crashDepth = input.crashDepth !== undefined ? parseFloat(input.crashDepth) : (input.graph?.crash_depth ?? currentSettings.graph?.crash_depth ?? -2.8);
+        const minStake = input.minStake !== undefined ? parseFloat(input.minStake) : (input.trade?.min_stake ?? currentSettings.trade?.min_stake ?? 10);
+        const maxStake = input.maxStake !== undefined ? parseFloat(input.maxStake) : (input.trade?.max_stake ?? currentSettings.trade?.max_stake ?? 50000);
+        const maxMult = input.maxMult !== undefined ? parseFloat(input.maxMult) : (input.trade?.max_multiplier ?? currentSettings.trade?.max_multiplier ?? 5.0);
+        const autosell = input.autosell !== undefined ? parseFloat(input.autosell) : (input.trade?.autosell_multiplier ?? currentSettings.trade?.autosell_multiplier ?? 2.5);
+        const prestart = input.prestart !== undefined ? parseInt(input.prestart) : (input.trade?.prestart_wait ?? currentSettings.trade?.prestart_wait ?? 3);
+        const forceOutcome = input.force_outcome || input.controls?.force_outcome || currentSettings.controls.force_outcome || 'auto';
+        const targetWinRate = input.target_win_rate !== undefined ? parseFloat(input.target_win_rate) : (input.controls?.target_win_rate ?? currentSettings.controls?.target_win_rate ?? 45);
+        const forceWinRate = input.force_win_rate !== undefined ? parseFloat(input.force_win_rate) : (input.controls?.force_win_rate ?? currentSettings.controls?.force_win_rate ?? 85);
+        const forceLossRate = input.force_loss_rate !== undefined ? parseFloat(input.force_loss_rate) : (input.controls?.force_loss_rate ?? currentSettings.controls?.force_loss_rate ?? 85);
+        const usdRate = input.usdRate !== undefined ? parseFloat(input.usdRate) : (input.payments?.usd_rate ?? currentSettings.payments?.usd_rate ?? 129.00);
+        const currency = (input.currency || input.payments?.deposit_currency || currentSettings.payments?.deposit_currency || 'kes').toLowerCase();
 
         const updated = {
           ...currentSettings,
           ...input,
+          speed,
+          spikeFreq,
+          spikeMax,
+          crashFreq,
+          crashDepth,
+          minStake,
+          maxStake,
+          maxMult,
+          autosell,
+          prestart,
+          minDep,
+          minWithdraw,
+          usdRate,
+          currency,
+          force_outcome: forceOutcome,
+          target_win_rate: targetWinRate,
+          force_win_rate: forceWinRate,
+          force_loss_rate: forceLossRate,
           payheroUsername: phUser,
           payheroPassword: phPass,
           payheroChannelId: phChan,
           payheroCallbackUrl: phCb,
-          minDep: minDep,
-          minWithdraw: minWithdraw,
+          graph: {
+            ...currentSettings.graph,
+            ...(input.graph || {}),
+            speed,
+            spike_frequency: spikeFreq,
+            spike_max: spikeMax,
+            crash_frequency: crashFreq,
+            crash_depth: crashDepth
+          },
           trade: {
             ...currentSettings.trade,
             ...(input.trade || {}),
             min_deposit: minDep,
-            min_stake: input.minStake !== undefined ? parseFloat(input.minStake) : (currentSettings.trade?.min_stake ?? 10),
-            max_stake: input.maxStake !== undefined ? parseFloat(input.maxStake) : (currentSettings.trade?.max_stake ?? 50000),
-            max_multiplier: input.maxMult !== undefined ? parseFloat(input.maxMult) : (currentSettings.trade?.max_multiplier ?? 5.0),
-            autosell_multiplier: input.autosell !== undefined ? parseFloat(input.autosell) : (currentSettings.trade?.autosell_multiplier ?? 2.5),
-            prestart_wait: input.prestart !== undefined ? parseInt(input.prestart) : (currentSettings.trade?.prestart_wait ?? 3)
+            min_stake: minStake,
+            max_stake: maxStake,
+            max_multiplier: maxMult,
+            autosell_multiplier: autosell,
+            prestart_wait: prestart
           },
           withdraw: {
             ...currentSettings.withdraw,
@@ -112,8 +153,8 @@ export default async function handler(req, res) {
           payments: {
             ...currentSettings.payments,
             ...(input.payments || {}),
-            deposit_currency: input.currency || input.payments?.deposit_currency || currentSettings.payments.deposit_currency,
-            usd_rate: input.usdRate || input.payments?.usd_rate || currentSettings.payments.usd_rate,
+            deposit_currency: currency,
+            usd_rate: usdRate,
             payhero: {
               ...(currentSettings.payments?.payhero || {}),
               ...(input.payments?.payhero || {}),
@@ -126,10 +167,10 @@ export default async function handler(req, res) {
           controls: {
             ...currentSettings.controls,
             ...(input.controls || {}),
-            force_outcome: input.force_outcome || input.controls?.force_outcome || currentSettings.controls.force_outcome,
-            target_win_rate: input.target_win_rate !== undefined ? input.target_win_rate : (input.controls?.target_win_rate ?? currentSettings.controls?.target_win_rate ?? 45),
-            force_win_rate: input.force_win_rate !== undefined ? input.force_win_rate : (input.controls?.force_win_rate ?? currentSettings.controls?.force_win_rate ?? 85),
-            force_loss_rate: input.force_loss_rate !== undefined ? input.force_loss_rate : (input.controls?.force_loss_rate ?? currentSettings.controls?.force_loss_rate ?? 85),
+            force_outcome: forceOutcome,
+            target_win_rate: targetWinRate,
+            force_win_rate: forceWinRate,
+            force_loss_rate: forceLossRate,
             user_outcomes: {
               ...currentSettings.controls.user_outcomes,
               ...(input.user_outcomes || input.controls?.user_outcomes || {})
@@ -173,9 +214,47 @@ export default async function handler(req, res) {
         return res.status(200).json({
           ...defaultSettings,
           ...saved,
+          graph: {
+            ...defaultSettings.graph,
+            ...(saved.graph || {}),
+            speed: saved.speed ?? saved.graph?.speed ?? defaultSettings.graph.speed,
+            spike_frequency: saved.spikeFreq ?? saved.graph?.spike_frequency ?? defaultSettings.graph.spike_frequency,
+            spike_max: saved.spikeMax ?? saved.graph?.spike_max ?? defaultSettings.graph.spike_max,
+            crash_frequency: saved.crashFreq ?? saved.graph?.crash_frequency ?? defaultSettings.graph.crash_frequency,
+            crash_depth: saved.crashDepth ?? saved.graph?.crash_depth ?? defaultSettings.graph.crash_depth
+          },
+          trade: {
+            ...defaultSettings.trade,
+            ...(saved.trade || {}),
+            min_deposit: saved.minDep ?? saved.trade?.min_deposit ?? defaultSettings.trade.min_deposit,
+            min_stake: saved.minStake ?? saved.trade?.min_stake ?? defaultSettings.trade.min_stake,
+            max_stake: saved.maxStake ?? saved.trade?.max_stake ?? defaultSettings.trade.max_stake,
+            max_multiplier: saved.maxMult ?? saved.trade?.max_multiplier ?? defaultSettings.trade.max_multiplier,
+            autosell_multiplier: saved.autosell ?? saved.trade?.autosell_multiplier ?? defaultSettings.trade.autosell_multiplier,
+            prestart_wait: saved.prestart ?? saved.trade?.prestart_wait ?? defaultSettings.trade.prestart_wait
+          },
+          withdraw: {
+            ...defaultSettings.withdraw,
+            ...(saved.withdraw || {}),
+            min_withdrawal: saved.minWithdraw ?? saved.withdraw?.min_withdrawal ?? defaultSettings.withdraw.min_withdrawal
+          },
+          payments: {
+            ...defaultSettings.payments,
+            ...(saved.payments || {}),
+            deposit_currency: saved.currency ?? saved.payments?.deposit_currency ?? defaultSettings.payments.deposit_currency,
+            usd_rate: saved.usdRate ?? saved.payments?.usd_rate ?? defaultSettings.payments.usd_rate
+          },
           controls: {
             ...defaultSettings.controls,
-            ...(saved.controls || {})
+            ...(saved.controls || {}),
+            force_outcome: saved.force_outcome ?? saved.controls?.force_outcome ?? defaultSettings.controls.force_outcome,
+            target_win_rate: saved.target_win_rate ?? saved.controls?.target_win_rate ?? defaultSettings.controls.target_win_rate,
+            force_win_rate: saved.force_win_rate ?? saved.controls?.force_win_rate ?? defaultSettings.controls.force_win_rate,
+            force_loss_rate: saved.force_loss_rate ?? saved.controls?.force_loss_rate ?? defaultSettings.controls.force_loss_rate,
+            user_outcomes: {
+              ...defaultSettings.controls.user_outcomes,
+              ...(saved.user_outcomes || saved.controls?.user_outcomes || {})
+            }
           }
         });
       }

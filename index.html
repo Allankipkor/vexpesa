@@ -868,50 +868,6 @@ const CFG = {
   SCALE: 1,
 };
 
-async function syncPlatformSettings() {
-  try {
-    let res = await fetch('/api/settings');
-    if (!res.ok) res = await fetch('api/settings');
-    const data = await res.json();
-    if (data) {
-      if (data.trade) {
-        if (data.trade.min_deposit !== undefined) CFG.MIN_DEPOSIT = parseFloat(data.trade.min_deposit);
-        if (data.trade.min_stake !== undefined) CFG.MIN_STAKE = parseFloat(data.trade.min_stake);
-        if (data.trade.max_stake !== undefined) CFG.MAX_STAKE = parseFloat(data.trade.max_stake);
-        if (data.trade.max_multiplier !== undefined) CFG.MAX_MULT = parseFloat(data.trade.max_multiplier);
-        if (data.trade.autosell_multiplier !== undefined) CFG.AUTOSELL_MULT = parseFloat(data.trade.autosell_multiplier);
-      }
-      if (data.minDep !== undefined) CFG.MIN_DEPOSIT = parseFloat(data.minDep);
-      if (data.minWithdraw !== undefined) CFG.MIN_WITHDRAW = parseFloat(data.minWithdraw);
-      if (data.withdraw && data.withdraw.min_withdrawal !== undefined) CFG.MIN_WITHDRAW = parseFloat(data.withdraw.min_withdrawal);
-
-      if (data.payments) {
-        if (data.payments.deposit_currency) depositCurrency = data.payments.deposit_currency;
-        if (data.payments.usd_rate) usdRate = parseFloat(data.payments.usd_rate);
-      }
-      if (data.currency) depositCurrency = data.currency;
-      if (data.usdRate) usdRate = parseFloat(data.usdRate);
-
-      if (data.controls) {
-        if (data.controls.force_outcome) platformForceOutcome = data.controls.force_outcome;
-        if (data.controls.target_win_rate !== undefined) platformWinRate = parseFloat(data.controls.target_win_rate);
-        if (data.controls.force_win_rate !== undefined) platformForceWinRate = parseFloat(data.controls.force_win_rate);
-        if (data.controls.force_loss_rate !== undefined) platformForceLossRate = parseFloat(data.controls.force_loss_rate);
-        if (data.controls.user_outcomes) platformUserOutcomes = { ...data.controls.user_outcomes };
-      }
-      if (data.force_outcome) platformForceOutcome = data.force_outcome;
-      if (data.target_win_rate !== undefined) platformWinRate = parseFloat(data.target_win_rate);
-      if (data.force_win_rate !== undefined) platformForceWinRate = parseFloat(data.force_win_rate);
-      if (data.force_loss_rate !== undefined) platformForceLossRate = parseFloat(data.force_loss_rate);
-      if (data.user_outcomes) platformUserOutcomes = { ...data.user_outcomes };
-
-      if (typeof updateHUD === 'function') updateHUD();
-    }
-  } catch(e) {}
-}
-
-syncPlatformSettings();
-
 let prices = [];
 let rate = 0.5;
 let prevRate = rate;
@@ -1466,25 +1422,31 @@ function logoutUser(){
 
 function applyPlatformConfig(){
   const savedCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
-  if (savedCfg.speed) CFG.TICK = savedCfg.speed;
-  if (savedCfg.spikeFreq) CFG.SPIKE_FREQ = savedCfg.spikeFreq;
-  if (savedCfg.spikeMax) CFG.SPIKE_MAX = savedCfg.spikeMax;
-  if (savedCfg.crashFreq) CFG.CRASH_FREQ = savedCfg.crashFreq;
-  if (savedCfg.crashDepth) CFG.CRASH_DEPTH = savedCfg.crashDepth;
-  if (savedCfg.maxMult) CFG.MAX_MULT = savedCfg.maxMult;
-  if (savedCfg.prestart) CFG.PRESTART_WAIT = savedCfg.prestart;
-  if (savedCfg.autosell) CFG.AUTOSELL_MULT = savedCfg.autosell;
-  if (savedCfg.minStake) CFG.MIN_STAKE = savedCfg.minStake;
-  if (savedCfg.maxStake) CFG.MAX_STAKE = savedCfg.maxStake;
-  if (savedCfg.minDep) CFG.MIN_DEPOSIT = savedCfg.minDep;
+  if (savedCfg.speed) CFG.TICK = parseFloat(savedCfg.speed);
+  if (savedCfg.spikeFreq) CFG.SPIKE_FREQ = parseFloat(savedCfg.spikeFreq);
+  if (savedCfg.spikeMax) CFG.SPIKE_MAX = parseFloat(savedCfg.spikeMax);
+  if (savedCfg.crashFreq) CFG.CRASH_FREQ = parseFloat(savedCfg.crashFreq);
+  if (savedCfg.crashDepth) CFG.CRASH_DEPTH = parseFloat(savedCfg.crashDepth);
+  if (savedCfg.maxMult) CFG.MAX_MULT = parseFloat(savedCfg.maxMult);
+  if (savedCfg.prestart) CFG.PRESTART_WAIT = parseInt(savedCfg.prestart);
+  if (savedCfg.autosell) CFG.AUTOSELL_MULT = parseFloat(savedCfg.autosell);
+  if (savedCfg.minStake) CFG.MIN_STAKE = parseFloat(savedCfg.minStake);
+  if (savedCfg.maxStake) CFG.MAX_STAKE = parseFloat(savedCfg.maxStake);
+  if (savedCfg.minDep) CFG.MIN_DEPOSIT = parseFloat(savedCfg.minDep);
+  if (savedCfg.minWithdraw) CFG.MIN_WITHDRAW = parseFloat(savedCfg.minWithdraw);
   if (savedCfg.usdRate) usdRate = parseFloat(savedCfg.usdRate) || 129.00;
 
+  if (savedCfg.force_outcome) platformForceOutcome = savedCfg.force_outcome;
+  if (savedCfg.target_win_rate !== undefined) platformWinRate = parseFloat(savedCfg.target_win_rate);
+  if (savedCfg.force_win_rate !== undefined) platformForceWinRate = parseFloat(savedCfg.force_win_rate);
+  if (savedCfg.force_loss_rate !== undefined) platformForceLossRate = parseFloat(savedCfg.force_loss_rate);
+
   if (savedCfg.controls) {
-    platformForceOutcome = savedCfg.controls.force_outcome || 'auto';
-    platformWinRate = savedCfg.controls.target_win_rate || 45;
-    platformUserOutcomes = { ...platformUserOutcomes, ...(savedCfg.controls.user_outcomes || {}) };
-  } else if (savedCfg.force_outcome) {
-    platformForceOutcome = savedCfg.force_outcome;
+    if (savedCfg.controls.force_outcome) platformForceOutcome = savedCfg.controls.force_outcome;
+    if (savedCfg.controls.target_win_rate !== undefined) platformWinRate = parseFloat(savedCfg.controls.target_win_rate);
+    if (savedCfg.controls.force_win_rate !== undefined) platformForceWinRate = parseFloat(savedCfg.controls.force_win_rate);
+    if (savedCfg.controls.force_loss_rate !== undefined) platformForceLossRate = parseFloat(savedCfg.controls.force_loss_rate);
+    if (savedCfg.controls.user_outcomes) platformUserOutcomes = { ...platformUserOutcomes, ...savedCfg.controls.user_outcomes };
   }
   const localUserOutcomes = JSON.parse(localStorage.getItem('maliUserOutcomes') || '{}');
   platformUserOutcomes = { ...platformUserOutcomes, ...localUserOutcomes };
@@ -1510,19 +1472,10 @@ function applyPlatformConfig(){
   if (stakeCur) stakeCur.textContent = 'KES';
 
   const stakeInput = document.getElementById('stakeInput');
-  const quickWrap = document.getElementById('quickAmountsWrap');
-  if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) < 10)) {
+  if (stakeInput && (!stakeInput.dataset.modified || parseFloat(stakeInput.value) < (CFG.MIN_STAKE || 10))) {
     stakeInput.value = '100';
     stakeInput.min = (CFG.MIN_STAKE || 10).toString();
     stakeInput.step = '10';
-  }
-  if (quickWrap) {
-    quickWrap.innerHTML = `
-      <button class="quick-amt" onclick="setStake(50)">50</button>
-      <button class="quick-amt" onclick="setStake(100)">100</button>
-      <button class="quick-amt" onclick="setStake(200)">200</button>
-      <button class="quick-amt" onclick="setStake(500)">500</button>
-    `;
   }
 
   // Update Profit Bar
@@ -1588,44 +1541,86 @@ window.addEventListener('storage', (e) => {
 window.addEventListener('focus', syncUserBalance);
 setInterval(syncUserBalance, 8000);
 
-function syncPlatformSettings() {
-  fetch('api/settings').then(r=>r.json()).then(s=>{
+async function syncPlatformSettings() {
+  try {
+    let res = await fetch('/api/settings');
+    if (!res.ok) res = await fetch('api/settings');
+    const s = await res.json();
+    if (!s) return;
+
     const localCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
-    if(s.graph){
-      CFG.TICK = localCfg.speed || s.graph.speed || 120;
-      CFG.Y_MAX = s.graph.y_max || 3.0;
-      CFG.SPIKE_FREQ = localCfg.spikeFreq || s.graph.spike_frequency || 0.12;
-      CFG.CRASH_FREQ = localCfg.crashFreq || s.graph.crash_frequency || 0.02;
-      CFG.BASE_LEVEL = s.graph.base_level || 0.5;
-      CFG.SPIKE_MAX = localCfg.spikeMax || s.graph.spike_max || 2.8;
-      CFG.CRASH_DEPTH = localCfg.crashDepth || s.graph.crash_depth || -2.8;
+
+    // 1. Graph / Wave parameters
+    if (s.graph) {
+      CFG.TICK = parseFloat(s.graph.speed ?? localCfg.speed ?? 120);
+      CFG.Y_MAX = parseFloat(s.graph.y_max || 3.0);
+      CFG.SPIKE_FREQ = parseFloat(s.graph.spike_frequency ?? localCfg.spikeFreq ?? 0.12);
+      CFG.CRASH_FREQ = parseFloat(s.graph.crash_frequency ?? localCfg.crashFreq ?? 0.02);
+      CFG.BASE_LEVEL = parseFloat(s.graph.base_level || 0.5);
+      CFG.SPIKE_MAX = parseFloat(s.graph.spike_max ?? localCfg.spikeMax ?? 2.8);
+      CFG.CRASH_DEPTH = parseFloat(s.graph.crash_depth ?? localCfg.crashDepth ?? -2.8);
       eng.base = CFG.BASE_LEVEL * 0.5;
       high24 = CFG.Y_MAX * 0.8; low24 = -CFG.Y_MAX * 0.8;
     }
-    if(s.trade){
-      CFG.TRADE_DUR = s.trade.duration || 60;
-      CFG.MIN_STAKE = localCfg.minStake || s.trade.min_stake || 10;
-      CFG.MAX_STAKE = localCfg.maxStake || s.trade.max_stake || 50000;
-      CFG.MIN_DEPOSIT = localCfg.minDep || s.trade.min_deposit || 50;
-      CFG.MAX_MULT = localCfg.maxMult || s.trade.max_multiplier || 5.0;
-      CFG.PRESTART_WAIT = localCfg.prestart || s.trade.prestart_wait || 3;
-      CFG.AUTOSELL_MULT = localCfg.autosell || s.trade.autosell_multiplier || 2.5;
-      document.getElementById('timerVal').textContent = CFG.TRADE_DUR;
+    if (s.speed !== undefined) CFG.TICK = parseFloat(s.speed);
+    if (s.spikeFreq !== undefined) CFG.SPIKE_FREQ = parseFloat(s.spikeFreq);
+    if (s.spikeMax !== undefined) CFG.SPIKE_MAX = parseFloat(s.spikeMax);
+    if (s.crashFreq !== undefined) CFG.CRASH_FREQ = parseFloat(s.crashFreq);
+    if (s.crashDepth !== undefined) CFG.CRASH_DEPTH = parseFloat(s.crashDepth);
+
+    // 2. Trade parameters
+    if (s.trade) {
+      CFG.TRADE_DUR = parseInt(s.trade.duration || 60);
+      CFG.MIN_STAKE = parseFloat(s.trade.min_stake ?? localCfg.minStake ?? 10);
+      CFG.MAX_STAKE = parseFloat(s.trade.max_stake ?? localCfg.maxStake ?? 50000);
+      CFG.MIN_DEPOSIT = parseFloat(s.trade.min_deposit ?? localCfg.minDep ?? 50);
+      CFG.MAX_MULT = parseFloat(s.trade.max_multiplier ?? localCfg.maxMult ?? 5.0);
+      CFG.PRESTART_WAIT = parseInt(s.trade.prestart_wait ?? localCfg.prestart ?? 3);
+      CFG.AUTOSELL_MULT = parseFloat(s.trade.autosell_multiplier ?? localCfg.autosell ?? 2.5);
+      const timerVal = document.getElementById('timerVal');
+      if (timerVal) timerVal.textContent = CFG.TRADE_DUR;
     }
+    if (s.minStake !== undefined) CFG.MIN_STAKE = parseFloat(s.minStake);
+    if (s.maxStake !== undefined) CFG.MAX_STAKE = parseFloat(s.maxStake);
+    if (s.minDep !== undefined) CFG.MIN_DEPOSIT = parseFloat(s.minDep);
+    if (s.maxMult !== undefined) CFG.MAX_MULT = parseFloat(s.maxMult);
+    if (s.prestart !== undefined) CFG.PRESTART_WAIT = parseInt(s.prestart);
+    if (s.autosell !== undefined) CFG.AUTOSELL_MULT = parseFloat(s.autosell);
+
+    // 3. Withdrawal parameters
+    if (s.withdraw && s.withdraw.min_withdrawal !== undefined) CFG.MIN_WITHDRAW = parseFloat(s.withdraw.min_withdrawal);
+    if (s.minWithdraw !== undefined) CFG.MIN_WITHDRAW = parseFloat(s.minWithdraw);
+
+    // 4. Payments
     if (s.payments) {
-      usdRate = parseFloat(localCfg.usdRate || s.payments.usd_rate) || 129;
-      depositCurrency = (localCfg.currency || s.payments.deposit_currency || 'kes').toLowerCase();
-      checkoutMethod = s.payments.checkout_method || 'both';
+      usdRate = parseFloat(s.payments.usd_rate ?? localCfg.usdRate ?? 129);
+      depositCurrency = (s.payments.deposit_currency || localCfg.currency || 'kes').toLowerCase();
     }
+    if (s.usdRate !== undefined) usdRate = parseFloat(s.usdRate);
+    if (s.currency) depositCurrency = s.currency.toLowerCase();
+
+    // 5. Outcome Controls & Rigging
     if (s.controls) {
       platformForceOutcome = s.controls.force_outcome || 'auto';
-      platformWinRate = s.controls.target_win_rate || 45;
-      platformUserOutcomes = { ...platformUserOutcomes, ...(s.controls.user_outcomes || {}) };
+      if (s.controls.target_win_rate !== undefined) platformWinRate = parseFloat(s.controls.target_win_rate);
+      if (s.controls.force_win_rate !== undefined) platformForceWinRate = parseFloat(s.controls.force_win_rate);
+      if (s.controls.force_loss_rate !== undefined) platformForceLossRate = parseFloat(s.controls.force_loss_rate);
+      if (s.controls.user_outcomes) platformUserOutcomes = { ...platformUserOutcomes, ...s.controls.user_outcomes };
     }
+    if (s.force_outcome) platformForceOutcome = s.force_outcome;
+    if (s.target_win_rate !== undefined) platformWinRate = parseFloat(s.target_win_rate);
+    if (s.force_win_rate !== undefined) platformForceWinRate = parseFloat(s.force_win_rate);
+    if (s.force_loss_rate !== undefined) platformForceLossRate = parseFloat(s.force_loss_rate);
+    if (s.user_outcomes) platformUserOutcomes = { ...platformUserOutcomes, ...s.user_outcomes };
+
     applyPlatformConfig();
-    clearInterval(tickInterval);
-    tickInterval = setInterval(tick, CFG.TICK);
-  }).catch(()=>{});
+
+    // Live restart game tick loop if engine speed changed
+    if (tickInterval) {
+      clearInterval(tickInterval);
+      tickInterval = setInterval(tick, CFG.TICK || 120);
+    }
+  } catch(e) {}
 }
 
 syncPlatformSettings();
