@@ -90,7 +90,7 @@ export default async function handler(req, res) {
     }
 
     // Fetch dynamically configured min withdrawal from settings table
-    let minRequired = currency.toLowerCase() === 'usd' ? 1.0 : 100.0;
+    let minRequired = 100.0;
     if (db) {
       try {
         const rows = await db`SELECT value FROM settings WHERE key = 'platform_config' LIMIT 1`;
@@ -107,7 +107,7 @@ export default async function handler(req, res) {
     if (withdrawAmt < minRequired) {
       return res.status(400).json({
         success: false,
-        error: `Minimum withdrawal is ${currency.toLowerCase() === 'usd' ? '$' + minRequired.toFixed(2) : 'KES ' + minRequired.toLocaleString('en-US', {minimumFractionDigits: 0})}.`
+        error: `Minimum withdrawal is KES ${minRequired.toLocaleString('en-US', {minimumFractionDigits: 0})}.`
       });
     }
 
@@ -184,7 +184,7 @@ export default async function handler(req, res) {
     const timeStr = localTime || `${hours}:${minutes} ${ampm}`;
 
     let kshAmountStr = '';
-    const withdrawAmtKes = currency.toLowerCase() === 'usd' ? withdrawAmt * 129.0 : withdrawAmt;
+    const withdrawAmtKes = withdrawAmt;
     kshAmountStr = withdrawAmtKes.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     // Fetch previous simulated M-Pesa balance from user's latest MPESA message to accumulate realistically

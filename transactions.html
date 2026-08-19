@@ -124,7 +124,7 @@ function renderTransactions(){
       statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-bold">COMPLETED</span>`;
     } else if (item.type === 'withdrawal') {
       typeBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase">↓ Withdrawal</span>`;
-      details = getCurrencyPrefix() === '$' ? 'Global Payout' : 'M-Pesa B2C Payout';
+      details = item.method || 'M-Pesa B2C Payout';
       amountStr = `<span class="text-amber-400 font-bold">- ${formatTxMoney(item.amount)}</span>`;
       statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-bold">PROCESSED</span>`;
     }

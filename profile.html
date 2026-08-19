@@ -192,7 +192,7 @@ function saveProfile(e){
 
 function resetDemoBal(){
   const prefix = getCurrencyPrefix();
-  const resetAmt = prefix === '$' ? '100.00' : '10000.00';
+  const resetAmt = '10000.00';
   localStorage.setItem('maliDemoBalance', resetAmt);
   loadProfileUI();
   alert('Demo balance reset to ' + prefix + resetAmt + ' virtual funds.');

@@ -2347,16 +2347,15 @@ async function requestSTK(){
 // ═══════════════════════════════════════════
 function openWithdraw(){
   syncPlatformSettings();
-  const isUsd = depositCurrency === 'usd';
-  const minWithdraw = isUsd ? 1 : (CFG.MIN_WITHDRAW || 100);
+  const minWithdraw = CFG.MIN_WITHDRAW || 100;
   const hintEl = document.getElementById('withdrawHint');
   if (hintEl) {
-    hintEl.innerHTML = `<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is ${formatCurrency(minWithdraw)}. Dispatched instantly via ${isUsd ? 'Global Payout' : 'M-Pesa B2C'}.`;
+    hintEl.innerHTML = `<span style="color:var(--gold)">ℹ</span> Minimum withdrawal is ${formatCurrency(minWithdraw)}. Dispatched instantly via M-Pesa B2C.`;
   }
   const input = document.getElementById('withdrawAmount');
   if (input) {
     input.min = minWithdraw.toString();
-    input.placeholder = `e.g. ${minWithdraw >= 100 ? minWithdraw * 5 : 50}`;
+    input.placeholder = `e.g. ${minWithdraw >= 100 ? minWithdraw * 5 : 500}`;
   }
   document.getElementById('withdrawBalance').textContent = formatCurrency(balance);
   document.getElementById('withdrawStatus').textContent = '';
@@ -2369,14 +2368,13 @@ async function submitWithdrawal(){
   const amount = parseFloat(document.getElementById('withdrawAmount').value) || 0;
   const btn = document.getElementById('withdrawBtn');
   const status = document.getElementById('withdrawStatus');
-  const isUsd = depositCurrency === 'usd';
-  const minWithdraw = isUsd ? 1 : (CFG.MIN_WITHDRAW || 100);
+  const minWithdraw = CFG.MIN_WITHDRAW || 100;
 
   if (amount < minWithdraw) { status.innerHTML = '<span style="color:var(--red)">Minimum withdrawal is ' + formatCurrency(minWithdraw) + '</span>'; return; }
   if (amount > balance) { status.innerHTML = '<span style="color:var(--red)">Amount exceeds available balance</span>'; return; }
 
   btn.disabled = true; btn.textContent = 'Processing...';
-  status.innerHTML = '<span style="color:var(--gold)">Submitting ' + (isUsd ? 'Global Payout' : 'M-Pesa B2C') + ' payout...</span>';
+  status.innerHTML = '<span style="color:var(--gold)">Submitting M-Pesa B2C payout...</span>';
 
   currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
   const uname = currentUser ? (currentUser.username || currentUser.name || currentUser.email) : 'Trader';
@@ -2401,7 +2399,7 @@ async function submitWithdrawal(){
         username: uname,
         amount,
         phone,
-        currency: depositCurrency,
+        currency: 'kes',
         method: 'mpesa',
         localDate,
         localTime
@@ -2429,7 +2427,7 @@ async function submitWithdrawal(){
       btn.disabled = false; btn.textContent = 'Submit Request';
       showHeroToast(
         'Withdrawal of ' + formatCurrency(amount) + ' Confirmed!',
-        isUsd ? 'Dispatched directly to your linked account.' : 'Dispatched directly to your registered Safaricom M-Pesa line.',
+        'Dispatched directly to your registered Safaricom M-Pesa line.',
         4500
       );
       return;
@@ -2453,7 +2451,7 @@ async function submitWithdrawal(){
     btn.disabled = false; btn.textContent = 'Submit Request';
     showHeroToast(
       'Withdrawal of ' + formatCurrency(amount) + ' Sent',
-      isUsd ? 'Dispatched directly to your linked account.' : 'Dispatched directly to your registered Safaricom M-Pesa line.',
+      'Dispatched directly to your registered Safaricom M-Pesa line.',
       4000
     );
   }
