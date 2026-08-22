@@ -12,18 +12,31 @@ export default async function handler(req, res) {
   await initDb();
   const db = getDb();
 
-  const body = req.body || {};
+  let body = req.body;
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch(e) { body = {}; }
+  } else if (!body) {
+    body = {};
+  }
+
   const response = body.response || body.data || body;
 
-  // Extract fields from PayHero v1/v2 AND GravityPay webhooks
-  const status = (response.Status || response.status || body.status || '').toString().toLowerCase();
-  const externalRef = (response.ExternalReference || response.external_reference || response.externalReference || response.reference || body.reference || body.external_reference || '').trim();
-  const mpesaReceipt = (response.MpesaReceiptNumber || response.mpesa_reference || response.mpesaReceipt || response.receipt || response.MpesaReceipt || '').trim();
-  const amount = parseFloat(response.Amount || response.amount || body.amount) || 0;
-  const phone = (response.Phone || response.phone || response.phone_number || response.phoneNumber || body.phoneNumber || '').trim();
+  // Extract fields from PayHero v1/v2 AND GravityPay (gravitypayapp.com) webhooks
+  const status = (response.status || response.Status || body.status || body.Status || '').toString().toLowerCase();
+  const externalRef = (
+    response.reference || body.reference || 
+    response.ExternalReference || body.external_reference || response.external_reference || response.externalReference ||
+    response.checkoutRequestId || body.checkoutRequestId || 
+    response.transactionId || body.transactionId || 
+    ''
+  ).trim();
+  const mpesaReceipt = (response.mpesaReceipt || body.mpesaReceipt || response.MpesaReceiptNumber || response.mpesa_reference || response.receipt || response.MpesaReceipt || '').trim();
+  const amount = parseFloat(response.amount || body.amount || response.Amount || body.Amount) || 0;
+  const phone = (response.phoneNumber || body.phoneNumber || response.Phone || body.Phone || response.phone || body.phone || response.phone_number || '').trim();
+  const metadataUser = (response.metadata?.username || body.metadata?.username || response.customer_name || '').trim();
   const resultCode = response.ResultCode !== undefined ? parseInt(response.ResultCode) : (body.ResultCode !== undefined ? parseInt(body.ResultCode) : null);
 
-  const isSuccess = (status === 'success' || status === 'successful' || status === 'completed') || resultCode === 0;
+  const isSuccess = (status === 'success' || status === 'successful' || status === 'completed') || resultCode === 0 || mpesaReceipt.length > 0;
 
   if (db) {
     try {
@@ -41,7 +54,7 @@ export default async function handler(req, res) {
           `;
         }
 
-        // Fallback: If ref was not found but phone is present, update most recent pending deposit for this phone
+        // Fallback 1: If ref was not found but phone is present, update most recent pending deposit for this phone
         if (updatedDep.length === 0 && phone) {
           const phone9 = phone.replace(/\D/g, '').slice(-9);
           if (phone9) {
@@ -62,12 +75,29 @@ export default async function handler(req, res) {
           }
         }
 
+        // Fallback 2: If metadata username is present, update most recent pending deposit for that username
+        if (updatedDep.length === 0 && metadataUser && metadataUser !== 'Trader') {
+          updatedDep = await db`
+            UPDATE malicrush_deposits
+            SET status = 'completed',
+                method = ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa STK'},
+                amount_kes = ${amount}
+            WHERE id = (
+              SELECT id FROM malicrush_deposits 
+              WHERE LOWER(username) = LOWER(${metadataUser}) AND status = 'pending'
+              ORDER BY created_at DESC 
+              LIMIT 1
+            )
+            RETURNING *
+          `;
+        }
+
         // If no prior deposit record existed, create one
         let depRecord = updatedDep[0];
         if (!depRecord && (externalRef || phone)) {
           const inserted = await db`
             INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
-            VALUES (${externalRef || 'DEP-' + Date.now()}, 'Trader', ${amount}, ${phone}, ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa STK'}, 'completed', FALSE)
+            VALUES (${externalRef || 'DEP-' + Date.now()}, ${metadataUser || 'Trader'}, ${amount}, ${phone}, ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa STK'}, 'completed', FALSE)
             ON CONFLICT (deposit_ref) DO UPDATE 
             SET status = 'completed', amount_kes = ${amount}
             RETURNING *
@@ -77,7 +107,7 @@ export default async function handler(req, res) {
 
         // 2. Credit user's wallet in malicrush_users table if not already credited
         if (depRecord && !depRecord.credited) {
-          const targetUser = depRecord.username;
+          const targetUser = (depRecord.username && depRecord.username !== 'Trader') ? depRecord.username : metadataUser;
           const targetPhone = depRecord.phone || phone;
           const phone9 = (targetPhone || '').replace(/\D/g, '').slice(-9);
 

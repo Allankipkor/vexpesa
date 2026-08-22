@@ -15,13 +15,59 @@ export default async function handler(req, res) {
   const action = req.query.action || (req.body ? req.body.action : '') || '';
   const ref = (req.query.reference || req.query.ref || (req.body ? req.body.reference : '') || '').trim();
 
-  // 1. SINGLE DEPOSIT STATUS CHECK (Client Polling)
+  // 1. SINGLE DEPOSIT STATUS CHECK (Client Polling & Active Verification)
   if (action === 'check' && ref) {
     if (db) {
       try {
         const rows = await db`SELECT * FROM malicrush_deposits WHERE deposit_ref = ${ref} LIMIT 1`;
         if (rows.length > 0) {
           const d = rows[0];
+
+          // If still pending, actively query GravityPay API status check endpoint
+          if (d.status === 'pending') {
+            try {
+              const cfgRows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
+              if (cfgRows.length > 0) {
+                const cfg = JSON.parse(cfgRows[0].value);
+                const gpKey = (cfg.gravitypayApiKey || cfg.payments?.gravitypay?.api_key || '').trim();
+                const gpSec = (cfg.gravitypaySecretKey || cfg.payments?.gravitypay?.secret_key || '').trim();
+                if (gpKey && gpSec) {
+                  const gpRes = await fetch(`https://api.gravitypayapp.com/api/v1/stk/status/${encodeURIComponent(ref)}`, {
+                    headers: {
+                      'Authorization': `Bearer ${gpSec}`,
+                      'x-api-key': gpKey
+                    }
+                  });
+                  if (gpRes.ok) {
+                    const gpJson = await gpRes.json();
+                    const gData = gpJson.data || gpJson;
+                    const gStat = (gData.status || gpJson.status || '').toLowerCase();
+                    const gReceipt = gData.mpesaReceipt || gpJson.mpesaReceipt || '';
+                    const gAmount = parseFloat(gData.amount || gpJson.amount || d.amount_kes);
+
+                    if (gStat === 'success' || gStat === 'completed' || gReceipt) {
+                      d.status = 'completed';
+                      d.amount_kes = gAmount;
+                      d.method = gReceipt ? `M-Pesa (${gReceipt})` : (d.method || 'M-Pesa (GravityPay)');
+                      await db`
+                        UPDATE malicrush_deposits 
+                        SET status = 'completed', 
+                            amount_kes = ${gAmount},
+                            method = ${d.method}
+                        WHERE id = ${d.id}
+                      `;
+                    } else if (gStat === 'failed' || gStat === 'cancelled') {
+                      d.status = 'failed';
+                      await db`UPDATE malicrush_deposits SET status = 'failed' WHERE id = ${d.id}`;
+                    }
+                  }
+                }
+              }
+            } catch (gpErr) {
+              console.error('Error querying GravityPay status in polling:', gpErr);
+            }
+          }
+
           const isCompleted = d.status === 'completed' || d.status === 'success' || d.status === 'successful';
           let currentBal = null;
 
@@ -60,11 +106,25 @@ export default async function handler(req, res) {
             }
 
             await db`UPDATE malicrush_deposits SET credited = TRUE WHERE id = ${d.id}`;
+
+            // Create M-Pesa receipt message
+            try {
+              await db`
+                INSERT INTO malicrush_messages (user_id, username, title, body, read)
+                VALUES (
+                  ${uName || d.phone || 'Trader'},
+                  ${uName || 'Trader'},
+                  'MPESA',
+                  ${`Payment Confirmed. Ksh${amt.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using MaliCrush.`},
+                  FALSE
+                )
+              `;
+            } catch(mErr) {}
           }
 
           return res.status(200).json({
             success: true,
-            status: d.status || 'pending', // 'completed' | 'pending' | 'failed'
+            status: d.status || 'pending',
             amount: parseFloat(d.amount_kes || 0),
             method: d.method || 'M-Pesa STK',
             deposit_ref: d.deposit_ref,
@@ -160,7 +220,6 @@ export default async function handler(req, res) {
     const amountUsd = input.amount_usd ? parseFloat(input.amount_usd) : null;
     const currency = (input.currency || 'kes').toLowerCase();
     const method = input.method || 'M-Pesa STK';
-    // Client submissions default strictly to 'pending' unless admin-authorized
     const status = (input.admin_auth === true || input.admin === true) ? (input.status || 'completed') : 'pending';
     const isCompleted = status === 'completed' || status === 'success' || status === 'successful';
 
@@ -170,7 +229,6 @@ export default async function handler(req, res) {
 
     if (db) {
       try {
-        // 1. Insert deposit record
         const inserted = await db`
           INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, credited)
           VALUES (${depositRef}, ${username}, ${amountKes}, ${amountUsd}, ${currency}, ${method}, ${phone}, ${status}, ${isCompleted})
@@ -179,7 +237,6 @@ export default async function handler(req, res) {
           RETURNING *
         `;
 
-        // 2. If status is completed (admin authorized), credit user's real balance in malicrush_users table
         if (isCompleted) {
           const phone9 = phone.replace(/\D/g, '').slice(-9);
           let credited = false;
