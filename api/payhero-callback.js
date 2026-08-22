@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       if (isSuccess && amount > 0) {
         // 1. Mark deposit as completed
         const updatedDep = await db`
-          UPDATE deposits
+          UPDATE malicrush_deposits
           SET status = 'completed',
               method = ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa STK'},
               amount_kes = ${amount}
@@ -43,16 +43,16 @@ export default async function handler(req, res) {
           targetUser = updatedDep[0].username;
         }
 
-        // 2. Credit user balance in users table
+        // 2. Credit user balance in malicrush_users table
         if (targetUser && targetUser !== 'Trader') {
           await db`
-            UPDATE users
+            UPDATE malicrush_users
             SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
             WHERE username = ${targetUser} OR name = ${targetUser}
           `;
         } else if (phone) {
           await db`
-            UPDATE users
+            UPDATE malicrush_users
             SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
             WHERE phone LIKE ${'%' + phone.slice(-9)}
           `;
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
         try {
           const mpesaCode = mpesaReceipt || ('NLJ' + Date.now().toString().slice(-7));
           await db`
-            INSERT INTO messages (user_id, username, title, body, read)
+            INSERT INTO malicrush_messages (user_id, username, title, body, read)
             VALUES (
               ${targetUser || phone || 'Trader'},
               ${targetUser || 'Trader'},
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
       } else {
         // Mark deposit as failed
         await db`
-          UPDATE deposits
+          UPDATE malicrush_deposits
           SET status = 'failed'
           WHERE deposit_ref = ${externalRef} AND status = 'pending'
         `;

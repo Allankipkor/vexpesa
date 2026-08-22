@@ -70,7 +70,7 @@ export default async function handler(req, res) {
       try {
         // Read existing settings
         let currentSettings = { ...defaultSettings };
-        const rows = await db`SELECT key, value FROM settings WHERE key = 'platform_config' LIMIT 1`;
+        const rows = await db`SELECT key, value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
         if (rows.length > 0) {
           try {
             currentSettings = { ...defaultSettings, ...JSON.parse(rows[0].value) };
@@ -191,7 +191,7 @@ export default async function handler(req, res) {
 
         const jsonStr = JSON.stringify(updated);
         await db`
-          INSERT INTO settings (key, value)
+          INSERT INTO malicrush_settings (key, value)
           VALUES ('platform_config', ${jsonStr})
           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
         `;
@@ -208,7 +208,7 @@ export default async function handler(req, res) {
   // 2. GET SETTINGS
   if (db) {
     try {
-      const rows = await db`SELECT key, value FROM settings WHERE key = 'platform_config' LIMIT 1`;
+      const rows = await db`SELECT key, value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
       if (rows.length > 0) {
         const saved = JSON.parse(rows[0].value);
         return res.status(200).json({

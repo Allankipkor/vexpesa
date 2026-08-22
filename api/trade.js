@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     let maxStake = 50000.0;
     if (db) {
       try {
-        const cfgRows = await db`SELECT value FROM settings WHERE key = 'platform_config' LIMIT 1`;
+        const cfgRows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
         if (cfgRows.length > 0) {
           const cfg = typeof cfgRows[0].value === 'string' ? JSON.parse(cfgRows[0].value) : cfgRows[0].value;
           if (cfg.minStake !== undefined || cfg.trade?.min_stake !== undefined) {
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
       try {
         const users = await db`
           SELECT id, balance, demo_balance
-          FROM users
+          FROM malicrush_users
           WHERE username = ${username} OR name = ${username} OR email = ${username.toLowerCase()}
           LIMIT 1
         `;
@@ -71,7 +71,7 @@ export default async function handler(req, res) {
               return res.status(400).json({ success: false, error: 'Insufficient demo balance' });
             }
             const resU = await db`
-              UPDATE users
+              UPDATE malicrush_users
               SET demo_balance = GREATEST(0, demo_balance - ${stake}), updated_at = CURRENT_TIMESTAMP
               WHERE id = ${user.id}
               RETURNING balance, demo_balance
@@ -83,7 +83,7 @@ export default async function handler(req, res) {
               return res.status(400).json({ success: false, error: 'Insufficient real balance' });
             }
             const resU = await db`
-              UPDATE users
+              UPDATE malicrush_users
               SET balance = GREATEST(0, balance - ${stake}), updated_at = CURRENT_TIMESTAMP
               WHERE id = ${user.id}
               RETURNING balance, demo_balance
@@ -94,7 +94,7 @@ export default async function handler(req, res) {
           // Record trade in trades table
           try {
             await db`
-              INSERT INTO trades (
+              INSERT INTO malicrush_trades (
                 trade_ref, user_id, trade_type, stake, entry_rate, is_demo, result
               ) VALUES (
                 ${tradeRef}, ${user.id}, ${tradeType}, ${stake}, ${entryRate}, ${isDemo}, 'pending'
@@ -138,7 +138,7 @@ export default async function handler(req, res) {
       try {
         const users = await db`
           SELECT id, balance, demo_balance
-          FROM users
+          FROM malicrush_users
           WHERE username = ${username} OR name = ${username} OR email = ${username.toLowerCase()}
           LIMIT 1
         `;
@@ -150,7 +150,7 @@ export default async function handler(req, res) {
           if (won && payout > 0) {
             if (isDemo) {
               const resU = await db`
-                UPDATE users
+                UPDATE malicrush_users
                 SET demo_balance = demo_balance + ${payout}, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ${user.id}
                 RETURNING balance, demo_balance
@@ -158,7 +158,7 @@ export default async function handler(req, res) {
               updatedUser = resU[0];
             } else {
               const resU = await db`
-                UPDATE users
+                UPDATE malicrush_users
                 SET balance = balance + ${payout}, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ${user.id}
                 RETURNING balance, demo_balance
@@ -171,7 +171,7 @@ export default async function handler(req, res) {
           if (tradeRef) {
             try {
               await db`
-                UPDATE trades
+                UPDATE malicrush_trades
                 SET exit_rate = ${exitRate},
                     multiplier = ${multiplier},
                     payout = ${payout},
@@ -216,7 +216,7 @@ export default async function handler(req, res) {
       try {
         const users = await db`
           SELECT id, balance, demo_balance
-          FROM users
+          FROM malicrush_users
           WHERE username = ${username} OR name = ${username} OR email = ${username.toLowerCase()}
           LIMIT 1
         `;
@@ -227,7 +227,7 @@ export default async function handler(req, res) {
 
           if (isDemo) {
             const resU = await db`
-              UPDATE users
+              UPDATE malicrush_users
               SET demo_balance = demo_balance + ${stake}, updated_at = CURRENT_TIMESTAMP
               WHERE id = ${user.id}
               RETURNING balance, demo_balance
@@ -235,7 +235,7 @@ export default async function handler(req, res) {
             updatedUser = resU[0];
           } else {
             const resU = await db`
-              UPDATE users
+              UPDATE malicrush_users
               SET balance = balance + ${stake}, updated_at = CURRENT_TIMESTAMP
               WHERE id = ${user.id}
               RETURNING balance, demo_balance
@@ -245,7 +245,7 @@ export default async function handler(req, res) {
 
           if (tradeRef) {
             try {
-              await db`UPDATE trades SET result = 'cancelled', resolved_at = CURRENT_TIMESTAMP WHERE trade_ref = ${tradeRef}`;
+              await db`UPDATE malicrush_trades SET result = 'cancelled', resolved_at = CURRENT_TIMESTAMP WHERE trade_ref = ${tradeRef}`;
             } catch(e) {}
           }
 

@@ -23,9 +23,46 @@ export async function initDb() {
   const db = getDb();
   if (!db || isInitialized) return;
 
+  // Auto-migrate legacy tables if they exist and malicrush_ tables do not
+  const legacyTables = ['users', 'trades', 'deposits', 'withdrawals', 'messages', 'settings'];
+  for (const t of legacyTables) {
+    try {
+      const checkLegacy = await db`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = ${t}
+        ) AS has_legacy
+      `;
+      const checkNew = await db`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = ${'malicrush_' + t}
+        ) AS has_new
+      `;
+      if (checkLegacy[0]?.has_legacy && !checkNew[0]?.has_new) {
+        if (t === 'users') {
+          await db`ALTER TABLE users RENAME TO malicrush_users`;
+        } else if (t === 'trades') {
+          await db`ALTER TABLE trades RENAME TO malicrush_trades`;
+        } else if (t === 'deposits') {
+          await db`ALTER TABLE deposits RENAME TO malicrush_deposits`;
+        } else if (t === 'withdrawals') {
+          await db`ALTER TABLE withdrawals RENAME TO malicrush_withdrawals`;
+        } else if (t === 'messages') {
+          await db`ALTER TABLE messages RENAME TO malicrush_messages`;
+        } else if (t === 'settings') {
+          await db`ALTER TABLE settings RENAME TO malicrush_settings`;
+        }
+      }
+    } catch (migErr) {
+      // Ignore migration errors and proceed to CREATE IF NOT EXISTS
+    }
+  }
+
+  // 1. malicrush_users
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE IF NOT EXISTS malicrush_users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(50) NOT NULL UNIQUE,
         email VARCHAR(100) NOT NULL UNIQUE,
@@ -41,38 +78,39 @@ export async function initDb() {
     `;
 
     // Ensure ALL columns exist and legacy constraints do not block inserts
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(100)`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(100)`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT ''`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT ''`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS balance NUMERIC(12,2) DEFAULT 0.00`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS demo_balance NUMERIC(12,2) DEFAULT 10000.00`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
-    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS name VARCHAR(100)`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS email VARCHAR(100)`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT ''`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT ''`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS balance NUMERIC(12,2) DEFAULT 0.00`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS demo_balance NUMERIC(12,2) DEFAULT 10000.00`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
 
-    try { await db`ALTER TABLE users ALTER COLUMN name DROP NOT NULL`; } catch (e) {}
-    try { await db`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`; } catch (e) {}
-    try { await db`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`; } catch (e) {}
-    try { await db`ALTER TABLE users ALTER COLUMN phone DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE malicrush_users ALTER COLUMN name DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE malicrush_users ALTER COLUMN password_hash DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE malicrush_users ALTER COLUMN password DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE malicrush_users ALTER COLUMN phone DROP NOT NULL`; } catch (e) {}
 
     // Ensure ID column has an auto-increment sequence
     try {
-      await db`CREATE SEQUENCE IF NOT EXISTS users_id_seq`;
-      await db`ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq')`;
-      await db`ALTER SEQUENCE users_id_seq OWNED BY users.id`;
+      await db`CREATE SEQUENCE IF NOT EXISTS malicrush_users_id_seq`;
+      await db`ALTER TABLE malicrush_users ALTER COLUMN id SET DEFAULT nextval('malicrush_users_id_seq')`;
+      await db`ALTER SEQUENCE malicrush_users_id_seq OWNED BY malicrush_users.id`;
     } catch (seqErr) {}
-  } catch (e) { console.error('Error creating/migrating users table:', e); }
+  } catch (e) { console.error('Error creating/migrating malicrush_users table:', e); }
 
+  // 2. malicrush_trades
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS trades (
+      CREATE TABLE IF NOT EXISTS malicrush_trades (
         id SERIAL PRIMARY KEY,
         trade_ref VARCHAR(50) NOT NULL UNIQUE,
-        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        user_id INT NOT NULL REFERENCES malicrush_users(id) ON DELETE CASCADE,
         trade_type VARCHAR(10) NOT NULL,
         stake NUMERIC(10,2) NOT NULL,
         entry_rate NUMERIC(10,4) NOT NULL,
@@ -85,11 +123,12 @@ export async function initDb() {
         resolved_at TIMESTAMP WITH TIME ZONE
       )
     `;
-  } catch (e) { console.error('Error creating trades table:', e); }
+  } catch (e) { console.error('Error creating malicrush_trades table:', e); }
 
+  // 3. malicrush_deposits
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS deposits (
+      CREATE TABLE IF NOT EXISTS malicrush_deposits (
         id SERIAL PRIMARY KEY,
         deposit_ref VARCHAR(50) NOT NULL UNIQUE,
         username VARCHAR(50),
@@ -102,11 +141,12 @@ export async function initDb() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
-  } catch (e) { console.error('Error creating deposits table:', e); }
+  } catch (e) { console.error('Error creating malicrush_deposits table:', e); }
 
+  // 4. malicrush_withdrawals
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS withdrawals (
+      CREATE TABLE IF NOT EXISTS malicrush_withdrawals (
         id SERIAL PRIMARY KEY,
         withdraw_ref VARCHAR(50) NOT NULL UNIQUE,
         username VARCHAR(50),
@@ -116,11 +156,12 @@ export async function initDb() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
-  } catch (e) { console.error('Error creating withdrawals table:', e); }
+  } catch (e) { console.error('Error creating malicrush_withdrawals table:', e); }
 
+  // 5. malicrush_messages
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS messages (
+      CREATE TABLE IF NOT EXISTS malicrush_messages (
         id SERIAL PRIMARY KEY,
         user_id VARCHAR(100),
         username VARCHAR(50),
@@ -130,29 +171,31 @@ export async function initDb() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
-    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS username VARCHAR(50)`;
-    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS user_id VARCHAR(100)`;
-    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS title VARCHAR(50) DEFAULT 'MPESA'`;
-    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS body TEXT DEFAULT ''`;
-    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS read BOOLEAN DEFAULT FALSE`;
-    await db`ALTER TABLE messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
-  } catch (e) { console.error('Error creating messages table:', e); }
+    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS username VARCHAR(50)`;
+    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS user_id VARCHAR(100)`;
+    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS title VARCHAR(50) DEFAULT 'MPESA'`;
+    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS body TEXT DEFAULT ''`;
+    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS read BOOLEAN DEFAULT FALSE`;
+    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+  } catch (e) { console.error('Error creating malicrush_messages table:', e); }
 
+  // 6. malicrush_settings
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS settings (
+      CREATE TABLE IF NOT EXISTS malicrush_settings (
         key VARCHAR(50) PRIMARY KEY,
         value TEXT NOT NULL
       )
     `;
-  } catch (e) { console.error('Error creating settings table:', e); }
+  } catch (e) { console.error('Error creating malicrush_settings table:', e); }
 
+  // Seed default admin and traders if table is empty
   try {
-    const userCountRes = await db`SELECT COUNT(*) AS cnt FROM users`;
+    const userCountRes = await db`SELECT COUNT(*) AS cnt FROM malicrush_users`;
     const count = parseInt(userCountRes[0]?.cnt || 0);
     if (count < 2) {
       await db`
-        INSERT INTO users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
+        INSERT INTO malicrush_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
         VALUES 
           ('admin', 'Admin Core', 'admin@malicrush.com', '254700000000', 'Aa@123', 'Aa@123', 500000.00, 100000.00, 'admin', 'active'),
           ('trader254', 'Brian Kip', 'trader254@gmail.com', '254712345678', 'Aa@123', 'Aa@123', 2500.00, 10000.00, 'user', 'active'),

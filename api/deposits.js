@@ -19,7 +19,7 @@ export default async function handler(req, res) {
   if (action === 'check' && ref) {
     if (db) {
       try {
-        const rows = await db`SELECT * FROM deposits WHERE deposit_ref = ${ref} LIMIT 1`;
+        const rows = await db`SELECT * FROM malicrush_deposits WHERE deposit_ref = ${ref} LIMIT 1`;
         if (rows.length > 0) {
           const d = rows[0];
           return res.status(200).json({
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
         if (onlySuccess) {
           deposits = await db`
             SELECT id, deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, created_at
-            FROM deposits
+            FROM malicrush_deposits
             WHERE status = 'completed' OR status = 'success' OR status = 'successful'
             ORDER BY created_at DESC
             LIMIT 100
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
         } else {
           deposits = await db`
             SELECT id, deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, created_at
-            FROM deposits
+            FROM malicrush_deposits
             ORDER BY created_at DESC
             LIMIT 100
           `;
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
         try {
           const sumRes = await db`
             SELECT COALESCE(SUM(amount_kes), 0) AS total_kes, COUNT(*) AS cnt 
-            FROM deposits 
+            FROM malicrush_deposits 
             WHERE status = 'completed' OR status = 'success' OR status = 'successful'
           `;
           if (sumRes && sumRes.length > 0) {
@@ -113,6 +113,7 @@ export default async function handler(req, res) {
     const input = req.body || {};
     const depositRef = input.deposit_ref || input.reference || `DEP-${Date.now()}`;
     const username = (input.username || 'Trader').trim();
+    const phone = (input.phone || '').trim();
     const amountKes = parseFloat(input.amount_kes || input.amount) || 0;
     const amountUsd = input.amount_usd ? parseFloat(input.amount_usd) : null;
     const currency = (input.currency || 'kes').toLowerCase();
@@ -128,17 +129,17 @@ export default async function handler(req, res) {
       try {
         // 1. Insert deposit record
         const inserted = await db`
-          INSERT INTO deposits (deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status)
+          INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status)
           VALUES (${depositRef}, ${username}, ${amountKes}, ${amountUsd}, ${currency}, ${method}, ${phone}, ${status})
           ON CONFLICT (deposit_ref) DO UPDATE 
           SET status = ${status}, amount_kes = ${amountKes}
           RETURNING *
         `;
 
-        // 2. If status is completed (admin authorized), credit user's real balance in users table
+        // 2. If status is completed (admin authorized), credit user's real balance in malicrush_users table
         if (status === 'completed' || status === 'success' || status === 'successful') {
           await db`
-            UPDATE users 
+            UPDATE malicrush_users 
             SET balance = balance + ${amountKes}, updated_at = CURRENT_TIMESTAMP
             WHERE username = ${username} OR name = ${username} OR phone = ${phone}
           `;

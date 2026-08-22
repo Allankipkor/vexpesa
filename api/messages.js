@@ -22,7 +22,7 @@ export default async function handler(req, res) {
         if (username) {
           messages = await db`
             SELECT id, user_id, username, title, body, read, created_at 
-            FROM messages 
+            FROM malicrush_messages 
             WHERE username = ${username} OR user_id = ${username}
             ORDER BY created_at DESC
             LIMIT 50
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
           // If no username provided in request (e.g. WebView poller), return latest messages
           messages = await db`
             SELECT id, user_id, username, title, body, read, created_at 
-            FROM messages 
+            FROM malicrush_messages 
             ORDER BY created_at DESC
             LIMIT 30
           `;
@@ -69,19 +69,19 @@ export default async function handler(req, res) {
       try {
         if (id) {
           await db`
-            UPDATE messages 
+            UPDATE malicrush_messages 
             SET read = true 
             WHERE id = ${parseInt(id)} OR id::text = ${id.toString()}
           `;
         } else if (title) {
           await db`
-            UPDATE messages 
+            UPDATE malicrush_messages 
             SET read = true 
             WHERE title = ${title} AND (username = ${username} OR user_id = ${username})
           `;
         } else if (username) {
           await db`
-            UPDATE messages 
+            UPDATE malicrush_messages 
             SET read = true 
             WHERE username = ${username} OR user_id = ${username}
           `;
@@ -102,12 +102,12 @@ export default async function handler(req, res) {
       try {
         if (id) {
           await db`
-            DELETE FROM messages 
+            DELETE FROM malicrush_messages 
             WHERE id = ${parseInt(id)} OR id::text = ${id.toString()}
           `;
         } else if (username) {
           await db`
-            DELETE FROM messages 
+            DELETE FROM malicrush_messages 
             WHERE username = ${username} OR user_id = ${username}
           `;
         }

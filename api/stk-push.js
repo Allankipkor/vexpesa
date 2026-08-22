@@ -44,7 +44,7 @@ export default async function handler(req, res) {
   // Fetch credentials and minimum deposit from Neon DB settings table
   if (db) {
     try {
-      const rows = await db`SELECT value FROM settings WHERE key = 'platform_config' LIMIT 1`;
+      const rows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
       if (rows.length > 0) {
         const saved = JSON.parse(rows[0].value);
         if (!apiUsername) apiUsername = (saved.payheroUsername || saved.payments?.payhero?.api_username || '').trim();
@@ -100,7 +100,7 @@ export default async function handler(req, res) {
       if (db) {
         try {
           await db`
-            INSERT INTO deposits (deposit_ref, username, amount_kes, phone, method, status)
+            INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status)
             VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa STK', 'pending')
             ON CONFLICT (deposit_ref) DO NOTHING
           `;
@@ -122,7 +122,7 @@ export default async function handler(req, res) {
         // If PayHero rejected request immediately, mark failed
         if (db) {
           try {
-            await db`UPDATE deposits SET status = 'failed' WHERE deposit_ref = ${reference}`;
+            await db`UPDATE malicrush_deposits SET status = 'failed' WHERE deposit_ref = ${reference}`;
           } catch(e) {}
         }
         const msg = resData.message || resData.error || 'M-Pesa transaction request could not be completed';
@@ -135,7 +135,7 @@ export default async function handler(req, res) {
     } catch (err) {
       if (db) {
         try {
-          await db`UPDATE deposits SET status = 'failed' WHERE deposit_ref = ${reference}`;
+          await db`UPDATE malicrush_deposits SET status = 'failed' WHERE deposit_ref = ${reference}`;
         } catch(e) {}
       }
       return res.status(500).json({
@@ -149,7 +149,7 @@ export default async function handler(req, res) {
   if (db) {
     try {
       await db`
-        INSERT INTO deposits (deposit_ref, username, amount_kes, phone, method, status)
+        INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status)
         VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa STK', 'pending')
         ON CONFLICT (deposit_ref) DO NOTHING
       `;

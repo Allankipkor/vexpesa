@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     if (db) {
       try {
         const existing = await db`
-          SELECT id FROM users 
+          SELECT id FROM malicrush_users 
           WHERE (username = ${username} OR name = ${username} OR email = ${email}) 
           LIMIT 1
         `;
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
         const colInfo = await db`
           SELECT data_type 
           FROM information_schema.columns 
-          WHERE table_name = 'users' AND column_name = 'id'
+          WHERE table_name = 'malicrush_users' AND column_name = 'id'
         `;
         const type = (colInfo[0]?.data_type || '').toLowerCase();
         let nextId;
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
           // Numeric integer
           const maxIdRes = await db`
             SELECT COALESCE(MAX(CASE WHEN id::text ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 0) + 1 AS next_id 
-            FROM users
+            FROM malicrush_users
           `;
           nextId = parseInt(maxIdRes[0]?.next_id || 1);
         }
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
         let newUser;
         try {
           const res = await db`
-            INSERT INTO users (
+            INSERT INTO malicrush_users (
               id,
               username,
               name,
@@ -94,7 +94,7 @@ export default async function handler(req, res) {
         } catch (insertErr) {
           // Fallback minimal insert
           const res = await db`
-            INSERT INTO users (id, email, password, password_hash, username, name)
+            INSERT INTO malicrush_users (id, email, password, password_hash, username, name)
             VALUES (${nextId}, ${email}, ${password}, ${password}, ${username}, ${username})
             RETURNING id, email, username
           `;
@@ -144,7 +144,7 @@ export default async function handler(req, res) {
       try {
         const users = await db`
           SELECT *
-          FROM users 
+          FROM malicrush_users 
           WHERE (
             username = ${identifier} 
             OR email = ${identifier.toLowerCase()} 
@@ -201,7 +201,7 @@ export default async function handler(req, res) {
       try {
         const users = await db`
           SELECT id, COALESCE(username, name, email) AS username, email, phone, balance, demo_balance, role, status
-          FROM users 
+          FROM malicrush_users 
           WHERE (
             username = ${identifier} 
             OR email = ${identifier.toLowerCase()} 
