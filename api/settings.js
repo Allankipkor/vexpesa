@@ -34,13 +34,19 @@ const defaultSettings = {
   payments: {
     usd_rate: 129.00,
     deposit_currency: "kes",
-    gateway: "payhero",
+    gateway: "payhero", // "payhero" | "gravitypay" | "auto"
     payhero: {
       api_username: "",
       api_password: "",
       channel_id: "",
       callback_url: "",
       service_name: "MaliCrush M-Pesa"
+    },
+    gravitypay: {
+      api_key: "",
+      secret_key: "",
+      webhook_secret: "",
+      callback_url: "https://malicrush.vercel.app/api/payhero-callback.js"
     }
   },
   site: {
@@ -77,11 +83,19 @@ export default async function handler(req, res) {
           } catch(e) {}
         }
 
-        // Merge inputs & preserve PayHero configuration & payment limits
+        // Merge PayHero configuration
         const phUser = input.payheroUsername || input.payments?.payhero?.api_username || currentSettings.payheroUsername || currentSettings.payments?.payhero?.api_username || '';
         const phPass = input.payheroPassword || input.payments?.payhero?.api_password || currentSettings.payheroPassword || currentSettings.payments?.payhero?.api_password || '';
         const phChan = input.payheroChannelId || input.payments?.payhero?.channel_id || currentSettings.payheroChannelId || currentSettings.payments?.payhero?.channel_id || '';
         const phCb = input.payheroCallbackUrl || input.payments?.payhero?.callback_url || currentSettings.payheroCallbackUrl || currentSettings.payments?.payhero?.callback_url || '';
+
+        // Merge GravityPay configuration
+        const gpKey = input.gravitypayApiKey || input.payments?.gravitypay?.api_key || currentSettings.gravitypayApiKey || currentSettings.payments?.gravitypay?.api_key || '';
+        const gpSecret = input.gravitypaySecretKey || input.payments?.gravitypay?.secret_key || currentSettings.gravitypaySecretKey || currentSettings.payments?.gravitypay?.secret_key || '';
+        const gpWebhook = input.gravitypayWebhookSecret || input.payments?.gravitypay?.webhook_secret || currentSettings.gravitypayWebhookSecret || currentSettings.payments?.gravitypay?.webhook_secret || '';
+        const gpCb = input.gravitypayCallbackUrl || input.payments?.gravitypay?.callback_url || currentSettings.gravitypayCallbackUrl || currentSettings.payments?.gravitypay?.callback_url || '';
+        const activeGateway = input.gateway || input.payments?.gateway || currentSettings.gateway || currentSettings.payments?.gateway || 'payhero';
+
         const minDep = input.minDep !== undefined ? parseFloat(input.minDep) : (input.trade?.min_deposit ?? currentSettings.trade?.min_deposit ?? 50);
         const minWithdraw = input.minWithdraw !== undefined ? parseFloat(input.minWithdraw) : (input.withdraw?.min_withdrawal ?? currentSettings.withdraw?.min_withdrawal ?? 100);
         const speed = input.speed !== undefined ? parseFloat(input.speed) : (input.graph?.speed ?? currentSettings.graph?.speed ?? 120);
@@ -118,6 +132,7 @@ export default async function handler(req, res) {
           minWithdraw,
           usdRate,
           currency,
+          gateway: activeGateway,
           force_outcome: forceOutcome,
           target_win_rate: targetWinRate,
           force_win_rate: forceWinRate,
@@ -126,6 +141,10 @@ export default async function handler(req, res) {
           payheroPassword: phPass,
           payheroChannelId: phChan,
           payheroCallbackUrl: phCb,
+          gravitypayApiKey: gpKey,
+          gravitypaySecretKey: gpSecret,
+          gravitypayWebhookSecret: gpWebhook,
+          gravitypayCallbackUrl: gpCb,
           graph: {
             ...currentSettings.graph,
             ...(input.graph || {}),
@@ -153,6 +172,7 @@ export default async function handler(req, res) {
           payments: {
             ...currentSettings.payments,
             ...(input.payments || {}),
+            gateway: activeGateway,
             deposit_currency: currency,
             usd_rate: usdRate,
             payhero: {
@@ -162,6 +182,14 @@ export default async function handler(req, res) {
               api_password: phPass,
               channel_id: phChan,
               callback_url: phCb
+            },
+            gravitypay: {
+              ...(currentSettings.payments?.gravitypay || {}),
+              ...(input.payments?.gravitypay || {}),
+              api_key: gpKey,
+              secret_key: gpSecret,
+              webhook_secret: gpWebhook,
+              callback_url: gpCb
             }
           },
           controls: {
@@ -214,6 +242,15 @@ export default async function handler(req, res) {
         return res.status(200).json({
           ...defaultSettings,
           ...saved,
+          gateway: saved.gateway ?? saved.payments?.gateway ?? defaultSettings.payments.gateway,
+          payheroUsername: saved.payheroUsername ?? saved.payments?.payhero?.api_username ?? '',
+          payheroPassword: saved.payheroPassword ?? saved.payments?.payhero?.api_password ?? '',
+          payheroChannelId: saved.payheroChannelId ?? saved.payments?.payhero?.channel_id ?? '',
+          payheroCallbackUrl: saved.payheroCallbackUrl ?? saved.payments?.payhero?.callback_url ?? '',
+          gravitypayApiKey: saved.gravitypayApiKey ?? saved.payments?.gravitypay?.api_key ?? '',
+          gravitypaySecretKey: saved.gravitypaySecretKey ?? saved.payments?.gravitypay?.secret_key ?? '',
+          gravitypayWebhookSecret: saved.gravitypayWebhookSecret ?? saved.payments?.gravitypay?.webhook_secret ?? '',
+          gravitypayCallbackUrl: saved.gravitypayCallbackUrl ?? saved.payments?.gravitypay?.callback_url ?? '',
           graph: {
             ...defaultSettings.graph,
             ...(saved.graph || {}),
@@ -241,8 +278,25 @@ export default async function handler(req, res) {
           payments: {
             ...defaultSettings.payments,
             ...(saved.payments || {}),
+            gateway: saved.gateway ?? saved.payments?.gateway ?? defaultSettings.payments.gateway,
             deposit_currency: saved.currency ?? saved.payments?.deposit_currency ?? defaultSettings.payments.deposit_currency,
-            usd_rate: saved.usdRate ?? saved.payments?.usd_rate ?? defaultSettings.payments.usd_rate
+            usd_rate: saved.usdRate ?? saved.payments?.usd_rate ?? defaultSettings.payments.usd_rate,
+            payhero: {
+              ...(defaultSettings.payments.payhero),
+              ...(saved.payments?.payhero || {}),
+              api_username: saved.payheroUsername ?? saved.payments?.payhero?.api_username ?? '',
+              api_password: saved.payheroPassword ?? saved.payments?.payhero?.api_password ?? '',
+              channel_id: saved.payheroChannelId ?? saved.payments?.payhero?.channel_id ?? '',
+              callback_url: saved.payheroCallbackUrl ?? saved.payments?.payhero?.callback_url ?? ''
+            },
+            gravitypay: {
+              ...(defaultSettings.payments.gravitypay),
+              ...(saved.payments?.gravitypay || {}),
+              api_key: saved.gravitypayApiKey ?? saved.payments?.gravitypay?.api_key ?? '',
+              secret_key: saved.gravitypaySecretKey ?? saved.payments?.gravitypay?.secret_key ?? '',
+              webhook_secret: saved.gravitypayWebhookSecret ?? saved.payments?.gravitypay?.webhook_secret ?? '',
+              callback_url: saved.gravitypayCallbackUrl ?? saved.payments?.gravitypay?.callback_url ?? ''
+            }
           },
           controls: {
             ...defaultSettings.controls,

@@ -3,7 +3,7 @@ import { getDb, initDb } from './db.js';
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Webhook-Signature, X-Webhook-Timestamp, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -13,14 +13,14 @@ export default async function handler(req, res) {
   const db = getDb();
 
   const body = req.body || {};
-  const response = body.response || body;
+  const response = body.response || body.data || body;
 
-  // Extract fields from PayHero v1 / v2 callbacks
+  // Extract fields from PayHero v1/v2 AND GravityPay webhooks
   const status = (response.Status || response.status || body.status || '').toString().toLowerCase();
-  const externalRef = (response.ExternalReference || response.external_reference || response.externalReference || body.external_reference || '').trim();
-  const mpesaReceipt = (response.MpesaReceiptNumber || response.mpesa_reference || response.receipt || response.MpesaReceipt || '').trim();
+  const externalRef = (response.ExternalReference || response.external_reference || response.externalReference || response.reference || body.reference || body.external_reference || '').trim();
+  const mpesaReceipt = (response.MpesaReceiptNumber || response.mpesa_reference || response.mpesaReceipt || response.receipt || response.MpesaReceipt || '').trim();
   const amount = parseFloat(response.Amount || response.amount || body.amount) || 0;
-  const phone = (response.Phone || response.phone || response.phone_number || '').trim();
+  const phone = (response.Phone || response.phone || response.phone_number || response.phoneNumber || body.phoneNumber || '').trim();
   const resultCode = response.ResultCode !== undefined ? parseInt(response.ResultCode) : (body.ResultCode !== undefined ? parseInt(body.ResultCode) : null);
 
   const isSuccess = (status === 'success' || status === 'successful' || status === 'completed') || resultCode === 0;
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
           `;
         }
 
-        // 3. Create M-Pesa receipt message
+        // 3. Create M-Pesa receipt message in trader inbox
         try {
           const mpesaCode = mpesaReceipt || ('NLJ' + Date.now().toString().slice(-7));
           await db`
@@ -82,12 +82,12 @@ export default async function handler(req, res) {
         `;
       }
     } catch(err) {
-      console.error('Error processing PayHero callback:', err);
+      console.error('Error processing Payment Gateway callback:', err);
     }
   }
 
   return res.status(200).json({
     status: 'OK',
-    message: isSuccess ? 'Payment confirmed successfully' : 'Payment marked failed'
+    message: isSuccess ? 'Payment confirmed and credited successfully' : 'Payment recorded'
   });
 }
