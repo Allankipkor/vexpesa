@@ -102,6 +102,12 @@ export async function initDb() {
       await db`ALTER TABLE malicrush_users ALTER COLUMN id SET DEFAULT nextval('malicrush_users_id_seq')`;
       await db`ALTER SEQUENCE malicrush_users_id_seq OWNED BY malicrush_users.id`;
     } catch (seqErr) {}
+
+    // Ensure Unique Indexes exist
+    try {
+      await db`CREATE UNIQUE INDEX IF NOT EXISTS malicrush_users_username_idx ON malicrush_users (username)`;
+      await db`CREATE UNIQUE INDEX IF NOT EXISTS malicrush_users_email_idx ON malicrush_users (email)`;
+    } catch (idxErr) {}
   } catch (e) { console.error('Error creating/migrating malicrush_users table:', e); }
 
   // 2. malicrush_trades

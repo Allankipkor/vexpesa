@@ -31,6 +31,10 @@ ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 
 ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 
+-- Unique Indexes
+CREATE UNIQUE INDEX IF NOT EXISTS malicrush_users_username_idx ON malicrush_users (username);
+CREATE UNIQUE INDEX IF NOT EXISTS malicrush_users_email_idx ON malicrush_users (email);
+
 -- 2. Trades Table
 CREATE TABLE IF NOT EXISTS malicrush_trades (
   id SERIAL PRIMARY KEY,
