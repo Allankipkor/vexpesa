@@ -13,13 +13,45 @@ export default async function handler(req, res) {
   const db = getDb();
 
   const action = req.query.action || (req.body ? req.body.action : '') || '';
-  const ref = (req.query.reference || req.query.ref || (req.body ? req.body.reference : '') || '').trim();
+  const ref = (req.query.reference || req.query.ref || req.query.checkoutRequestId || (req.body ? req.body.reference : '') || '').trim();
+  const queryPhone = (req.query.phone || (req.body ? req.body.phone : '') || '').trim();
+  const queryUser = (req.query.username || (req.body ? req.body.username : '') || '').trim();
 
   // 1. SINGLE DEPOSIT STATUS CHECK (Client Polling & Active Verification)
-  if (action === 'check' && ref) {
+  if (action === 'check') {
     if (db) {
       try {
-        const rows = await db`SELECT * FROM malicrush_deposits WHERE deposit_ref = ${ref} LIMIT 1`;
+        let rows = [];
+        if (ref) {
+          rows = await db`
+            SELECT * FROM malicrush_deposits 
+            WHERE deposit_ref = ${ref} 
+               OR checkout_request_id = ${ref} 
+               OR id::text = ${ref} 
+            LIMIT 1
+          `;
+        }
+
+        // Fallback search by phone or username if ref is not found
+        if (rows.length === 0 && (queryPhone || queryUser)) {
+          const phone9 = queryPhone.replace(/\D/g, '').slice(-9);
+          if (phone9) {
+            rows = await db`
+              SELECT * FROM malicrush_deposits 
+              WHERE phone LIKE ${'%' + phone9}
+              ORDER BY created_at DESC 
+              LIMIT 1
+            `;
+          } else if (queryUser && queryUser !== 'Trader') {
+            rows = await db`
+              SELECT * FROM malicrush_deposits 
+              WHERE LOWER(username) = LOWER(${queryUser})
+              ORDER BY created_at DESC 
+              LIMIT 1
+            `;
+          }
+        }
+
         if (rows.length > 0) {
           const d = rows[0];
 
@@ -31,36 +63,46 @@ export default async function handler(req, res) {
                 const cfg = JSON.parse(cfgRows[0].value);
                 const gpKey = (cfg.gravitypayApiKey || cfg.payments?.gravitypay?.api_key || '').trim();
                 const gpSec = (cfg.gravitypaySecretKey || cfg.payments?.gravitypay?.secret_key || '').trim();
-                if (gpKey && gpSec) {
-                  const gpRes = await fetch(`https://api.gravitypayapp.com/api/v1/stk/status/${encodeURIComponent(ref)}`, {
-                    headers: {
-                      'Authorization': `Bearer ${gpSec}`,
-                      'x-api-key': gpKey
-                    }
-                  });
-                  if (gpRes.ok) {
-                    const gpJson = await gpRes.json();
-                    const gData = gpJson.data || gpJson;
-                    const gStat = (gData.status || gpJson.status || '').toLowerCase();
-                    const gReceipt = gData.mpesaReceipt || gpJson.mpesaReceipt || '';
-                    const gAmount = parseFloat(gData.amount || gpJson.amount || d.amount_kes);
+                
+                // Query using checkout_request_id first, then fallback to deposit_ref
+                const queryTokens = [d.checkout_request_id, d.deposit_ref, ref].filter(Boolean);
+                
+                for (const token of queryTokens) {
+                  if (!token || !gpKey || !gpSec) continue;
+                  try {
+                    const gpRes = await fetch(`https://api.gravitypayapp.com/api/v1/stk/status/${encodeURIComponent(token)}`, {
+                      headers: {
+                        'Authorization': `Bearer ${gpSec}`,
+                        'x-api-key': gpKey
+                      }
+                    });
 
-                    if (gStat === 'success' || gStat === 'completed' || gReceipt) {
-                      d.status = 'completed';
-                      d.amount_kes = gAmount;
-                      d.method = gReceipt ? `M-Pesa (${gReceipt})` : (d.method || 'M-Pesa (GravityPay)');
-                      await db`
-                        UPDATE malicrush_deposits 
-                        SET status = 'completed', 
-                            amount_kes = ${gAmount},
-                            method = ${d.method}
-                        WHERE id = ${d.id}
-                      `;
-                    } else if (gStat === 'failed' || gStat === 'cancelled') {
-                      d.status = 'failed';
-                      await db`UPDATE malicrush_deposits SET status = 'failed' WHERE id = ${d.id}`;
+                    if (gpRes.ok) {
+                      const gpJson = await gpRes.json();
+                      const gData = gpJson.data || gpJson;
+                      const gStat = (gData.status || gpJson.status || '').toLowerCase();
+                      const gReceipt = gData.mpesaReceipt || gpJson.mpesaReceipt || gData.mpesa_reference || '';
+                      const gAmount = parseFloat(gData.amount || gpJson.amount || d.amount_kes);
+
+                      if (gStat === 'success' || gStat === 'completed' || gStat === 'successful' || gReceipt) {
+                        d.status = 'completed';
+                        d.amount_kes = gAmount;
+                        d.method = gReceipt ? `M-Pesa (${gReceipt})` : (d.method || 'M-Pesa (GravityPay)');
+                        await db`
+                          UPDATE malicrush_deposits 
+                          SET status = 'completed', 
+                              amount_kes = ${gAmount},
+                              method = ${d.method}
+                          WHERE id = ${d.id}
+                        `;
+                        break;
+                      } else if (gStat === 'failed' || gStat === 'cancelled') {
+                        d.status = 'failed';
+                        await db`UPDATE malicrush_deposits SET status = 'failed' WHERE id = ${d.id}`;
+                        break;
+                      }
                     }
-                  }
+                  } catch (e) {}
                 }
               }
             } catch (gpErr) {
@@ -74,7 +116,7 @@ export default async function handler(req, res) {
           // If completed and not marked credited yet, credit user atomically right now
           if (isCompleted && parseFloat(d.amount_kes) > 0 && !d.credited) {
             const uName = d.username;
-            const uPhone = (d.phone || '').replace(/\D/g, '').slice(-9);
+            const uPhone = (d.phone || queryPhone || '').replace(/\D/g, '').slice(-9);
             const amt = parseFloat(d.amount_kes);
 
             let credited = false;
@@ -122,6 +164,22 @@ export default async function handler(req, res) {
             } catch(mErr) {}
           }
 
+          // If already credited, get latest user balance
+          if (isCompleted && currentBal === null) {
+            try {
+              const uName = d.username;
+              const uPhone = (d.phone || '').replace(/\D/g, '').slice(-9);
+              let uRes = [];
+              if (uName && uName !== 'Trader') {
+                uRes = await db`SELECT balance FROM malicrush_users WHERE LOWER(username) = LOWER(${uName}) LIMIT 1`;
+              }
+              if (uRes.length === 0 && uPhone) {
+                uRes = await db`SELECT balance FROM malicrush_users WHERE phone LIKE ${'%' + uPhone} LIMIT 1`;
+              }
+              if (uRes.length > 0) currentBal = parseFloat(uRes[0].balance || 0);
+            } catch(e) {}
+          }
+
           return res.status(200).json({
             success: true,
             status: d.status || 'pending',
@@ -146,7 +204,7 @@ export default async function handler(req, res) {
         let deposits;
         if (onlySuccess) {
           deposits = await db`
-            SELECT id, deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, credited, created_at
+            SELECT id, deposit_ref, checkout_request_id, username, amount_kes, amount_usd, currency, method, phone, status, credited, created_at
             FROM malicrush_deposits
             WHERE status = 'completed' OR status = 'success' OR status = 'successful'
             ORDER BY created_at DESC
@@ -154,7 +212,7 @@ export default async function handler(req, res) {
           `;
         } else {
           deposits = await db`
-            SELECT id, deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, credited, created_at
+            SELECT id, deposit_ref, checkout_request_id, username, amount_kes, amount_usd, currency, method, phone, status, credited, created_at
             FROM malicrush_deposits
             ORDER BY created_at DESC
             LIMIT 100
@@ -182,6 +240,7 @@ export default async function handler(req, res) {
           deposits: deposits.map(d => ({
             id: d.id,
             deposit_ref: d.deposit_ref || `DEP-${d.id}`,
+            checkout_request_id: d.checkout_request_id || '',
             username: d.username || 'Trader',
             amount_kes: parseFloat(d.amount_kes || 0),
             amount_usd: d.amount_usd ? parseFloat(d.amount_usd) : null,
@@ -214,6 +273,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const input = req.body || {};
     const depositRef = input.deposit_ref || input.reference || `DEP-${Date.now()}`;
+    const checkoutRequestId = input.checkout_request_id || input.checkoutRequestId || '';
     const username = (input.username || 'Trader').trim();
     const phone = (input.phone || '').trim();
     const amountKes = parseFloat(input.amount_kes || input.amount) || 0;
@@ -230,10 +290,10 @@ export default async function handler(req, res) {
     if (db) {
       try {
         const inserted = await db`
-          INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, credited)
-          VALUES (${depositRef}, ${username}, ${amountKes}, ${amountUsd}, ${currency}, ${method}, ${phone}, ${status}, ${isCompleted})
+          INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, amount_usd, currency, method, phone, status, credited)
+          VALUES (${depositRef}, ${checkoutRequestId}, ${username}, ${amountKes}, ${amountUsd}, ${currency}, ${method}, ${phone}, ${status}, ${isCompleted})
           ON CONFLICT (deposit_ref) DO UPDATE 
-          SET status = ${status}, amount_kes = ${amountKes}, credited = ${isCompleted}
+          SET status = ${status}, amount_kes = ${amountKes}, credited = ${isCompleted}, checkout_request_id = ${checkoutRequestId}
           RETURNING *
         `;
 

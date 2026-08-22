@@ -137,6 +137,7 @@ export async function initDb() {
       CREATE TABLE IF NOT EXISTS malicrush_deposits (
         id SERIAL PRIMARY KEY,
         deposit_ref VARCHAR(100) NOT NULL UNIQUE,
+        checkout_request_id VARCHAR(100) DEFAULT '',
         username VARCHAR(100),
         amount_kes NUMERIC(12,2) NOT NULL DEFAULT 0.00,
         amount_usd NUMERIC(12,2),
@@ -150,6 +151,7 @@ export async function initDb() {
     `;
 
     // Ensure all columns exist
+    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS checkout_request_id VARCHAR(100) DEFAULT ''`;
     await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
     await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS amount_kes NUMERIC(12,2) DEFAULT 0.00`;
     await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS amount_usd NUMERIC(12,2)`;
@@ -159,6 +161,7 @@ export async function initDb() {
     await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`;
     await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS credited BOOLEAN DEFAULT FALSE`;
     await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+    try { await db`CREATE INDEX IF NOT EXISTS malicrush_deposits_checkout_req_idx ON malicrush_deposits (checkout_request_id)`; } catch(e) {}
   } catch (e) { console.error('Error creating malicrush_deposits table:', e); }
 
   // 4. malicrush_withdrawals

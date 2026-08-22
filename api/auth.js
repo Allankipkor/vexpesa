@@ -15,6 +15,89 @@ export default async function handler(req, res) {
   const input = req.body || {};
   const action = req.query.action || input.action || '';
 
+  // Helper to reconcile deposits for a user (both completed uncredited and pending recent deposits)
+  async function reconcileUserDeposits(user) {
+    if (!db || !user) return;
+    try {
+      const phone9 = (user.phone || '').replace(/\D/g, '').slice(-9);
+
+      // 1. Check for pending recent deposits (last 30 minutes) against GravityPay API
+      try {
+        const pendingRows = await db`
+          SELECT id, deposit_ref, checkout_request_id, amount_kes, phone, method, created_at 
+          FROM malicrush_deposits 
+          WHERE (LOWER(username) = LOWER(${user.username}) OR (phone LIKE ${'%' + phone9} AND LENGTH(${phone9}) >= 8))
+            AND status = 'pending'
+            AND created_at >= (CURRENT_TIMESTAMP - INTERVAL '30 minutes')
+          ORDER BY created_at DESC
+          LIMIT 5
+        `;
+
+        if (pendingRows.length > 0) {
+          const cfgRows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
+          if (cfgRows.length > 0) {
+            const cfg = JSON.parse(cfgRows[0].value);
+            const gpKey = (cfg.gravitypayApiKey || cfg.payments?.gravitypay?.api_key || '').trim();
+            const gpSec = (cfg.gravitypaySecretKey || cfg.payments?.gravitypay?.secret_key || '').trim();
+
+            if (gpKey && gpSec) {
+              for (const pDep of pendingRows) {
+                const token = pDep.checkout_request_id || pDep.deposit_ref;
+                if (!token) continue;
+
+                try {
+                  const gpRes = await fetch(`https://api.gravitypayapp.com/api/v1/stk/status/${encodeURIComponent(token)}`, {
+                    headers: { 'Authorization': `Bearer ${gpSec}`, 'x-api-key': gpKey }
+                  });
+
+                  if (gpRes.ok) {
+                    const gpJson = await gpRes.json();
+                    const gData = gpJson.data || gpJson;
+                    const gStat = (gData.status || gpJson.status || '').toLowerCase();
+                    const gReceipt = gData.mpesaReceipt || gpJson.mpesaReceipt || gData.mpesa_reference || '';
+                    const gAmount = parseFloat(gData.amount || gpJson.amount || pDep.amount_kes);
+
+                    if (gStat === 'success' || gStat === 'completed' || gStat === 'successful' || gReceipt) {
+                      await db`
+                        UPDATE malicrush_deposits 
+                        SET status = 'completed', 
+                            amount_kes = ${gAmount},
+                            method = ${gReceipt ? `M-Pesa (${gReceipt})` : (pDep.method || 'M-Pesa (GravityPay)')}
+                        WHERE id = ${pDep.id}
+                      `;
+                    }
+                  }
+                } catch(e) {}
+              }
+            }
+          }
+        }
+      } catch(pendErr) {
+        console.error('Error checking pending deposits against GravityPay:', pendErr);
+      }
+
+      // 2. Auto-credit any completed uncredited deposits
+      const uncredited = await db`
+        SELECT id, amount_kes FROM malicrush_deposits 
+        WHERE (LOWER(username) = LOWER(${user.username}) OR (phone LIKE ${'%' + phone9} AND LENGTH(${phone9}) >= 8))
+          AND (status = 'completed' OR status = 'success' OR status = 'successful')
+          AND (credited IS NOT TRUE)
+      `;
+
+      if (uncredited.length > 0) {
+        const addSum = uncredited.reduce((acc, r) => acc + parseFloat(r.amount_kes || 0), 0);
+        if (addSum > 0) {
+          const ids = uncredited.map(r => r.id);
+          await db`UPDATE malicrush_users SET balance = balance + ${addSum}, updated_at = CURRENT_TIMESTAMP WHERE id = ${user.id}`;
+          await db`UPDATE malicrush_deposits SET credited = TRUE WHERE id = ANY(${ids})`;
+          user.balance = parseFloat(user.balance || 0) + addSum;
+        }
+      }
+    } catch(recErr) {
+      console.error('Error reconciling user deposits:', recErr);
+    }
+  }
+
   // 1. REGISTER
   if (action === 'register') {
     const username = (input.username || '').trim();
@@ -164,25 +247,8 @@ export default async function handler(req, res) {
           return res.status(403).json({ success: false, error: 'Your account has been suspended.' });
         }
 
-        // Auto-reconcile any uncredited completed deposits
-        try {
-          const phone9 = (user.phone || '').replace(/\D/g, '').slice(-9);
-          const uncredited = await db`
-            SELECT id, amount_kes FROM malicrush_deposits 
-            WHERE (LOWER(username) = LOWER(${user.username}) OR (phone LIKE ${'%' + phone9} AND LENGTH(${phone9}) >= 8))
-              AND (status = 'completed' OR status = 'success' OR status = 'successful')
-              AND (credited IS NOT TRUE)
-          `;
-          if (uncredited.length > 0) {
-            const addSum = uncredited.reduce((acc, r) => acc + parseFloat(r.amount_kes || 0), 0);
-            if (addSum > 0) {
-              const ids = uncredited.map(r => r.id);
-              await db`UPDATE malicrush_users SET balance = balance + ${addSum}, updated_at = CURRENT_TIMESTAMP WHERE id = ${user.id}`;
-              await db`UPDATE malicrush_deposits SET credited = TRUE WHERE id = ANY(${ids})`;
-              user.balance = parseFloat(user.balance || 0) + addSum;
-            }
-          }
-        } catch(recErr) {}
+        // Auto-reconcile user deposits
+        await reconcileUserDeposits(user);
 
         return res.status(200).json({
           success: true,
@@ -232,25 +298,8 @@ export default async function handler(req, res) {
         if (users.length > 0) {
           const user = users[0];
 
-          // Auto-reconcile any uncredited completed deposits
-          try {
-            const phone9 = (user.phone || '').replace(/\D/g, '').slice(-9);
-            const uncredited = await db`
-              SELECT id, amount_kes FROM malicrush_deposits 
-              WHERE (LOWER(username) = LOWER(${user.username}) OR (phone LIKE ${'%' + phone9} AND LENGTH(${phone9}) >= 8))
-                AND (status = 'completed' OR status = 'success' OR status = 'successful')
-                AND (credited IS NOT TRUE)
-            `;
-            if (uncredited.length > 0) {
-              const addSum = uncredited.reduce((acc, r) => acc + parseFloat(r.amount_kes || 0), 0);
-              if (addSum > 0) {
-                const ids = uncredited.map(r => r.id);
-                await db`UPDATE malicrush_users SET balance = balance + ${addSum}, updated_at = CURRENT_TIMESTAMP WHERE id = ${user.id}`;
-                await db`UPDATE malicrush_deposits SET credited = TRUE WHERE id = ANY(${ids})`;
-                user.balance = parseFloat(user.balance || 0) + addSum;
-              }
-            }
-          } catch(recErr) {}
+          // Auto-reconcile user deposits
+          await reconcileUserDeposits(user);
 
           return res.status(200).json({
             success: true,

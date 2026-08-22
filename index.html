@@ -2290,8 +2290,9 @@ async function requestSTK(){
         if (cdEl) cdEl.textContent = remaining.toString();
 
         try {
-          let chkRes = await fetch(`/api/deposits?action=check&reference=${encodeURIComponent(depRef)}`);
-          if (!chkRes.ok) chkRes = await fetch(`api/deposits?action=check&reference=${encodeURIComponent(depRef)}`);
+          const chkReqUrl = `/api/deposits?action=check&reference=${encodeURIComponent(depRef)}&checkoutRequestId=${encodeURIComponent(data.checkoutRequestId || '')}&phone=${encodeURIComponent(phone)}&username=${encodeURIComponent(currentUser?.username || '')}`;
+          let chkRes = await fetch(chkReqUrl);
+          if (!chkRes.ok) chkRes = await fetch(`api/deposits?action=check&reference=${encodeURIComponent(depRef)}&checkoutRequestId=${encodeURIComponent(data.checkoutRequestId || '')}&phone=${encodeURIComponent(phone)}&username=${encodeURIComponent(currentUser?.username || '')}`);
           const chkData = await chkRes.json();
 
           if (chkData && chkData.success && (chkData.status === 'completed' || chkData.status === 'success' || chkData.status === 'successful')) {

@@ -159,7 +159,12 @@ export default async function handler(req, res) {
     });
 
     const resData = await response.json();
-    return { ok: response.ok && (resData.success === true || resData.status === 'pending' || resData.data?.status === 'pending'), data: resData };
+    const checkoutReqId = resData.data?.checkoutRequestId || resData.checkoutRequestId || resData.data?.transactionId || '';
+    return {
+      ok: response.ok && (resData.success === true || resData.status === 'pending' || resData.data?.status === 'pending'),
+      data: resData,
+      checkoutRequestId: checkoutReqId
+    };
   }
 
   const hasPayhero = Boolean(apiUsername && apiPassword && channelId);
@@ -173,9 +178,10 @@ export default async function handler(req, res) {
         if (db) {
           try {
             await db`
-              INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
-              VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending', FALSE)
-              ON CONFLICT (deposit_ref) DO NOTHING
+              INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+              VALUES (${reference}, ${result.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending', FALSE)
+              ON CONFLICT (deposit_ref) DO UPDATE 
+              SET checkout_request_id = ${result.checkoutRequestId || ''}
             `;
           } catch(e) {}
         }
@@ -184,6 +190,7 @@ export default async function handler(req, res) {
           live: true,
           gateway: 'gravitypay',
           reference: reference,
+          checkoutRequestId: result.checkoutRequestId,
           message: `GravityPay STK Push sent to ${formattedPhone}! Enter your M-Pesa PIN on your handset.`,
           response: result.data
         });
@@ -204,8 +211,8 @@ export default async function handler(req, res) {
         if (db) {
           try {
             await db`
-              INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
-              VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending', FALSE)
+              INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+              VALUES (${reference}, '', ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending', FALSE)
               ON CONFLICT (deposit_ref) DO NOTHING
             `;
           } catch(e) {}
@@ -227,9 +234,10 @@ export default async function handler(req, res) {
               if (db) {
                 try {
                   await db`
-                    INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
-                    VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
-                    ON CONFLICT (deposit_ref) DO NOTHING
+                    INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                    VALUES (${reference}, ${backupRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
+                    ON CONFLICT (deposit_ref) DO UPDATE 
+                    SET checkout_request_id = ${backupRes.checkoutRequestId || ''}
                   `;
                 } catch(e) {}
               }
@@ -238,6 +246,7 @@ export default async function handler(req, res) {
                 live: true,
                 gateway: 'gravitypay_backup',
                 reference: reference,
+                checkoutRequestId: backupRes.checkoutRequestId,
                 message: `M-Pesa STK Push sent to ${formattedPhone} via Backup Gateway! Enter your M-Pesa PIN on your handset.`,
                 response: backupRes.data
               });
@@ -256,9 +265,10 @@ export default async function handler(req, res) {
             if (db) {
               try {
                 await db`
-                  INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
-                  VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
-                  ON CONFLICT (deposit_ref) DO NOTHING
+                  INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                  VALUES (${reference}, ${backupRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
+                  ON CONFLICT (deposit_ref) DO UPDATE 
+                  SET checkout_request_id = ${backupRes.checkoutRequestId || ''}
                 `;
               } catch(e) {}
             }
@@ -267,6 +277,7 @@ export default async function handler(req, res) {
               live: true,
               gateway: 'gravitypay_backup',
               reference: reference,
+              checkoutRequestId: backupRes.checkoutRequestId,
               message: `M-Pesa STK Push sent to ${formattedPhone} via Backup Gateway! Enter your M-Pesa PIN on your phone.`,
               response: backupRes.data
             });
@@ -286,8 +297,8 @@ export default async function handler(req, res) {
           if (db) {
             try {
               await db`
-                INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
-                VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending', FALSE)
+                INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                VALUES (${reference}, '', ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending', FALSE)
                 ON CONFLICT (deposit_ref) DO NOTHING
               `;
             } catch(e) {}
@@ -311,9 +322,10 @@ export default async function handler(req, res) {
           if (db) {
             try {
               await db`
-                INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
-                VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending', FALSE)
-                ON CONFLICT (deposit_ref) DO NOTHING
+                INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                VALUES (${reference}, ${gpRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending', FALSE)
+                ON CONFLICT (deposit_ref) DO UPDATE 
+                SET checkout_request_id = ${gpRes.checkoutRequestId || ''}
               `;
             } catch(e) {}
           }
@@ -322,6 +334,7 @@ export default async function handler(req, res) {
             live: true,
             gateway: 'gravitypay',
             reference: reference,
+            checkoutRequestId: gpRes.checkoutRequestId,
             message: `STK Push sent to ${formattedPhone}! Enter your M-Pesa PIN on your handset.`,
             response: gpRes.data
           });
@@ -334,8 +347,8 @@ export default async function handler(req, res) {
   if (db) {
     try {
       await db`
-        INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
-        VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa STK (Sandbox)', 'pending', FALSE)
+        INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+        VALUES (${reference}, '', ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa STK (Sandbox)', 'pending', FALSE)
         ON CONFLICT (deposit_ref) DO NOTHING
       `;
     } catch (dbErr) {

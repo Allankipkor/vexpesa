@@ -23,12 +23,11 @@ export default async function handler(req, res) {
 
   // Extract fields from PayHero v1/v2 AND GravityPay (gravitypayapp.com) webhooks
   const status = (response.status || response.Status || body.status || body.Status || '').toString().toLowerCase();
+  const checkoutRequestId = (response.checkoutRequestId || body.checkoutRequestId || response.checkout_request_id || body.checkout_request_id || response.transactionId || body.transactionId || '').trim();
   const externalRef = (
     response.reference || body.reference || 
     response.ExternalReference || body.external_reference || response.external_reference || response.externalReference ||
-    response.checkoutRequestId || body.checkoutRequestId || 
-    response.transactionId || body.transactionId || 
-    ''
+    checkoutRequestId || ''
   ).trim();
   const mpesaReceipt = (response.mpesaReceipt || body.mpesaReceipt || response.MpesaReceiptNumber || response.mpesa_reference || response.receipt || response.MpesaReceipt || '').trim();
   const amount = parseFloat(response.amount || body.amount || response.Amount || body.Amount) || 0;
@@ -43,13 +42,16 @@ export default async function handler(req, res) {
       if (isSuccess && amount > 0) {
         // 1. Update deposit record in malicrush_deposits
         let updatedDep = [];
-        if (externalRef) {
+        if (externalRef || checkoutRequestId) {
           updatedDep = await db`
             UPDATE malicrush_deposits
             SET status = 'completed',
-                method = ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa STK'},
-                amount_kes = ${amount}
-            WHERE deposit_ref = ${externalRef}
+                method = ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa (GravityPay)'},
+                amount_kes = ${amount},
+                checkout_request_id = COALESCE(NULLIF(${checkoutRequestId}, ''), checkout_request_id)
+            WHERE deposit_ref = ${externalRef} 
+               OR checkout_request_id = ${checkoutRequestId}
+               OR (checkout_request_id = ${externalRef} AND LENGTH(${externalRef}) > 5)
             RETURNING *
           `;
         }
@@ -61,11 +63,12 @@ export default async function handler(req, res) {
             updatedDep = await db`
               UPDATE malicrush_deposits
               SET status = 'completed',
-                  method = ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa STK'},
-                  amount_kes = ${amount}
+                  method = ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa (GravityPay)'},
+                  amount_kes = ${amount},
+                  checkout_request_id = COALESCE(NULLIF(${checkoutRequestId}, ''), checkout_request_id)
               WHERE id = (
                 SELECT id FROM malicrush_deposits 
-                WHERE (phone LIKE ${'%' + phone9} OR deposit_ref = ${externalRef}) 
+                WHERE (phone LIKE ${'%' + phone9} OR deposit_ref = ${externalRef} OR checkout_request_id = ${checkoutRequestId}) 
                   AND status = 'pending'
                 ORDER BY created_at DESC 
                 LIMIT 1
@@ -80,8 +83,9 @@ export default async function handler(req, res) {
           updatedDep = await db`
             UPDATE malicrush_deposits
             SET status = 'completed',
-                method = ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa STK'},
-                amount_kes = ${amount}
+                method = ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa (GravityPay)'},
+                amount_kes = ${amount},
+                checkout_request_id = COALESCE(NULLIF(${checkoutRequestId}, ''), checkout_request_id)
             WHERE id = (
               SELECT id FROM malicrush_deposits 
               WHERE LOWER(username) = LOWER(${metadataUser}) AND status = 'pending'
@@ -96,10 +100,10 @@ export default async function handler(req, res) {
         let depRecord = updatedDep[0];
         if (!depRecord && (externalRef || phone)) {
           const inserted = await db`
-            INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
-            VALUES (${externalRef || 'DEP-' + Date.now()}, ${metadataUser || 'Trader'}, ${amount}, ${phone}, ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa STK'}, 'completed', FALSE)
+            INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+            VALUES (${externalRef || 'DEP-' + Date.now()}, ${checkoutRequestId || ''}, ${metadataUser || 'Trader'}, ${amount}, ${phone}, ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa (GravityPay)'}, 'completed', FALSE)
             ON CONFLICT (deposit_ref) DO UPDATE 
-            SET status = 'completed', amount_kes = ${amount}
+            SET status = 'completed', amount_kes = ${amount}, checkout_request_id = ${checkoutRequestId || ''}
             RETURNING *
           `;
           depRecord = inserted[0];
@@ -155,12 +159,12 @@ export default async function handler(req, res) {
           } catch(msgErr) {}
         }
 
-      } else if (externalRef) {
+      } else if (externalRef || checkoutRequestId) {
         // Mark deposit as failed
         await db`
           UPDATE malicrush_deposits
           SET status = 'failed'
-          WHERE deposit_ref = ${externalRef} AND status = 'pending'
+          WHERE (deposit_ref = ${externalRef} OR checkout_request_id = ${checkoutRequestId}) AND status = 'pending'
         `;
       }
     } catch(err) {
