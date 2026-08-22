@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   const input = req.body || {};
   const phone = (input.phone || '').trim();
   const amount = parseFloat(input.amount) || 100;
-  const username = input.username || '';
+  const rawUsername = (input.username || '').trim();
 
   if (!phone) {
     return res.status(400).json({ success: false, error: 'Phone number is required' });
@@ -35,6 +35,23 @@ export default async function handler(req, res) {
   } else {
     return res.status(400).json({ success: false, error: 'Invalid phone format. Use 07XXXXXXXX or 2547XXXXXXXX' });
   }
+
+  // Resolve exact registered username if not provided or set to 'Trader'
+  let resolvedUsername = rawUsername;
+  if ((!resolvedUsername || resolvedUsername === 'Trader') && db) {
+    try {
+      const phone9 = phone.replace(/\D/g, '').slice(-9);
+      const uRows = await db`
+        SELECT username, name, email FROM malicrush_users 
+        WHERE phone LIKE ${'%' + phone9}
+        LIMIT 1
+      `;
+      if (uRows.length > 0) {
+        resolvedUsername = uRows[0].username || uRows[0].name || uRows[0].email;
+      }
+    } catch(e) {}
+  }
+  if (!resolvedUsername) resolvedUsername = 'Trader';
 
   // PayHero Credentials
   let apiUsername = (input.payheroUsername || '').trim();
@@ -101,7 +118,7 @@ export default async function handler(req, res) {
       channel_id: channelId,
       provider: 'm-pesa',
       external_reference: reference,
-      customer_name: username || 'MaliCrush Trader',
+      customer_name: resolvedUsername,
       callback_url: callbackUrl || `https://${req.headers.host || 'malicrush.vercel.app'}/api/payhero-callback.js`
     };
 
@@ -126,7 +143,7 @@ export default async function handler(req, res) {
       reference: reference.slice(0, 12),
       description: 'MaliCrush Topup',
       metadata: {
-        username: username || 'Trader',
+        username: resolvedUsername,
         app: 'malicrush'
       }
     };
@@ -156,8 +173,8 @@ export default async function handler(req, res) {
         if (db) {
           try {
             await db`
-              INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status)
-              VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending')
+              INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
+              VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending', FALSE)
               ON CONFLICT (deposit_ref) DO NOTHING
             `;
           } catch(e) {}
@@ -187,8 +204,8 @@ export default async function handler(req, res) {
         if (db) {
           try {
             await db`
-              INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status)
-              VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending')
+              INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
+              VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending', FALSE)
               ON CONFLICT (deposit_ref) DO NOTHING
             `;
           } catch(e) {}
@@ -210,8 +227,8 @@ export default async function handler(req, res) {
               if (db) {
                 try {
                   await db`
-                    INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status)
-                    VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending')
+                    INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
+                    VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
                     ON CONFLICT (deposit_ref) DO NOTHING
                   `;
                 } catch(e) {}
@@ -239,8 +256,8 @@ export default async function handler(req, res) {
             if (db) {
               try {
                 await db`
-                  INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status)
-                  VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending')
+                  INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
+                  VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
                   ON CONFLICT (deposit_ref) DO NOTHING
                 `;
               } catch(e) {}
@@ -269,8 +286,8 @@ export default async function handler(req, res) {
           if (db) {
             try {
               await db`
-                INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status)
-                VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending')
+                INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
+                VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending', FALSE)
                 ON CONFLICT (deposit_ref) DO NOTHING
               `;
             } catch(e) {}
@@ -294,8 +311,8 @@ export default async function handler(req, res) {
           if (db) {
             try {
               await db`
-                INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status)
-                VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending')
+                INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
+                VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending', FALSE)
                 ON CONFLICT (deposit_ref) DO NOTHING
               `;
             } catch(e) {}
@@ -317,8 +334,8 @@ export default async function handler(req, res) {
   if (db) {
     try {
       await db`
-        INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status)
-        VALUES (${reference}, ${username || 'Trader'}, ${amount}, ${formattedPhone}, 'M-Pesa STK (Sandbox)', 'pending')
+        INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
+        VALUES (${reference}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa STK (Sandbox)', 'pending', FALSE)
         ON CONFLICT (deposit_ref) DO NOTHING
       `;
     } catch (dbErr) {

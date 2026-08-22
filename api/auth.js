@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       try {
         const existing = await db`
           SELECT id FROM malicrush_users 
-          WHERE (username = ${username} OR name = ${username} OR email = ${email}) 
+          WHERE (LOWER(username) = LOWER(${username}) OR LOWER(name) = LOWER(${username}) OR LOWER(email) = LOWER(${email})) 
           LIMIT 1
         `;
         if (existing.length > 0) {
@@ -52,7 +52,6 @@ export default async function handler(req, res) {
         } else if (type.includes('char') || type.includes('text')) {
           nextId = 'usr_' + Date.now() + Math.random().toString(36).substring(2, 7);
         } else {
-          // Numeric integer
           const maxIdRes = await db`
             SELECT COALESCE(MAX(CASE WHEN id::text ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 0) + 1 AS next_id 
             FROM malicrush_users
@@ -92,7 +91,6 @@ export default async function handler(req, res) {
           `;
           newUser = res[0];
         } catch (insertErr) {
-          // Fallback minimal insert
           const res = await db`
             INSERT INTO malicrush_users (id, email, password, password_hash, username, name)
             VALUES (${nextId}, ${email}, ${password}, ${password}, ${username}, ${username})
@@ -124,7 +122,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Fallback if DB not configured yet
     return res.status(200).json({
       success: true,
       user: { username, email, phone, balance: 0.00, demo_balance: 10000.00, role: 'user' }
@@ -146,10 +143,10 @@ export default async function handler(req, res) {
           SELECT *
           FROM malicrush_users 
           WHERE (
-            username = ${identifier} 
-            OR email = ${identifier.toLowerCase()} 
+            LOWER(username) = LOWER(${identifier}) 
+            OR LOWER(email) = LOWER(${identifier.toLowerCase()}) 
             OR phone = ${identifier}
-            OR name = ${identifier}
+            OR LOWER(name) = LOWER(${identifier})
           )
           AND (
             password_hash = ${password} 
@@ -166,6 +163,26 @@ export default async function handler(req, res) {
         if (user.status === 'suspended') {
           return res.status(403).json({ success: false, error: 'Your account has been suspended.' });
         }
+
+        // Auto-reconcile any uncredited completed deposits
+        try {
+          const phone9 = (user.phone || '').replace(/\D/g, '').slice(-9);
+          const uncredited = await db`
+            SELECT id, amount_kes FROM malicrush_deposits 
+            WHERE (LOWER(username) = LOWER(${user.username}) OR (phone LIKE ${'%' + phone9} AND LENGTH(${phone9}) >= 8))
+              AND (status = 'completed' OR status = 'success' OR status = 'successful')
+              AND (credited IS NOT TRUE)
+          `;
+          if (uncredited.length > 0) {
+            const addSum = uncredited.reduce((acc, r) => acc + parseFloat(r.amount_kes || 0), 0);
+            if (addSum > 0) {
+              const ids = uncredited.map(r => r.id);
+              await db`UPDATE malicrush_users SET balance = balance + ${addSum}, updated_at = CURRENT_TIMESTAMP WHERE id = ${user.id}`;
+              await db`UPDATE malicrush_deposits SET credited = TRUE WHERE id = ANY(${ids})`;
+              user.balance = parseFloat(user.balance || 0) + addSum;
+            }
+          }
+        } catch(recErr) {}
 
         return res.status(200).json({
           success: true,
@@ -203,10 +220,10 @@ export default async function handler(req, res) {
           SELECT id, COALESCE(username, name, email) AS username, email, phone, balance, demo_balance, role, status
           FROM malicrush_users 
           WHERE (
-            username = ${identifier} 
-            OR email = ${identifier.toLowerCase()} 
+            LOWER(username) = LOWER(${identifier}) 
+            OR LOWER(email) = LOWER(${identifier.toLowerCase()}) 
             OR phone = ${identifier}
-            OR name = ${identifier}
+            OR LOWER(name) = LOWER(${identifier})
             OR id::text = ${identifier}
           )
           LIMIT 1
@@ -214,6 +231,27 @@ export default async function handler(req, res) {
 
         if (users.length > 0) {
           const user = users[0];
+
+          // Auto-reconcile any uncredited completed deposits
+          try {
+            const phone9 = (user.phone || '').replace(/\D/g, '').slice(-9);
+            const uncredited = await db`
+              SELECT id, amount_kes FROM malicrush_deposits 
+              WHERE (LOWER(username) = LOWER(${user.username}) OR (phone LIKE ${'%' + phone9} AND LENGTH(${phone9}) >= 8))
+                AND (status = 'completed' OR status = 'success' OR status = 'successful')
+                AND (credited IS NOT TRUE)
+            `;
+            if (uncredited.length > 0) {
+              const addSum = uncredited.reduce((acc, r) => acc + parseFloat(r.amount_kes || 0), 0);
+              if (addSum > 0) {
+                const ids = uncredited.map(r => r.id);
+                await db`UPDATE malicrush_users SET balance = balance + ${addSum}, updated_at = CURRENT_TIMESTAMP WHERE id = ${user.id}`;
+                await db`UPDATE malicrush_deposits SET credited = TRUE WHERE id = ANY(${ids})`;
+                user.balance = parseFloat(user.balance || 0) + addSum;
+              }
+            }
+          } catch(recErr) {}
+
           return res.status(200).json({
             success: true,
             user: {

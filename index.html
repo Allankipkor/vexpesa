@@ -2298,8 +2298,19 @@ async function requestSTK(){
             clearInterval(_ppPollInterval);
             _ppPollInterval = null;
 
+            // Automatically switch wallet view to Real mode so player sees deposited funds
+            isDemoMode = false;
+            localStorage.setItem('maliIsDemoMode', 'false');
+
+            if (chkData.balance !== undefined && chkData.balance !== null) {
+              balance = parseFloat(chkData.balance);
+              localStorage.setItem('maliRealBalance', balance.toString());
+            }
+
             // Sync verified balance from backend
             await syncUserBalance();
+            updateHUD();
+
             status.innerHTML = `<span style="color:var(--green)">✓ Payment of KES ${kesAmount.toLocaleString()} Confirmed! Balance updated.</span>`;
             btn.textContent = 'Payment Received! ✓';
             launchCelebration();

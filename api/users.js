@@ -129,13 +129,13 @@ export default async function handler(req, res) {
               await db`
                 UPDATE malicrush_users 
                 SET demo_balance = demo_balance + ${amount}, updated_at = CURRENT_TIMESTAMP
-                WHERE id::text = ${rawUserId} OR username = ${username} OR name = ${username}
+                WHERE id::text = ${rawUserId} OR LOWER(username) = LOWER(${username}) OR LOWER(name) = LOWER(${username})
               `;
             } else {
               await db`
                 UPDATE malicrush_users 
                 SET demo_balance = demo_balance + ${amount}, updated_at = CURRENT_TIMESTAMP
-                WHERE username = ${username} OR name = ${username}
+                WHERE LOWER(username) = LOWER(${username}) OR LOWER(name) = LOWER(${username})
               `;
             }
           } else {
@@ -143,22 +143,23 @@ export default async function handler(req, res) {
               await db`
                 UPDATE malicrush_users 
                 SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
-                WHERE id::text = ${rawUserId} OR username = ${username} OR name = ${username}
+                WHERE id::text = ${rawUserId} OR LOWER(username) = LOWER(${username}) OR LOWER(name) = LOWER(${username})
               `;
             } else {
               await db`
                 UPDATE malicrush_users 
                 SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
-                WHERE username = ${username} OR name = ${username}
+                WHERE LOWER(username) = LOWER(${username}) OR LOWER(name) = LOWER(${username})
               `;
             }
           }
 
-          // Also try recording in deposits table safely
+          // Also record in deposits table
           try {
             await db`
-              INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status)
-              VALUES (${'CREDIT-' + Date.now()}, ${username}, ${amount}, 'Admin', 'Admin Credit', 'completed')
+              INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
+              VALUES (${'CREDIT-' + Date.now()}, ${username}, ${amount}, 'Admin', 'Admin Credit', 'completed', TRUE)
+              ON CONFLICT (deposit_ref) DO NOTHING
             `;
           } catch(depErr) {}
 

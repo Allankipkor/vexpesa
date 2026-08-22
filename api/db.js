@@ -136,17 +136,29 @@ export async function initDb() {
     await db`
       CREATE TABLE IF NOT EXISTS malicrush_deposits (
         id SERIAL PRIMARY KEY,
-        deposit_ref VARCHAR(50) NOT NULL UNIQUE,
-        username VARCHAR(50),
-        amount_kes NUMERIC(10,2) NOT NULL,
-        amount_usd NUMERIC(10,2),
+        deposit_ref VARCHAR(100) NOT NULL UNIQUE,
+        username VARCHAR(100),
+        amount_kes NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+        amount_usd NUMERIC(12,2),
         currency VARCHAR(10) NOT NULL DEFAULT 'kes',
-        method VARCHAR(30) NOT NULL DEFAULT 'mpesa',
-        phone VARCHAR(20) NOT NULL,
-        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        method VARCHAR(100) NOT NULL DEFAULT 'mpesa',
+        phone VARCHAR(50) NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        credited BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
+
+    // Ensure all columns exist
+    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
+    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS amount_kes NUMERIC(12,2) DEFAULT 0.00`;
+    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS amount_usd NUMERIC(12,2)`;
+    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'kes'`;
+    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS method VARCHAR(100) DEFAULT 'mpesa'`;
+    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
+    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`;
+    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS credited BOOLEAN DEFAULT FALSE`;
+    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
   } catch (e) { console.error('Error creating malicrush_deposits table:', e); }
 
   // 4. malicrush_withdrawals

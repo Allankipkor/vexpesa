@@ -22,12 +22,53 @@ export default async function handler(req, res) {
         const rows = await db`SELECT * FROM malicrush_deposits WHERE deposit_ref = ${ref} LIMIT 1`;
         if (rows.length > 0) {
           const d = rows[0];
+          const isCompleted = d.status === 'completed' || d.status === 'success' || d.status === 'successful';
+          let currentBal = null;
+
+          // If completed and not marked credited yet, credit user atomically right now
+          if (isCompleted && parseFloat(d.amount_kes) > 0 && !d.credited) {
+            const uName = d.username;
+            const uPhone = (d.phone || '').replace(/\D/g, '').slice(-9);
+            const amt = parseFloat(d.amount_kes);
+
+            let credited = false;
+            if (uName && uName !== 'Trader') {
+              const uRes = await db`
+                UPDATE malicrush_users 
+                SET balance = balance + ${amt}, updated_at = CURRENT_TIMESTAMP
+                WHERE LOWER(username) = LOWER(${uName}) 
+                   OR LOWER(name) = LOWER(${uName}) 
+                   OR LOWER(email) = LOWER(${uName})
+                RETURNING id, balance
+              `;
+              if (uRes.length > 0) {
+                credited = true;
+                currentBal = parseFloat(uRes[0].balance || 0);
+              }
+            }
+
+            if (!credited && uPhone) {
+              const uRes = await db`
+                UPDATE malicrush_users 
+                SET balance = balance + ${amt}, updated_at = CURRENT_TIMESTAMP
+                WHERE phone LIKE ${'%' + uPhone}
+                RETURNING id, balance
+              `;
+              if (uRes.length > 0) {
+                currentBal = parseFloat(uRes[0].balance || 0);
+              }
+            }
+
+            await db`UPDATE malicrush_deposits SET credited = TRUE WHERE id = ${d.id}`;
+          }
+
           return res.status(200).json({
             success: true,
             status: d.status || 'pending', // 'completed' | 'pending' | 'failed'
             amount: parseFloat(d.amount_kes || 0),
             method: d.method || 'M-Pesa STK',
-            deposit_ref: d.deposit_ref
+            deposit_ref: d.deposit_ref,
+            balance: currentBal
           });
         }
       } catch (err) {
@@ -45,7 +86,7 @@ export default async function handler(req, res) {
         let deposits;
         if (onlySuccess) {
           deposits = await db`
-            SELECT id, deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, created_at
+            SELECT id, deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, credited, created_at
             FROM malicrush_deposits
             WHERE status = 'completed' OR status = 'success' OR status = 'successful'
             ORDER BY created_at DESC
@@ -53,7 +94,7 @@ export default async function handler(req, res) {
           `;
         } else {
           deposits = await db`
-            SELECT id, deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, created_at
+            SELECT id, deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, credited, created_at
             FROM malicrush_deposits
             ORDER BY created_at DESC
             LIMIT 100
@@ -88,6 +129,7 @@ export default async function handler(req, res) {
             method: d.method || 'M-Pesa STK',
             phone: d.phone || '',
             status: d.status || 'pending',
+            credited: d.credited || false,
             created_at: d.created_at || new Date().toISOString()
           })),
           stats: {
@@ -108,7 +150,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // 2. CREATE OR CONFIRM DEPOSIT
+  // 3. CREATE OR CONFIRM DEPOSIT
   if (req.method === 'POST') {
     const input = req.body || {};
     const depositRef = input.deposit_ref || input.reference || `DEP-${Date.now()}`;
@@ -120,6 +162,7 @@ export default async function handler(req, res) {
     const method = input.method || 'M-Pesa STK';
     // Client submissions default strictly to 'pending' unless admin-authorized
     const status = (input.admin_auth === true || input.admin === true) ? (input.status || 'completed') : 'pending';
+    const isCompleted = status === 'completed' || status === 'success' || status === 'successful';
 
     if (amountKes <= 0) {
       return res.status(400).json({ success: false, error: 'Invalid deposit amount' });
@@ -129,20 +172,34 @@ export default async function handler(req, res) {
       try {
         // 1. Insert deposit record
         const inserted = await db`
-          INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status)
-          VALUES (${depositRef}, ${username}, ${amountKes}, ${amountUsd}, ${currency}, ${method}, ${phone}, ${status})
+          INSERT INTO malicrush_deposits (deposit_ref, username, amount_kes, amount_usd, currency, method, phone, status, credited)
+          VALUES (${depositRef}, ${username}, ${amountKes}, ${amountUsd}, ${currency}, ${method}, ${phone}, ${status}, ${isCompleted})
           ON CONFLICT (deposit_ref) DO UPDATE 
-          SET status = ${status}, amount_kes = ${amountKes}
+          SET status = ${status}, amount_kes = ${amountKes}, credited = ${isCompleted}
           RETURNING *
         `;
 
         // 2. If status is completed (admin authorized), credit user's real balance in malicrush_users table
-        if (status === 'completed' || status === 'success' || status === 'successful') {
-          await db`
-            UPDATE malicrush_users 
-            SET balance = balance + ${amountKes}, updated_at = CURRENT_TIMESTAMP
-            WHERE username = ${username} OR name = ${username} OR phone = ${phone}
-          `;
+        if (isCompleted) {
+          const phone9 = phone.replace(/\D/g, '').slice(-9);
+          let credited = false;
+          if (username && username !== 'Trader') {
+            const uRes = await db`
+              UPDATE malicrush_users 
+              SET balance = balance + ${amountKes}, updated_at = CURRENT_TIMESTAMP
+              WHERE LOWER(username) = LOWER(${username}) 
+                 OR LOWER(name) = LOWER(${username}) 
+                 OR LOWER(email) = LOWER(${username})
+            `;
+            if (uRes.length > 0) credited = true;
+          }
+          if (!credited && phone9) {
+            await db`
+              UPDATE malicrush_users 
+              SET balance = balance + ${amountKes}, updated_at = CURRENT_TIMESTAMP
+              WHERE phone LIKE ${'%' + phone9}
+            `;
+          }
         }
 
         return res.status(200).json({
