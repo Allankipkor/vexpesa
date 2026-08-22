@@ -51,32 +51,79 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0f17;background-im
 </div>
 
 <script>
-function handleAdminLogin(e){
+async function handleAdminLogin(e){
   e.preventDefault();
   const alertEl = document.getElementById('adminAlert');
   alertEl.classList.add('hidden');
   
-  const u = document.getElementById('adminUser').value.trim();
-  const p = document.getElementById('adminPass').value;
+  const u = (document.getElementById('adminUser').value || '').trim();
+  const p = (document.getElementById('adminPass').value || '').trim();
   const btn = document.getElementById('adminLoginBtn');
 
-  // Verify credentials
-  const validUser = (u.toLowerCase() === 'admin@malicrush.com' || u.toLowerCase() === 'admin');
-  const validPass = (p === 'Aa@123');
+  // 1. Direct Master Verification
+  const isMasterUser = (u.toLowerCase() === 'admin@malicrush.com' || u.toLowerCase() === 'admin');
+  const isMasterPass = (p === 'Aa@123');
 
-  if (!validUser || !validPass) {
-    alertEl.textContent = 'Invalid credentials. Please enter the correct admin password (Aa@123).';
-    alertEl.classList.remove('hidden');
+  if (isMasterUser && isMasterPass) {
+    btn.textContent = 'Authenticating...';
+    btn.disabled = true;
+    localStorage.setItem('maliAdminAuth', 'true');
+    localStorage.setItem('maliUser', JSON.stringify({
+      id: 1,
+      username: 'admin',
+      email: 'admin@malicrush.com',
+      role: 'admin',
+      balance: 500000.00,
+      demo_balance: 100000.00
+    }));
+    setTimeout(() => {
+      window.location.href = 'index.html';
+    }, 250);
     return;
   }
 
-  btn.textContent = 'Authenticating...';
+  // 2. Neon Database Verification via API
+  btn.textContent = 'Verifying with Database...';
   btn.disabled = true;
 
-  setTimeout(()=>{
-    localStorage.setItem('maliAdminAuth', 'true');
-    window.location.href = 'index.html';
-  }, 400);
+  try {
+    const res = await fetch('../api/auth.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'login',
+        identifier: u,
+        password: p
+      })
+    });
+    const data = await res.json();
+    if (data.success && data.user) {
+      if (data.user.role === 'admin' || isMasterUser) {
+        localStorage.setItem('maliAdminAuth', 'true');
+        localStorage.setItem('maliUser', JSON.stringify(data.user));
+        window.location.href = 'index.html';
+        return;
+      } else {
+        alertEl.textContent = 'Access denied: This user account does not have Admin privileges.';
+        alertEl.classList.remove('hidden');
+        btn.textContent = 'Authenticate Session';
+        btn.disabled = false;
+        return;
+      }
+    } else {
+      alertEl.textContent = data.error || 'Invalid credentials. Default admin password is: Aa@123';
+      alertEl.classList.remove('hidden');
+      btn.textContent = 'Authenticate Session';
+      btn.disabled = false;
+      return;
+    }
+  } catch (err) {
+    // If backend is unreachable and credentials didn't match master
+    alertEl.textContent = 'Invalid credentials. Please enter the default password: Aa@123';
+    alertEl.classList.remove('hidden');
+    btn.textContent = 'Authenticate Session';
+    btn.disabled = false;
+  }
 }
 </script>
 </body>
