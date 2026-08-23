@@ -873,6 +873,8 @@ let eng = {
   base: 0.5,
   clusterLeft: 0,
   lastSpikeH: 0,
+  clusterDipLeft: 0,
+  lastDipH: 0,
   crashFloor: 0,
   crashTicks: 0,
   crashBounces: 0,
@@ -932,6 +934,16 @@ function generateSpikeHeight() {
   return M * (0.95 + Math.random() * 0.10);
 }
 
+function generateDipDepth() {
+  const M = Math.abs(CFG.CRASH_DEPTH || -2.8), r = Math.random();
+  if (r < 0.15) return -M * (0.20 + Math.random() * 0.18);
+  if (r < 0.35) return -M * (0.35 + Math.random() * 0.22);
+  if (r < 0.55) return -M * (0.50 + Math.random() * 0.25);
+  if (r < 0.75) return -M * (0.70 + Math.random() * 0.20);
+  if (r < 0.90) return -M * (0.85 + Math.random() * 0.15);
+  return -M * (0.95 + Math.random() * 0.10);
+}
+
 function nextP(){
   eng.tick++;
   let p = rate;
@@ -979,15 +991,14 @@ function nextP(){
     switch(eng.mode) {
       case 'active': {
         const S = CFG.SCALE;
-        if (eng.tick > 2 && Math.random() < 0.20) {
+        if (eng.tick > 2 && Math.random() < 0.15) {
           eng.mode = 'dip';
           eng.tick = 0;
           eng.clusterLeft = 0;
+          eng.clusterDipLeft = 0;
           eng.lastSpikeH = 0;
-          const dipScale = CFG.SPIKE_MAX || 2.8;
-          eng.dipTarget = -(0.08 + Math.random() * 0.35) * dipScale;
-          eng.dipLen = 3 + Math.floor(Math.random() * 6);
-          p = eng.dipTarget;
+          p = generateDipDepth();
+          eng.lastDipH = p;
           break;
         }
         if (eng.tick > 12 && Math.random() < CFG.CRASH_FREQ * 2.0) {
@@ -995,7 +1006,9 @@ function nextP(){
           eng.mode = 'crash';
           eng.tick = 0;
           eng.clusterLeft = 0;
+          eng.clusterDipLeft = 0;
           eng.lastSpikeH = 0;
+          eng.lastDipH = 0;
           eng.crashBounces = 0;
           break;
         }
@@ -1008,6 +1021,7 @@ function nextP(){
         eng.base += (Math.random() - 0.5) * 0.008 * S;
         eng.base = Math.max(0.1, Math.min(1.2, eng.base));
 
+        // Upper sharp spike clusters
         if (eng.clusterLeft > 0) {
           if (Math.random() < 0.55) {
             p = generateSpikeHeight();
@@ -1021,17 +1035,50 @@ function nextP(){
           }
         }
 
+        // Bottom sharp dip clusters
+        if (eng.clusterDipLeft > 0) {
+          if (Math.random() < 0.55) {
+            p = generateDipDepth();
+            eng.lastDipH = p;
+            eng.clusterDipLeft--;
+            break;
+          } else {
+            p = eng.base + (eng.lastDipH - eng.base) * (0.15 + Math.random() * 0.15);
+            p += wobble * 0.5;
+            break;
+          }
+        }
+
+        // Sharp upper peak bounce-back
         if (eng.lastSpikeH > eng.base * 2) {
           p = eng.base + (rate - eng.base) * (0.25 + Math.random() * 0.2);
           eng.lastSpikeH *= 0.3;
           break;
         }
 
+        // Sharp bottom valley bounce-back
+        if (eng.lastDipH < -0.2) {
+          p = eng.base + (rate - eng.base) * (0.25 + Math.random() * 0.2);
+          eng.lastDipH *= 0.3;
+          break;
+        }
+
+        // Random sharp upper spike
         if (Math.random() < CFG.SPIKE_FREQ) {
           p = generateSpikeHeight();
           eng.lastSpikeH = p;
           if (Math.random() < 0.45) {
             eng.clusterLeft = 1 + Math.floor(Math.random() * 3);
+          }
+          break;
+        }
+
+        // Random sharp bottom dip / plunge
+        if (Math.random() < (CFG.SPIKE_FREQ || 0.12) * 0.8) {
+          p = generateDipDepth();
+          eng.lastDipH = p;
+          if (Math.random() < 0.45) {
+            eng.clusterDipLeft = 1 + Math.floor(Math.random() * 3);
           }
           break;
         }
@@ -1042,33 +1089,29 @@ function nextP(){
 
       case 'dip': {
         const S = CFG.SCALE;
-        p += (eng.dipTarget - p) * 0.35 + (Math.random() - 0.5) * 0.01 * S;
-        if (eng.tick >= eng.dipLen) {
-          eng.mode = 'active';
-          eng.tick = 0;
-        }
+        p = generateDipDepth();
+        eng.lastDipH = p;
+        eng.mode = 'active';
+        eng.tick = 0;
         break;
       }
 
       case 'crash': {
-        p += (eng.crashFloor - p) * (0.50 + Math.random() * 0.3);
-        if (p <= eng.crashFloor * 0.70) {
-          eng.mode = 'crash_floor';
-          eng.tick = 0;
-          eng.crashTicks = 10 + Math.floor(Math.random() * 18);
-          eng.crashBounces = 2 + Math.floor(Math.random() * 3);
-        }
+        p = eng.crashFloor + (Math.random() - 0.5) * 0.2 * CFG.SCALE;
+        eng.mode = 'crash_floor';
+        eng.tick = 0;
+        eng.crashTicks = 2 + Math.floor(Math.random() * 4);
+        eng.crashBounces = 2 + Math.floor(Math.random() * 3);
         break;
       }
 
       case 'crash_floor': {
         const S = CFG.SCALE;
-        if (eng.crashBounces > 0 && Math.random() < 0.15) {
-          p = eng.crashFloor + (0.12 + Math.random() * 0.25) * S;
+        if (eng.crashBounces > 0 && Math.random() < 0.45) {
+          p = eng.crashFloor + (0.35 + Math.random() * 0.6) * S * (eng.crashBounces % 2 === 0 ? 1 : -0.5);
           eng.crashBounces--;
         } else {
-          p = eng.crashFloor + (Math.random() - 0.3) * 0.06 * S;
-          p += (eng.crashFloor - p) * 0.12;
+          p = eng.crashFloor + (Math.random() - 0.5) * 0.15 * S;
         }
         if (eng.tick >= eng.crashTicks) {
           eng.mode = 'recover';
@@ -1079,14 +1122,13 @@ function nextP(){
 
       case 'recover': {
         const S = CFG.SCALE;
-        p += (eng.base - p) * (0.10 + Math.random() * 0.06);
-        if (Math.random() < 0.12 && p > -0.1 * S) p += (0.08 + Math.random() * 0.15) * S;
-        if (p >= eng.base * 0.5 && eng.tick > 6) {
-          eng.mode = 'active';
-          eng.tick = 0;
-          eng.lastSpikeH = 0;
-          eng.clusterLeft = 0;
-        }
+        p = eng.base + (Math.random() - 0.5) * 0.1 * S;
+        eng.mode = 'active';
+        eng.tick = 0;
+        eng.lastSpikeH = 0;
+        eng.lastDipH = 0;
+        eng.clusterLeft = 0;
+        eng.clusterDipLeft = 0;
         break;
       }
     }
@@ -1218,7 +1260,11 @@ function draw(){
   cx.fill();
   cx.restore();
 
-  // Sharp wave line
+  // Sharp wave line - Green above zero
+  cx.save();
+  cx.beginPath();
+  cx.rect(pad.l, pad.t, cW, Math.max(0, zeroY - pad.t));
+  cx.clip();
   cx.beginPath();
   traceSharp();
   cx.strokeStyle = cc.line;
@@ -1227,16 +1273,33 @@ function draw(){
   cx.miterLimit = 3;
   cx.lineCap = 'butt';
   cx.stroke();
+  cx.restore();
+
+  // Sharp wave line - Red below zero (bottom dips)
+  cx.save();
+  cx.beginPath();
+  cx.rect(pad.l, zeroY, cW, Math.max(0, cH + pad.t - zeroY));
+  cx.clip();
+  cx.beginPath();
+  traceSharp();
+  cx.strokeStyle = '#ef4444';
+  cx.lineWidth = 2.5;
+  cx.lineJoin = 'miter';
+  cx.miterLimit = 3;
+  cx.lineCap = 'butt';
+  cx.stroke();
+  cx.restore();
 
   // Dot
   const lp = pts[pts.length - 1];
+  const isBelowZero = lp.v < 0;
   cx.beginPath();
   cx.arc(lp.x, lp.y, 7, 0, Math.PI * 2);
-  cx.fillStyle = cc.dot;
+  cx.fillStyle = isBelowZero ? 'rgba(239,68,68,0.25)' : cc.dot;
   cx.fill();
   cx.beginPath();
   cx.arc(lp.x, lp.y, 3.5, 0, Math.PI * 2);
-  cx.fillStyle = cc.line;
+  cx.fillStyle = isBelowZero ? '#ef4444' : cc.line;
   cx.fill();
 
   // Rate box
