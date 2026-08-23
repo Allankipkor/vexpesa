@@ -329,20 +329,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg-primary);col
 @media(max-width:640px){.autosell-hud{top:6px;right:6px;font-size:10px;padding:5px 8px}.autosell-hud .label{font-size:8px}}
 
 /* Celebration */
-.celebration{position:fixed;inset:0;pointer-events:none;z-index:1000;overflow:hidden}
-.celebration .balloon{position:absolute;bottom:-80px;width:36px;height:44px;border-radius:50% 50% 50% 50% / 55% 55% 45% 45%;animation:balloonRise linear forwards}
-.celebration .balloon::after{content:'';position:absolute;bottom:-10px;left:50%;width:1px;height:12px;background:rgba(255,255,255,.3);transform:translateX(-50%)}
-.celebration .balloon::before{content:'';position:absolute;top:10%;left:22%;width:8px;height:10px;border-radius:50%;background:rgba(255,255,255,.35)}
-.celebration .confetti{position:absolute;top:-20px;width:10px;height:14px;animation:confettiFall linear forwards}
-@keyframes balloonRise{
-  0%{transform:translateY(0) rotate(0deg);opacity:0}
-  10%{opacity:1}
-  100%{transform:translateY(-110vh) rotate(var(--spin,20deg));opacity:.9}
-}
-@keyframes confettiFall{
-  0%{transform:translateY(0) rotate(0deg);opacity:1}
-  100%{transform:translateY(105vh) rotate(var(--spin,720deg));opacity:.8}
-}
+.celebration{display:none}
 
 .profit-bar{display:flex;align-items:center;gap:6px;min-width:100px;flex-direction:column;justify-content:center}
 .profit-label{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);font-weight:600}
@@ -605,15 +592,15 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
     <div class="chart-area">
       <canvas id="chartCanvas"></canvas>
       <div class="chart-overlay-tl">
+        <button class="tf-btn active" onclick="setTF(this,3)">3s</button>
+        <button class="tf-btn" onclick="setTF(this,5)">5s</button>
+        <button class="tf-btn" onclick="setTF(this,10)">10s</button>
         <button class="tf-btn" onclick="setTF(this,30)">30s</button>
-        <button class="tf-btn active" onclick="setTF(this,60)">1m</button>
-        <button class="tf-btn" onclick="setTF(this,120)">2m</button>
-        <button class="tf-btn" onclick="setTF(this,300)">5m</button>
       </div>
       <!-- Autosell HUD -->
       <div class="autosell-hud" id="autosellHud">
-        <div class="row"><span class="label">Autosell</span>&nbsp;<span class="val" id="autosellHudTimer">—</span></div>
-        <div class="row"><span class="label">Target</span>&nbsp;<span class="val" id="autosellHudTarget">—</span></div>
+        <div class="row"><span class="label">Time Left</span>&nbsp;<span class="val" id="autosellHudTimer">—</span></div>
+        <div class="row"><span class="label">Autosell</span>&nbsp;<span class="val" id="autosellHudTarget">—</span></div>
       </div>
     </div>
 
@@ -634,9 +621,9 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
       <div class="timer-section">
         <div class="timer-ring">
           <svg viewBox="0 0 44 44"><circle class="track" cx="22" cy="22" r="18"/><circle class="progress" cx="22" cy="22" r="18" id="timerCircle" stroke-dasharray="113.1" stroke-dashoffset="0"/></svg>
-          <span class="timer-val" id="timerVal">60</span>
+          <span class="timer-val" id="timerVal">3</span>
         </div>
-        <span class="timer-label" id="timerLabel">Autosell</span>
+        <span class="timer-label" id="timerLabel">Duration</span>
       </div>
       <div class="trade-buttons">
         <button class="trade-btn trade-btn-buy" id="buyBtn" onclick="placeTrade('buy')">
@@ -859,11 +846,11 @@ function formatCurrency(amount, includeSymbol = true){
 // PLATFORM CONFIGURATION & STATE
 // ═══════════════════════════════════════════
 const CFG = {
-  TICK: 120, MAX_PTS: 80, TRADE_DUR: 60, PAYOUT: 0.148, Y_MAX: 3.0,
+  TICK: 120, MAX_PTS: 80, TRADE_DUR: 3, PAYOUT: 0.148, Y_MAX: 3.0,
   SPIKE_FREQ: 0.12, CRASH_FREQ: 0.02, BASE_LEVEL: 0.5, SPIKE_MAX: 2.8, CRASH_DEPTH: -2.8,
   MIN_STAKE: 10, MAX_STAKE: 50000, MIN_DEPOSIT: 50, MIN_WITHDRAW: 100,
   MAX_MULT: 5.0,
-  PRESTART_WAIT: 3,
+  PRESTART_WAIT: 1,
   AUTOSELL_MULT: 2.5,
   SCALE: 1,
 };
@@ -1428,6 +1415,7 @@ function applyPlatformConfig(){
   if (savedCfg.crashFreq) CFG.CRASH_FREQ = parseFloat(savedCfg.crashFreq);
   if (savedCfg.crashDepth) CFG.CRASH_DEPTH = parseFloat(savedCfg.crashDepth);
   if (savedCfg.maxMult) CFG.MAX_MULT = parseFloat(savedCfg.maxMult);
+  if (savedCfg.duration) CFG.TRADE_DUR = parseInt(savedCfg.duration);
   if (savedCfg.prestart) CFG.PRESTART_WAIT = parseInt(savedCfg.prestart);
   if (savedCfg.autosell) CFG.AUTOSELL_MULT = parseFloat(savedCfg.autosell);
   if (savedCfg.minStake) CFG.MIN_STAKE = parseFloat(savedCfg.minStake);
@@ -1583,12 +1571,12 @@ async function syncPlatformSettings() {
 
     // 2. Trade parameters
     if (s.trade) {
-      CFG.TRADE_DUR = parseInt(s.trade.duration || 60);
+      CFG.TRADE_DUR = parseInt(s.trade.duration || 3);
       CFG.MIN_STAKE = parseFloat(s.trade.min_stake ?? localCfg.minStake ?? 10);
       CFG.MAX_STAKE = parseFloat(s.trade.max_stake ?? localCfg.maxStake ?? 50000);
       CFG.MIN_DEPOSIT = parseFloat(s.trade.min_deposit ?? localCfg.minDep ?? 50);
       CFG.MAX_MULT = parseFloat(s.trade.max_multiplier ?? localCfg.maxMult ?? 5.0);
-      CFG.PRESTART_WAIT = parseInt(s.trade.prestart_wait ?? localCfg.prestart ?? 3);
+      CFG.PRESTART_WAIT = parseInt(s.trade.prestart_wait ?? localCfg.prestart ?? 1);
       CFG.AUTOSELL_MULT = parseFloat(s.trade.autosell_multiplier ?? localCfg.autosell ?? 2.5);
       const timerVal = document.getElementById('timerVal');
       if (timerVal) timerVal.textContent = CFG.TRADE_DUR;
@@ -1701,7 +1689,7 @@ let tInt;
 function startTimer(dur){
   tradeTimer=dur;
   const circ=2*Math.PI*18,c=document.getElementById('timerCircle'),v=document.getElementById('timerVal');
-  const lbl=document.getElementById('timerLabel'); if(lbl)lbl.textContent='Autosell';
+  const lbl=document.getElementById('timerLabel'); if(lbl)lbl.textContent='Expires';
   clearInterval(tInt);
   v.textContent=tradeTimer;
   c.style.strokeDashoffset=0;
@@ -1729,7 +1717,7 @@ function resetTimer(){
   document.getElementById('timerVal').textContent=tradeTimer;
   document.getElementById('timerCircle').style.strokeDashoffset=0;
   document.getElementById('timerCircle').style.stroke='#00c853';
-  const lbl=document.getElementById('timerLabel');if(lbl)lbl.textContent='Autosell';
+  const lbl=document.getElementById('timerLabel');if(lbl)lbl.textContent='Duration';
 }
 
 // ═══════════════════════════════════════════
@@ -1931,42 +1919,6 @@ function updateActiveButton() {
 // Celebration FX
 function launchCelebration() {
   playSound('win');
-  document.querySelectorAll('.celebration').forEach(el => el.remove());
-  const container = document.createElement('div');
-  container.className = 'celebration';
-  const balloonColors  = ['#ff1744','#00c853','#ffc107','#2979ff','#ff6d00','#d500f9','#00e5ff'];
-  const confettiColors = ['#ffc107','#00c853','#ff1744','#2979ff','#ff6d00','#ffffff'];
-
-  for (let i = 0; i < 16; i++) {
-    const b = document.createElement('div');
-    b.className = 'balloon';
-    const color = balloonColors[Math.floor(Math.random() * balloonColors.length)];
-    b.style.left = (2 + Math.random() * 96) + '%';
-    b.style.background = 'radial-gradient(circle at 30% 30%, ' + color + 'dd, ' + color + ' 55%, ' + color + '99 100%)';
-    b.style.animationDuration = (3.5 + Math.random() * 2.5) + 's';
-    b.style.animationDelay = (Math.random() * 1.0) + 's';
-    b.style.setProperty('--spin', (Math.random() * 50 - 25) + 'deg');
-    b.style.width = (28 + Math.random() * 16) + 'px';
-    b.style.height = (36 + Math.random() * 18) + 'px';
-    container.appendChild(b);
-  }
-
-  for (let i = 0; i < 40; i++) {
-    const c = document.createElement('div');
-    c.className = 'confetti';
-    const color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
-    c.style.left = (Math.random() * 100) + '%';
-    c.style.background = color;
-    c.style.animationDuration = (2.0 + Math.random() * 2) + 's';
-    c.style.animationDelay = (Math.random() * 1.2) + 's';
-    c.style.setProperty('--spin', (Math.random() * 720 + 360) + 'deg');
-    if (Math.random() < 0.35) { c.style.width = '3px'; c.style.height = '18px'; }
-    else if (Math.random() < 0.5) { c.style.borderRadius = '50%'; c.style.width = '8px'; c.style.height = '8px'; }
-    container.appendChild(c);
-  }
-
-  document.body.appendChild(container);
-  setTimeout(() => container.remove(), 6000);
 }
 
 async function resolveTrade(reason) {
@@ -1996,11 +1948,8 @@ async function resolveTrade(reason) {
     const rateDiff = Math.max(Math.abs(rate - entryRate), 0.35);
     const mult = Math.min(1 + rateDiff * 8, CFG.MAX_MULT);
     payout = +(stake * mult).toFixed(2);
-  } else if (outcomeRule === 'force_loss') {
-    // Guaranteed Loss / House Advantage rule
-    won = false;
-    payout = 0;
-  } else if (expired) {
+  } else if (outcomeRule === 'force_loss' || reason === 'crash') {
+    // Guaranteed Loss / Crash rule
     won = false;
     payout = 0;
   } else {

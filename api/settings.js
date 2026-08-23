@@ -13,9 +13,9 @@ const defaultSettings = {
   },
   trade: {
     max_multiplier: 5.0,
-    prestart_wait: 3,
+    prestart_wait: 1,
     autosell_multiplier: 2.5,
-    duration: 60,
+    duration: 3,
     min_stake: 10,
     max_stake: 50000,
     min_deposit: 50
@@ -107,7 +107,8 @@ export default async function handler(req, res) {
         const maxStake = input.maxStake !== undefined ? parseFloat(input.maxStake) : (input.trade?.max_stake ?? currentSettings.trade?.max_stake ?? 50000);
         const maxMult = input.maxMult !== undefined ? parseFloat(input.maxMult) : (input.trade?.max_multiplier ?? currentSettings.trade?.max_multiplier ?? 5.0);
         const autosell = input.autosell !== undefined ? parseFloat(input.autosell) : (input.trade?.autosell_multiplier ?? currentSettings.trade?.autosell_multiplier ?? 2.5);
-        const prestart = input.prestart !== undefined ? parseInt(input.prestart) : (input.trade?.prestart_wait ?? currentSettings.trade?.prestart_wait ?? 3);
+        const duration = input.duration !== undefined ? parseInt(input.duration) : (input.trade?.duration ?? currentSettings.trade?.duration ?? 3);
+        const prestart = input.prestart !== undefined ? parseInt(input.prestart) : (input.trade?.prestart_wait ?? currentSettings.trade?.prestart_wait ?? 1);
         const forceOutcome = input.force_outcome || input.controls?.force_outcome || currentSettings.controls.force_outcome || 'auto';
         const targetWinRate = input.target_win_rate !== undefined ? parseFloat(input.target_win_rate) : (input.controls?.target_win_rate ?? currentSettings.controls?.target_win_rate ?? 45);
         const forceWinRate = input.force_win_rate !== undefined ? parseFloat(input.force_win_rate) : (input.controls?.force_win_rate ?? currentSettings.controls?.force_win_rate ?? 85);
@@ -127,6 +128,7 @@ export default async function handler(req, res) {
           maxStake,
           maxMult,
           autosell,
+          duration,
           prestart,
           minDep,
           minWithdraw,
@@ -162,6 +164,7 @@ export default async function handler(req, res) {
             max_stake: maxStake,
             max_multiplier: maxMult,
             autosell_multiplier: autosell,
+            duration,
             prestart_wait: prestart
           },
           withdraw: {
@@ -268,6 +271,7 @@ export default async function handler(req, res) {
             max_stake: saved.maxStake ?? saved.trade?.max_stake ?? defaultSettings.trade.max_stake,
             max_multiplier: saved.maxMult ?? saved.trade?.max_multiplier ?? defaultSettings.trade.max_multiplier,
             autosell_multiplier: saved.autosell ?? saved.trade?.autosell_multiplier ?? defaultSettings.trade.autosell_multiplier,
+            duration: saved.duration ?? saved.trade?.duration ?? defaultSettings.trade.duration,
             prestart_wait: saved.prestart ?? saved.trade?.prestart_wait ?? defaultSettings.trade.prestart_wait
           },
           withdraw: {
