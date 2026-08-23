@@ -1179,14 +1179,11 @@ function draw(){
   const pts = [];
   for (let i = 0; i < prices.length; i++) pts.push({ x: toX(i), y: toY(prices[i]), v: prices[i] });
 
-  function traceSmooth() {
+  function traceSharp() {
     cx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length - 1; i++) {
-      const mx = (pts[i].x + pts[i + 1].x) / 2;
-      const my = (pts[i].y + pts[i + 1].y) / 2;
-      cx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+    for (let i = 1; i < pts.length; i++) {
+      cx.lineTo(pts[i].x, pts[i].y);
     }
-    cx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
   }
 
   // Green fill above zero
@@ -1196,13 +1193,9 @@ function draw(){
   cx.clip();
   cx.beginPath();
   cx.moveTo(pts[0].x, zeroY);
-  cx.lineTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length - 1; i++) {
-    const mx = (pts[i].x + pts[i + 1].x) / 2;
-    const my = (pts[i].y + pts[i + 1].y) / 2;
-    cx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+  for (let i = 0; i < pts.length; i++) {
+    cx.lineTo(pts[i].x, pts[i].y);
   }
-  cx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
   cx.lineTo(pts[pts.length - 1].x, zeroY);
   cx.closePath();
   cx.fillStyle = cc.greenFill;
@@ -1216,26 +1209,23 @@ function draw(){
   cx.clip();
   cx.beginPath();
   cx.moveTo(pts[0].x, zeroY);
-  cx.lineTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length - 1; i++) {
-    const mx = (pts[i].x + pts[i + 1].x) / 2;
-    const my = (pts[i].y + pts[i + 1].y) / 2;
-    cx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+  for (let i = 0; i < pts.length; i++) {
+    cx.lineTo(pts[i].x, pts[i].y);
   }
-  cx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
   cx.lineTo(pts[pts.length - 1].x, zeroY);
   cx.closePath();
   cx.fillStyle = cc.redFill;
   cx.fill();
   cx.restore();
 
-  // Smooth line
+  // Sharp wave line
   cx.beginPath();
-  traceSmooth();
+  traceSharp();
   cx.strokeStyle = cc.line;
   cx.lineWidth = 2.5;
-  cx.lineJoin = 'round';
-  cx.lineCap = 'round';
+  cx.lineJoin = 'miter';
+  cx.miterLimit = 3;
+  cx.lineCap = 'butt';
   cx.stroke();
 
   // Dot
