@@ -55,58 +55,12 @@ export default async function handler(req, res) {
         if (rows.length > 0) {
           const d = rows[0];
 
-          // If still pending, actively query GravityPay API status check endpoint
-          if (d.status === 'pending') {
-            try {
-              const cfgRows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
-              if (cfgRows.length > 0) {
-                const cfg = JSON.parse(cfgRows[0].value);
-                const gpKey = (cfg.gravitypayApiKey || cfg.payments?.gravitypay?.api_key || '').trim();
-                const gpSec = (cfg.gravitypaySecretKey || cfg.payments?.gravitypay?.secret_key || '').trim();
-                
-                // Query using checkout_request_id first, then fallback to deposit_ref
-                const queryTokens = [d.checkout_request_id, d.deposit_ref, ref].filter(Boolean);
-                
-                for (const token of queryTokens) {
-                  if (!token || !gpKey || !gpSec) continue;
-                  try {
-                    const gpRes = await fetch(`https://api.gravitypayapp.com/api/v1/stk/status/${encodeURIComponent(token)}`, {
-                      headers: {
-                        'Authorization': `Bearer ${gpSec}`,
-                        'x-api-key': gpKey
-                      }
-                    });
-
-                    if (gpRes.ok) {
-                      const gpJson = await gpRes.json();
-                      const gData = gpJson.data || gpJson;
-                      const gStat = (gData.status || gpJson.status || '').toLowerCase();
-                      const gReceipt = gData.mpesaReceipt || gpJson.mpesaReceipt || gData.mpesa_reference || '';
-                      const gAmount = parseFloat(gData.amount || gpJson.amount || d.amount_kes);
-
-                      if (gStat === 'success' || gStat === 'completed' || gStat === 'successful' || gReceipt) {
-                        d.status = 'completed';
-                        d.amount_kes = gAmount;
-                        d.method = gReceipt ? `M-Pesa (${gReceipt})` : (d.method || 'M-Pesa (GravityPay)');
-                        await db`
-                          UPDATE malicrush_deposits 
-                          SET status = 'completed', 
-                              amount_kes = ${gAmount},
-                              method = ${d.method}
-                          WHERE id = ${d.id}
-                        `;
-                        break;
-                      } else if (gStat === 'failed' || gStat === 'cancelled') {
-                        d.status = 'failed';
-                        await db`UPDATE malicrush_deposits SET status = 'failed' WHERE id = ${d.id}`;
-                        break;
-                      }
-                    }
-                  } catch (e) {}
-                }
-              }
-            } catch (gpErr) {
-              console.error('Error querying GravityPay status in polling:', gpErr);
+          // If older than 10 minutes and still pending, mark as timed out/failed
+          if (d.status === 'pending' && d.created_at) {
+            const ageMs = Date.now() - new Date(d.created_at).getTime();
+            if (ageMs > 10 * 60 * 1000) {
+              d.status = 'failed';
+              await db`UPDATE malicrush_deposits SET status = 'failed' WHERE id = ${d.id}`;
             }
           }
 

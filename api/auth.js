@@ -15,68 +15,13 @@ export default async function handler(req, res) {
   const input = req.body || {};
   const action = req.query.action || input.action || '';
 
-  // Helper to reconcile deposits for a user (both completed uncredited and pending recent deposits)
+  // Helper to reconcile deposits for a user (auto-credit any verified completed uncredited deposits)
   async function reconcileUserDeposits(user) {
     if (!db || !user) return;
     try {
       const phone9 = (user.phone || '').replace(/\D/g, '').slice(-9);
 
-      // 1. Check for pending recent deposits (last 30 minutes) against GravityPay API
-      try {
-        const pendingRows = await db`
-          SELECT id, deposit_ref, checkout_request_id, amount_kes, phone, method, created_at 
-          FROM malicrush_deposits 
-          WHERE (LOWER(username) = LOWER(${user.username}) OR (phone LIKE ${'%' + phone9} AND LENGTH(${phone9}) >= 8))
-            AND status = 'pending'
-            AND created_at >= (CURRENT_TIMESTAMP - INTERVAL '30 minutes')
-          ORDER BY created_at DESC
-          LIMIT 5
-        `;
-
-        if (pendingRows.length > 0) {
-          const cfgRows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
-          if (cfgRows.length > 0) {
-            const cfg = JSON.parse(cfgRows[0].value);
-            const gpKey = (cfg.gravitypayApiKey || cfg.payments?.gravitypay?.api_key || '').trim();
-            const gpSec = (cfg.gravitypaySecretKey || cfg.payments?.gravitypay?.secret_key || '').trim();
-
-            if (gpKey && gpSec) {
-              for (const pDep of pendingRows) {
-                const token = pDep.checkout_request_id || pDep.deposit_ref;
-                if (!token) continue;
-
-                try {
-                  const gpRes = await fetch(`https://api.gravitypayapp.com/api/v1/stk/status/${encodeURIComponent(token)}`, {
-                    headers: { 'Authorization': `Bearer ${gpSec}`, 'x-api-key': gpKey }
-                  });
-
-                  if (gpRes.ok) {
-                    const gpJson = await gpRes.json();
-                    const gData = gpJson.data || gpJson;
-                    const gStat = (gData.status || gpJson.status || '').toLowerCase();
-                    const gReceipt = gData.mpesaReceipt || gpJson.mpesaReceipt || gData.mpesa_reference || '';
-                    const gAmount = parseFloat(gData.amount || gpJson.amount || pDep.amount_kes);
-
-                    if (gStat === 'success' || gStat === 'completed' || gStat === 'successful' || gReceipt) {
-                      await db`
-                        UPDATE malicrush_deposits 
-                        SET status = 'completed', 
-                            amount_kes = ${gAmount},
-                            method = ${gReceipt ? `M-Pesa (${gReceipt})` : (pDep.method || 'M-Pesa (GravityPay)')}
-                        WHERE id = ${pDep.id}
-                      `;
-                    }
-                  }
-                } catch(e) {}
-              }
-            }
-          }
-        }
-      } catch(pendErr) {
-        console.error('Error checking pending deposits against GravityPay:', pendErr);
-      }
-
-      // 2. Auto-credit any completed uncredited deposits
+      // Auto-credit any completed uncredited deposits verified by gateway webhooks
       const uncredited = await db`
         SELECT id, amount_kes FROM malicrush_deposits 
         WHERE (LOWER(username) = LOWER(${user.username}) OR (phone LIKE ${'%' + phone9} AND LENGTH(${phone9}) >= 8))
