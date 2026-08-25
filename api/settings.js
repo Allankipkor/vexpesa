@@ -50,6 +50,14 @@ const defaultSettings = {
       callback_url: "https://malicrush.vercel.app/api/payhero-callback.js"
     }
   },
+  notifications: {
+    enabled: true,
+    deposit_messages: true,
+    withdraw_messages: true,
+    require_app_for_withdraw: true,
+    max_per_user: 20,
+    min_amount_threshold: 10
+  },
   site: {
     name: "MaliCrush",
     tagline: "Trade Smart, Earn Big",

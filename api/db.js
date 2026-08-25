@@ -88,6 +88,8 @@ export async function initDb() {
     await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS demo_balance NUMERIC(12,2) DEFAULT 10000.00`;
     await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'`;
     await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS has_app BOOLEAN DEFAULT FALSE`;
+    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS app_installed_at TIMESTAMP WITH TIME ZONE`;
     await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
     await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
 

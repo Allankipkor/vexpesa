@@ -406,6 +406,51 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
                             <input type="number" id="cfgMinWithdraw" value="100" min="1" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
                         </div>
                     </div>
+
+                    <!-- Messages & APK Push Controls -->
+                    <div class="pt-3 border-t border-gray-800 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                <span>💬</span> Messages & APK Controls
+                            </h4>
+                            <span class="text-[9px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">INBOX & PUSH</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-2 bg-gray-800/60 rounded-xl border border-gray-700/60">
+                            <div>
+                                <span class="text-xs font-semibold text-white block">Send Deposit M-Pesa SMS</span>
+                                <span class="text-[10px] text-gray-400 block">Deliver confirmation on completed deposit</span>
+                            </div>
+                            <input type="checkbox" id="cfgDepositMsgs" checked class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+                        </div>
+
+                        <div class="flex items-center justify-between p-2 bg-gray-800/60 rounded-xl border border-gray-700/60">
+                            <div>
+                                <span class="text-xs font-semibold text-white block">Send Withdrawal M-Pesa SMS</span>
+                                <span class="text-[10px] text-gray-400 block">Deliver payout notice on withdrawal</span>
+                            </div>
+                            <input type="checkbox" id="cfgWithdrawMsgs" checked class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+                        </div>
+
+                        <div class="flex items-center justify-between p-2 bg-amber-500/10 rounded-xl border border-amber-500/30">
+                            <div>
+                                <span class="text-xs font-bold text-amber-300 block">Require App for Withdrawal Messages</span>
+                                <span class="text-[10px] text-gray-400 block">Skip message if user hasn't downloaded app</span>
+                            </div>
+                            <input type="checkbox" id="cfgRequireAppWithdraw" checked class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] text-gray-400 mb-1">Max Messages Per User</label>
+                                <input type="number" id="cfgMaxMsgPerUser" value="20" min="5" max="100" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-gray-400 mb-1">Min KES for Message</label>
+                                <input type="number" id="cfgMinMsgAmount" value="10" min="0" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-amber-500">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -932,6 +977,24 @@ function loadAdminConfig(){
     if (gpWh) document.getElementById('cfgGravitypayWebhookSecret').value = gpWh;
     if (gpCb) document.getElementById('cfgGravitypayCallbackUrl').value = gpCb;
 
+    // Load Notification settings directly from DB
+    const notifCfg = s.notifications || {};
+    if (document.getElementById('cfgDepositMsgs')) {
+      document.getElementById('cfgDepositMsgs').checked = notifCfg.deposit_messages !== false;
+    }
+    if (document.getElementById('cfgWithdrawMsgs')) {
+      document.getElementById('cfgWithdrawMsgs').checked = notifCfg.withdraw_messages !== false;
+    }
+    if (document.getElementById('cfgRequireAppWithdraw')) {
+      document.getElementById('cfgRequireAppWithdraw').checked = notifCfg.require_app_for_withdraw !== false;
+    }
+    if (document.getElementById('cfgMaxMsgPerUser')) {
+      document.getElementById('cfgMaxMsgPerUser').value = notifCfg.max_per_user || 20;
+    }
+    if (document.getElementById('cfgMinMsgAmount')) {
+      document.getElementById('cfgMinMsgAmount').value = notifCfg.min_amount_threshold !== undefined ? notifCfg.min_amount_threshold : 10;
+    }
+
     if (s.force_outcome || s.controls?.force_outcome) {
       currentGlobalOutcome = s.force_outcome || s.controls.force_outcome;
     }
@@ -985,7 +1048,14 @@ function loadAdminConfig(){
       gravitypayApiKey: gpKey,
       gravitypaySecretKey: gpSec,
       gravitypayWebhookSecret: gpWh,
-      gravitypayCallbackUrl: gpCb
+      gravitypayCallbackUrl: gpCb,
+      notifications: {
+        deposit_messages: document.getElementById('cfgDepositMsgs')?.checked ?? true,
+        withdraw_messages: document.getElementById('cfgWithdrawMsgs')?.checked ?? true,
+        require_app_for_withdraw: document.getElementById('cfgRequireAppWithdraw')?.checked ?? true,
+        max_per_user: parseInt(document.getElementById('cfgMaxMsgPerUser')?.value) || 20,
+        min_amount_threshold: parseFloat(document.getElementById('cfgMinMsgAmount')?.value) || 10
+      }
     }));
   };
 
@@ -1033,7 +1103,15 @@ function saveAdminConfig(){
     gravitypayApiKey: document.getElementById('cfgGravitypayApiKey')?.value.trim() || '',
     gravitypaySecretKey: document.getElementById('cfgGravitypaySecretKey')?.value.trim() || '',
     gravitypayWebhookSecret: document.getElementById('cfgGravitypayWebhookSecret')?.value.trim() || '',
-    gravitypayCallbackUrl: document.getElementById('cfgGravitypayCallbackUrl')?.value.trim() || ''
+    gravitypayCallbackUrl: document.getElementById('cfgGravitypayCallbackUrl')?.value.trim() || '',
+    notifications: {
+      enabled: true,
+      deposit_messages: document.getElementById('cfgDepositMsgs')?.checked ?? true,
+      withdraw_messages: document.getElementById('cfgWithdrawMsgs')?.checked ?? true,
+      require_app_for_withdraw: document.getElementById('cfgRequireAppWithdraw')?.checked ?? true,
+      max_per_user: parseInt(document.getElementById('cfgMaxMsgPerUser')?.value) || 20,
+      min_amount_threshold: parseFloat(document.getElementById('cfgMinMsgAmount')?.value) || 10
+    }
   };
 
   // Save to LocalStorage

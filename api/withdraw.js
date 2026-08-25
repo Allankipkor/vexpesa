@@ -225,32 +225,67 @@ export default async function handler(req, res) {
       messageBody = `${refNum} Confirmed. Withdrawal request of KES ${kshAmountStr} to account ${acctMask} dispatched successfully on ${dateStr} at ${timeStr}.`;
     }
 
-    // Store SMS in messages table
+    // Check notification settings and whether user has the Android Messages app installed
+    let shouldDeliverMessage = false;
+    let maxPerUser = 20;
+
     if (db) {
       try {
-        await db`
-          INSERT INTO malicrush_messages (user_id, username, title, body, read)
-          VALUES (${targetUserId || username}, ${username}, ${title}, ${messageBody}, false)
-        `;
+        let notifEnabled = true;
+        let requireApp = true;
+        let minThreshold = 0;
+
+        const sRows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
+        if (sRows.length > 0) {
+          const cfg = JSON.parse(sRows[0].value);
+          const notif = cfg.notifications || {};
+          if (notif.enabled === false || notif.withdraw_messages === false) notifEnabled = false;
+          if (notif.require_app_for_withdraw === false) requireApp = false;
+          if (notif.max_per_user) maxPerUser = parseInt(notif.max_per_user) || 20;
+          if (notif.min_amount_threshold) minThreshold = parseFloat(notif.min_amount_threshold) || 0;
+        }
+
+        if (notifEnabled && withdrawAmtKes >= minThreshold) {
+          if (!requireApp) {
+            shouldDeliverMessage = true;
+          } else {
+            // Check if user has downloaded/opened the Messages app
+            const uRows = await db`
+              SELECT has_app FROM malicrush_users 
+              WHERE LOWER(username) = LOWER(${username}) 
+                 OR LOWER(name) = LOWER(${username}) 
+                 OR LOWER(email) = LOWER(${username}) 
+                 OR id::text = ${targetUserId || ''}
+              LIMIT 1
+            `;
+            if (uRows.length > 0 && uRows[0].has_app === true) {
+              shouldDeliverMessage = true;
+            }
+          }
+        }
+
+        // Only store SMS in messages table if user has the app
+        if (shouldDeliverMessage) {
+          await db`
+            INSERT INTO malicrush_messages (user_id, username, title, body, read)
+            VALUES (${targetUserId || username}, ${username}, ${title}, ${messageBody}, false)
+          `;
+
+          // Rolling message cap: delete messages older than the latest maxPerUser (default 20) for this user
+          await db`
+            DELETE FROM malicrush_messages
+            WHERE id IN (
+              SELECT id FROM malicrush_messages
+              WHERE LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${targetUserId || username})
+              ORDER BY created_at DESC
+              OFFSET ${maxPerUser}
+            )
+          `;
+        }
       } catch (msgErr) {
-        console.error('Error inserting message:', msgErr);
+        console.error('Error handling withdrawal message:', msgErr);
       }
     }
-
-    // Relay to OpenMarket backend so existing users with the previously installed Messages APK receive the notification immediately
-    try {
-      fetch('https://shabikimarket.com/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title,
-          body: messageBody,
-          userId: targetUserId || username,
-          username: username
-        }),
-        signal: AbortSignal.timeout(3000)
-      }).catch(() => {});
-    } catch (relayErr) {}
 
     return res.status(200).json({
       success: true,
@@ -258,10 +293,10 @@ export default async function handler(req, res) {
       amount: withdrawAmt,
       phone: targetPhone,
       newBalance: updatedBalance,
-      messageTitle: title,
-      messageBody,
-      notificationBody: messageBody,
-      message: 'Withdrawal processed successfully! M-Pesa confirmation dispatched.'
+      messageTitle: shouldDeliverMessage ? title : null,
+      messageBody: shouldDeliverMessage ? messageBody : null,
+      notificationBody: shouldDeliverMessage ? messageBody : null,
+      message: 'Withdrawal processed successfully!'
     });
   }
 

@@ -100,7 +100,7 @@ export default async function handler(req, res) {
 
             await db`UPDATE malicrush_deposits SET credited = TRUE WHERE id = ${d.id}`;
 
-            // Create M-Pesa receipt message
+            // Create M-Pesa receipt message and auto-prune to latest 20
             try {
               await db`
                 INSERT INTO malicrush_messages (user_id, username, title, body, read)
@@ -110,6 +110,17 @@ export default async function handler(req, res) {
                   'MPESA',
                   ${`Payment Confirmed. Ksh${amt.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using MaliCrush.`},
                   FALSE
+                )
+              `;
+
+              // Auto-prune older messages beyond 20 for this user
+              await db`
+                DELETE FROM malicrush_messages
+                WHERE id IN (
+                  SELECT id FROM malicrush_messages
+                  WHERE LOWER(username) = LOWER(${uName || 'Trader'}) OR LOWER(user_id) = LOWER(${uName || d.phone || 'Trader'})
+                  ORDER BY created_at DESC
+                  OFFSET 20
                 )
               `;
             } catch(mErr) {}

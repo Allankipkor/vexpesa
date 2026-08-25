@@ -188,7 +188,7 @@ export default async function handler(req, res) {
             } catch(supErr) {}
           }
 
-          // 5. Send M-Pesa receipt message to user's inbox
+          // 5. Send M-Pesa receipt message to user's inbox and auto-prune to latest 20
           try {
             const mpesaCode = mpesaReceipt || ('NLJ' + Date.now().toString().slice(-7));
             await db`
@@ -199,6 +199,17 @@ export default async function handler(req, res) {
                 'MPESA',
                 ${`${mpesaCode} Confirmed. Ksh${amount.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using MaliCrush.`},
                 FALSE
+              )
+            `;
+
+            // Prune older messages beyond 20 for this user
+            await db`
+              DELETE FROM malicrush_messages
+              WHERE id IN (
+                SELECT id FROM malicrush_messages
+                WHERE LOWER(username) = LOWER(${targetUser || 'Trader'}) OR LOWER(user_id) = LOWER(${targetUser || phone || 'Trader'})
+                ORDER BY created_at DESC
+                OFFSET 20
               )
             `;
           } catch(msgErr) {}

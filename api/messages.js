@@ -12,30 +12,47 @@ export default async function handler(req, res) {
   await initDb();
   const db = getDb();
 
+  const action = req.query.action || (req.body && req.body.action) || '';
   const username = (req.query.username || req.query.identifier || (req.body && req.body.username) || '').trim();
+  const isApp = req.query.app === 'true' || (req.body && req.body.app === true);
 
-  // 1. GET MESSAGES
+  // 1. REGISTER APP PRESENCE (Flags has_app = true for the user)
+  if ((action === 'register_app' || isApp) && username && db) {
+    try {
+      await db`
+        UPDATE malicrush_users 
+        SET has_app = TRUE, 
+            app_installed_at = COALESCE(app_installed_at, CURRENT_TIMESTAMP),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE LOWER(username) = LOWER(${username}) 
+           OR LOWER(name) = LOWER(${username}) 
+           OR LOWER(email) = LOWER(${username})
+      `;
+    } catch(appErr) {
+      console.error('Error registering app for user:', appErr);
+    }
+  }
+
+  // 2. GET MESSAGES (Strictly user-specific; never leak messages to unauthenticated / global requests)
   if (req.method === 'GET') {
     if (db) {
       try {
-        let messages = [];
-        if (username) {
-          messages = await db`
-            SELECT id, user_id, username, title, body, read, created_at 
-            FROM malicrush_messages 
-            WHERE username = ${username} OR user_id = ${username}
-            ORDER BY created_at DESC
-            LIMIT 50
-          `;
-        } else {
-          // If no username provided in request (e.g. WebView poller), return latest messages
-          messages = await db`
-            SELECT id, user_id, username, title, body, read, created_at 
-            FROM malicrush_messages 
-            ORDER BY created_at DESC
-            LIMIT 30
-          `;
+        if (!username || username === 'Trader') {
+          // If no specific user is provided, return empty list to protect trader privacy
+          return res.status(200).json({
+            success: true,
+            messages: []
+          });
         }
+
+        const messages = await db`
+          SELECT id, user_id, username, title, body, read, created_at 
+          FROM malicrush_messages 
+          WHERE LOWER(username) = LOWER(${username}) 
+             OR LOWER(user_id) = LOWER(${username})
+          ORDER BY created_at DESC
+          LIMIT 30
+        `;
 
         return res.status(200).json({
           success: true,
@@ -61,29 +78,30 @@ export default async function handler(req, res) {
     });
   }
 
-  // 2. MARK AS READ (PATCH / POST)
-  if (req.method === 'PATCH' || req.method === 'POST') {
+  // 3. MARK AS READ (PATCH / POST)
+  if (req.method === 'PATCH' || (req.method === 'POST' && action !== 'register_app')) {
     const { id, title } = req.body || req.query || {};
 
-    if (db) {
+    if (db && username) {
       try {
         if (id) {
           await db`
             UPDATE malicrush_messages 
             SET read = true 
-            WHERE id = ${parseInt(id)} OR id::text = ${id.toString()}
+            WHERE (id = ${parseInt(id)} OR id::text = ${id.toString()})
+              AND (LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username}))
           `;
         } else if (title) {
           await db`
             UPDATE malicrush_messages 
             SET read = true 
-            WHERE title = ${title} AND (username = ${username} OR user_id = ${username})
+            WHERE title = ${title} AND (LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username}))
           `;
-        } else if (username) {
+        } else {
           await db`
             UPDATE malicrush_messages 
             SET read = true 
-            WHERE username = ${username} OR user_id = ${username}
+            WHERE LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username})
           `;
         }
         return res.status(200).json({ success: true });
@@ -94,21 +112,22 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true });
   }
 
-  // 3. DELETE / CLEAR MESSAGES
+  // 4. DELETE / CLEAR MESSAGES (Strictly user-scoped)
   if (req.method === 'DELETE') {
     const id = req.query.id || (req.body && req.body.id);
 
-    if (db) {
+    if (db && username) {
       try {
         if (id) {
           await db`
             DELETE FROM malicrush_messages 
-            WHERE id = ${parseInt(id)} OR id::text = ${id.toString()}
+            WHERE (id = ${parseInt(id)} OR id::text = ${id.toString()})
+              AND (LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username}))
           `;
-        } else if (username) {
+        } else {
           await db`
             DELETE FROM malicrush_messages 
-            WHERE username = ${username} OR user_id = ${username}
+            WHERE LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username})
           `;
         }
         return res.status(200).json({ success: true });
@@ -121,3 +140,4 @@ export default async function handler(req, res) {
 
   return res.status(405).json({ success: false, error: 'Method not allowed' });
 }
+

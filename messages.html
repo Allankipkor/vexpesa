@@ -645,14 +645,30 @@ function renderThreads() {
   }
 }
 
+function getActiveUsername() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const qUser = urlParams.get('username') || urlParams.get('user') || urlParams.get('phone');
+  if (qUser) return qUser.trim();
+
+  try {
+    const userStr = localStorage.getItem('maliUser');
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      return (u.username || u.name || u.phone || u.email || '').trim();
+    }
+  } catch(e) {}
+  return '';
+}
+
 function openThread(threadId) {
   activeThreadId = threadId;
   document.getElementById("viewThreads").classList.add("hidden");
   document.getElementById("viewConv").classList.add("active");
   renderConversation();
 
-  if (threadId === "mpesa") {
-    fetch("/api/messages?title=MPESA", { method: "PATCH" }).catch(() => {});
+  const username = getActiveUsername();
+  if (threadId === "mpesa" && username) {
+    fetch(`/api/messages?title=MPESA&username=${encodeURIComponent(username)}`, { method: "PATCH" }).catch(() => {});
   }
 }
 
@@ -722,9 +738,12 @@ function onSearch(val) {
 }
 
 async function clearThreadMessages() {
+  const username = getActiveUsername();
   if (!confirm("Clear message history?")) return;
   try {
-    await fetch("/api/messages", { method: "DELETE" });
+    if (username) {
+      await fetch(`/api/messages?username=${encodeURIComponent(username)}`, { method: "DELETE" });
+    }
     dbMessages = [];
     renderThreads();
     if (activeThreadId) closeThread();
@@ -732,8 +751,13 @@ async function clearThreadMessages() {
 }
 
 async function fetchMessages() {
+  const username = getActiveUsername();
+  if (!username) {
+    return;
+  }
   try {
-    const res = await fetch("/api/messages");
+    const isAppBridge = Boolean(window.AndroidMessagesBridge);
+    const res = await fetch(`/api/messages?username=${encodeURIComponent(username)}&app=${isAppBridge ? 'true' : 'true'}`);
     if (res.ok) {
       const data = await res.json();
       if (data.success && data.messages) {
