@@ -739,7 +739,7 @@ function onSearch(val) {
 
 async function clearThreadMessages() {
   const username = getActiveUsername();
-  if (!confirm("Clear message history?")) return;
+  if (!confirm("Clear M-Pesa message history and reset simulated balance?")) return;
   try {
     if (username) {
       await fetch(`/api/messages?username=${encodeURIComponent(username)}`, { method: "DELETE" });
@@ -747,6 +747,7 @@ async function clearThreadMessages() {
     dbMessages = [];
     renderThreads();
     if (activeThreadId) closeThread();
+    alert("Message history cleared! Simulated M-Pesa balance has been reset.");
   } catch (e) {}
 }
 
