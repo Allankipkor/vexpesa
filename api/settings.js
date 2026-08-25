@@ -25,6 +25,7 @@ const defaultSettings = {
     target_win_rate: 45,
     force_win_rate: 85,
     force_loss_rate: 85,
+    demo_win_rate: 100,
     user_outcomes: {} // { [username]: "auto" | "force_win" | "force_loss" | "force_win:85" | "force_loss:85" }
   },
   withdraw: {
@@ -113,6 +114,7 @@ export default async function handler(req, res) {
         const targetWinRate = input.target_win_rate !== undefined ? parseFloat(input.target_win_rate) : (input.controls?.target_win_rate ?? currentSettings.controls?.target_win_rate ?? 45);
         const forceWinRate = input.force_win_rate !== undefined ? parseFloat(input.force_win_rate) : (input.controls?.force_win_rate ?? currentSettings.controls?.force_win_rate ?? 85);
         const forceLossRate = input.force_loss_rate !== undefined ? parseFloat(input.force_loss_rate) : (input.controls?.force_loss_rate ?? currentSettings.controls?.force_loss_rate ?? 85);
+        const demoWinRate = input.demo_win_rate !== undefined ? parseFloat(input.demo_win_rate) : (input.controls?.demo_win_rate ?? currentSettings.controls?.demo_win_rate ?? 100);
         const usdRate = input.usdRate !== undefined ? parseFloat(input.usdRate) : (input.payments?.usd_rate ?? currentSettings.payments?.usd_rate ?? 129.00);
         const currency = (input.currency || input.payments?.deposit_currency || currentSettings.payments?.deposit_currency || 'kes').toLowerCase();
 
@@ -139,6 +141,7 @@ export default async function handler(req, res) {
           target_win_rate: targetWinRate,
           force_win_rate: forceWinRate,
           force_loss_rate: forceLossRate,
+          demo_win_rate: demoWinRate,
           payheroUsername: phUser,
           payheroPassword: phPass,
           payheroChannelId: phChan,
@@ -202,6 +205,7 @@ export default async function handler(req, res) {
             target_win_rate: targetWinRate,
             force_win_rate: forceWinRate,
             force_loss_rate: forceLossRate,
+            demo_win_rate: demoWinRate,
             user_outcomes: {
               ...currentSettings.controls.user_outcomes,
               ...(input.user_outcomes || input.controls?.user_outcomes || {})
@@ -309,6 +313,7 @@ export default async function handler(req, res) {
             target_win_rate: saved.target_win_rate ?? saved.controls?.target_win_rate ?? defaultSettings.controls.target_win_rate,
             force_win_rate: saved.force_win_rate ?? saved.controls?.force_win_rate ?? defaultSettings.controls.force_win_rate,
             force_loss_rate: saved.force_loss_rate ?? saved.controls?.force_loss_rate ?? defaultSettings.controls.force_loss_rate,
+            demo_win_rate: saved.demo_win_rate ?? saved.controls?.demo_win_rate ?? defaultSettings.controls.demo_win_rate ?? 100,
             user_outcomes: {
               ...defaultSettings.controls.user_outcomes,
               ...(saved.user_outcomes || saved.controls?.user_outcomes || {})

