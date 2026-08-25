@@ -353,8 +353,8 @@ body {
       </div>
     </header>
 
-    <!-- Account Status Banner -->
-    <div id="accountBanner" style="background:#e8f0fe;border-bottom:1px solid #d3e3fd;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="openAccountModal()">
+    <!-- Account Status Banner (Hidden when connected for authentic clean look) -->
+    <div id="accountBanner" style="display:none;background:#e8f0fe;border-bottom:1px solid #d3e3fd;padding:9px 16px;align-items:center;justify-content:space-between;cursor:pointer;" onclick="openAccountModal()">
       <div style="display:flex;align-items:center;gap:8px;min-width:0;">
         <span style="font-size:14px;flex-shrink:0;">🔔</span>
         <span id="accountBannerText" style="font-size:12px;color:#0b57d0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Tap to connect your MaliCrush account</span>
@@ -721,8 +721,6 @@ function updateAccountUI() {
   const username = getActiveUsername();
   const avatarBtn = document.getElementById("headerProfileAvatar");
   const banner = document.getElementById("accountBanner");
-  const bannerText = document.getElementById("accountBannerText");
-  const bannerBtn = document.getElementById("accountBannerBtn");
   const modalAvatar = document.getElementById("modalAvatar");
   const inputEl = document.getElementById("inputPairUsername");
 
@@ -732,31 +730,13 @@ function updateAccountUI() {
     if (modalAvatar) modalAvatar.textContent = initial;
     if (inputEl && !inputEl.value) inputEl.value = username;
     if (banner) {
-      banner.style.background = "#e6f4ea";
-      banner.style.borderBottomColor = "#ceead6";
-      if (bannerText) {
-        bannerText.textContent = `Connected: ${username} (Alerts Active)`;
-        bannerText.style.color = "#137333";
-      }
-      if (bannerBtn) {
-        bannerBtn.textContent = "Change";
-        bannerBtn.style.color = "#137333";
-      }
+      banner.style.display = "none";
     }
   } else {
     if (avatarBtn) avatarBtn.textContent = "👤";
     if (modalAvatar) modalAvatar.textContent = "👤";
     if (banner) {
-      banner.style.background = "#e8f0fe";
-      banner.style.borderBottomColor = "#d3e3fd";
-      if (bannerText) {
-        bannerText.textContent = "Tap to link MaliCrush account for M-Pesa alerts";
-        bannerText.style.color = "#0b57d0";
-      }
-      if (bannerBtn) {
-        bannerBtn.textContent = "Link";
-        bannerBtn.style.color = "#0b57d0";
-      }
+      banner.style.display = "none";
     }
   }
 }
