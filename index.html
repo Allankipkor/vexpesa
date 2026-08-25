@@ -891,63 +891,19 @@ let platformForceLossRate = 85;
 let platformDemoWinRate = 100;
 let platformUserOutcomes = {};     // { [username]: 'auto' | 'force_win' | 'force_loss' | 'force_win:80' | 'force_loss:85' }
 
-// Outcome balancer history map to guarantee strict proportional wins/losses
-const outcomeHistoryMap = {}; // { [key]: boolean[] }
-
-function getStrictQuotaOutcome(key, targetWinRatePercent) {
+// Natural Probability Outcome Resolver (Independent Roll per Trade - No Streak Penalty)
+function getNaturalProbabilityOutcome(targetWinRatePercent) {
   const p = Math.max(0, Math.min(100, targetWinRatePercent));
   if (p >= 100) return 'force_win';
   if (p <= 0) return 'force_loss';
-
-  if (!outcomeHistoryMap[key]) {
-    outcomeHistoryMap[key] = [];
-  }
-  const history = outcomeHistoryMap[key];
-
-  let willWin;
-  if (history.length === 0) {
-    willWin = (Math.random() * 100) < p;
-  } else {
-    const recent = history.slice(-8);
-    const winCount = recent.filter(w => w === true).length;
-    const actualRate = (winCount / recent.length) * 100;
-    const deficit = p - actualRate;
-
-    // Consecutive streak controls to enforce strict ratio
-    const lastResult = recent[recent.length - 1];
-    const secondLast = recent.length >= 2 ? recent[recent.length - 2] : null;
-
-    if (p >= 65 && lastResult === false && secondLast === false) {
-      // 2 losses in a row when win rate is >= 65%: force next to win
-      willWin = true;
-    } else if (p <= 35 && lastResult === true && secondLast === true) {
-      // 2 wins in a row when win rate is <= 35%: force next to loss
-      willWin = false;
-    } else if (deficit >= 10) {
-      // Significantly below target win rate: force win to catch up
-      willWin = true;
-    } else if (deficit <= -10) {
-      // Significantly above target win rate: force loss to balance
-      willWin = false;
-    } else {
-      // Weighted probability based on deficit compensation
-      const dynamicProb = Math.max(5, Math.min(95, p + deficit * 1.2));
-      willWin = (Math.random() * 100) < dynamicProb;
-    }
-  }
-
-  history.push(willWin);
-  if (history.length > 20) history.shift();
-
-  return willWin ? 'force_win' : 'force_loss';
+  return (Math.random() * 100) < p ? 'force_win' : 'force_loss';
 }
 
 function resolveTradeOutcomeRule(isDemo = false) {
   // 1. All Demo Trades are DEFAULT 100% Guaranteed Win!
   if (isDemo || isDemoMode) {
     const demoRate = platformDemoWinRate !== undefined ? platformDemoWinRate : 100;
-    if (demoRate >= 100) return 'force_win';
-    return getStrictQuotaOutcome('demo_trader', demoRate);
+    return getNaturalProbabilityOutcome(demoRate);
   }
 
   // 2. Multi-key User Lookup for Per-Trader Rigging / Control
@@ -984,21 +940,18 @@ function resolveTradeOutcomeRule(isDemo = false) {
     customRate = parseFloat(parts[1]);
   }
 
-  const traderKey = (currentUser?.username || currentUser?.email || 'global').toLowerCase();
-
-  // 4. Strict Proportional Win/Loss Calculation
+  // 4. Natural Independent Probability Win/Loss Calculation
   if (mode === 'force_win') {
     const winProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformForceWinRate || 85);
-    return getStrictQuotaOutcome(traderKey + '_win', winProb);
+    return getNaturalProbabilityOutcome(winProb);
   } else if (mode === 'force_loss') {
     const lossProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformForceLossRate || 85);
-    // If lossProb is 75%, winProb is 25% (100 - 75)
     const winProbFromLoss = Math.max(0, 100 - lossProb);
-    return getStrictQuotaOutcome(traderKey + '_loss', winProbFromLoss);
+    return getNaturalProbabilityOutcome(winProbFromLoss);
   } else {
-    // Dynamic 'auto' mode with target win rate slider (e.g. 75% Win)
+    // Dynamic 'auto' mode with target win rate slider (e.g. 45% Win)
     const autoWinProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformWinRate || 45);
-    return getStrictQuotaOutcome(traderKey + '_auto', autoWinProb);
+    return getNaturalProbabilityOutcome(autoWinProb);
   }
 }
 
