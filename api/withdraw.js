@@ -255,6 +255,7 @@ export default async function handler(req, res) {
               WHERE LOWER(username) = LOWER(${username}) 
                  OR LOWER(name) = LOWER(${username}) 
                  OR LOWER(email) = LOWER(${username}) 
+                 OR (phone IS NOT NULL AND phone != '' AND phone = ${walletAddress || ''})
                  OR id::text = ${targetUserId || ''}
               LIMIT 1
             `;

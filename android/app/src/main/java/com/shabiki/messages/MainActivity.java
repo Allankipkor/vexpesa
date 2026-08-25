@@ -307,7 +307,17 @@ public class MainActivity extends AppCompatActivity {
         // Check messages via authenticated session in WebView and bridge directly to Java
         String script = "(function() { " +
                 "  try { " +
-                "    fetch('/api/messages')" +
+                "    var u = ''; " +
+                "    try { " +
+                "      var s = localStorage.getItem('maliUser') || localStorage.getItem('messagesAppUsername'); " +
+                "      if (s) { var p = JSON.parse(s); u = p.username || p.phone || p.email || s; } " +
+                "    } catch(e){ u = localStorage.getItem('messagesAppUsername') || ''; } " +
+                "    if (!u) { " +
+                "      var qp = new URLSearchParams(window.location.search); " +
+                "      u = qp.get('username') || qp.get('user') || qp.get('phone') || ''; " +
+                "    } " +
+                "    var url = u ? ('/api/messages?username=' + encodeURIComponent(u) + '&app=true') : '/api/messages?app=true'; " +
+                "    fetch(url)" +
                 "      .then(function(r) { return r.json(); })" +
                 "      .then(function(d) { " +
                 "        if (d && d.messages && window.AndroidMessagesBridge) { " +

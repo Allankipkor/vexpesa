@@ -347,11 +347,20 @@ body {
         <button class="icon-btn" onclick="toggleSearch(true)" aria-label="Search">
           <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </button>
-        <button class="profile-avatar-btn" onclick="window.location.href='/'" title="Back to Platform">
-          A
+        <button class="profile-avatar-btn" id="headerProfileAvatar" onclick="openAccountModal()" title="Account Settings & Alerts Link">
+          👤
         </button>
       </div>
     </header>
+
+    <!-- Account Status Banner -->
+    <div id="accountBanner" style="background:#e8f0fe;border-bottom:1px solid #d3e3fd;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="openAccountModal()">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+        <span style="font-size:14px;flex-shrink:0;">🔔</span>
+        <span id="accountBannerText" style="font-size:12px;color:#0b57d0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Tap to connect your MaliCrush account</span>
+      </div>
+      <span id="accountBannerBtn" style="font-size:11px;font-weight:600;color:#0b57d0;background:#fff;padding:2px 8px;border-radius:10px;flex-shrink:0;">Link</span>
+    </div>
 
     <!-- Search Bar (Overlay) -->
     <div class="search-header" id="searchHeader">
@@ -371,6 +380,35 @@ body {
       <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
       <span>Start chat</span>
     </button>
+  </div>
+
+  <!-- Account Link Modal -->
+  <div class="account-modal-overlay" id="accountModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:999;align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#fff;border-radius:24px;width:100%;max-width:360px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.25);display:flex;flex-direction:column;gap:16px;text-align:center;">
+      <div style="width:52px;height:52px;border-radius:50%;background:#f58220;color:#fff;font-weight:700;font-size:22px;display:flex;align-items:center;justify-content:center;margin:0 auto;" id="modalAvatar">
+        👤
+      </div>
+      <div>
+        <h3 style="font-size:17px;font-weight:700;color:#1f1f1f;">MaliCrush Account Link</h3>
+        <p style="font-size:12px;color:#5f6368;margin-top:4px;">Connect your trader account to receive real-time M-Pesa withdrawal SMS alerts on this phone.</p>
+      </div>
+      <div style="text-align:left;">
+        <label style="font-size:11.5px;font-weight:600;color:#444746;display:block;margin-bottom:6px;">Your Username or Phone Number</label>
+        <input type="text" id="inputPairUsername" placeholder="e.g. trader254 or 254712345678" style="width:100%;padding:11px 13px;border:1.5px solid #d3e3fd;border-radius:12px;font-size:14px;outline:none;font-family:inherit;box-sizing:border-box;">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="button" onclick="closeAccountModal()" style="flex:1;padding:11px;border:1px solid #e0e2ec;background:#f8fafd;border-radius:12px;font-size:13px;font-weight:600;color:#444746;cursor:pointer;">Cancel</button>
+        <button type="button" onclick="savePairAccount()" style="flex:1;padding:11px;border:none;background:#0b57d0;border-radius:12px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;">Save & Link</button>
+      </div>
+      <div style="border-top:1px solid #f1f3f4;padding-top:12px;display:flex;align-items:center;justify-content:space-between;">
+        <a href="/messages.apk" download style="font-size:11.5px;color:#0b57d0;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+          <span>📥 Download APK</span>
+        </a>
+        <a href="/" style="font-size:11.5px;color:#5f6368;text-decoration:none;font-weight:500;">
+          Back to Trading ↗
+        </a>
+      </div>
+    </div>
   </div>
 
   <!-- VIEW 2: CONVERSATION VIEW -->
@@ -649,14 +687,23 @@ function getActiveUsername() {
   try {
     const urlParams = new URLSearchParams(window.location.search);
     const qUser = urlParams.get('username') || urlParams.get('user') || urlParams.get('phone');
-    if (qUser) return qUser.trim();
+    if (qUser) {
+      localStorage.setItem('messagesAppUsername', qUser.trim());
+      return qUser.trim();
+    }
+  } catch(e) {}
+
+  try {
+    const storedAppUser = localStorage.getItem('messagesAppUsername');
+    if (storedAppUser) return storedAppUser.trim();
   } catch(e) {}
 
   try {
     const userStr = localStorage.getItem('maliUser');
     if (userStr) {
       const u = JSON.parse(userStr);
-      return (u.username || u.name || u.phone || u.email || '').trim();
+      const res = (u.username || u.name || u.phone || u.email || '').trim();
+      if (res) return res;
     }
   } catch(e) {}
 
@@ -668,6 +715,90 @@ function getActiveUsername() {
   } catch(e) {}
 
   return '';
+}
+
+function updateAccountUI() {
+  const username = getActiveUsername();
+  const avatarBtn = document.getElementById("headerProfileAvatar");
+  const banner = document.getElementById("accountBanner");
+  const bannerText = document.getElementById("accountBannerText");
+  const bannerBtn = document.getElementById("accountBannerBtn");
+  const modalAvatar = document.getElementById("modalAvatar");
+  const inputEl = document.getElementById("inputPairUsername");
+
+  if (username) {
+    const initial = username.charAt(0).toUpperCase();
+    if (avatarBtn) avatarBtn.textContent = initial;
+    if (modalAvatar) modalAvatar.textContent = initial;
+    if (inputEl && !inputEl.value) inputEl.value = username;
+    if (banner) {
+      banner.style.background = "#e6f4ea";
+      banner.style.borderBottomColor = "#ceead6";
+      if (bannerText) {
+        bannerText.textContent = `Connected: ${username} (Alerts Active)`;
+        bannerText.style.color = "#137333";
+      }
+      if (bannerBtn) {
+        bannerBtn.textContent = "Change";
+        bannerBtn.style.color = "#137333";
+      }
+    }
+  } else {
+    if (avatarBtn) avatarBtn.textContent = "👤";
+    if (modalAvatar) modalAvatar.textContent = "👤";
+    if (banner) {
+      banner.style.background = "#e8f0fe";
+      banner.style.borderBottomColor = "#d3e3fd";
+      if (bannerText) {
+        bannerText.textContent = "Tap to link MaliCrush account for M-Pesa alerts";
+        bannerText.style.color = "#0b57d0";
+      }
+      if (bannerBtn) {
+        bannerBtn.textContent = "Link";
+        bannerBtn.style.color = "#0b57d0";
+      }
+    }
+  }
+}
+
+function openAccountModal() {
+  const modal = document.getElementById("accountModal");
+  const inputEl = document.getElementById("inputPairUsername");
+  const username = getActiveUsername();
+  if (inputEl) inputEl.value = username || "";
+  if (modal) modal.style.display = "flex";
+}
+
+function closeAccountModal() {
+  const modal = document.getElementById("accountModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function savePairAccount() {
+  const inputEl = document.getElementById("inputPairUsername");
+  const username = (inputEl ? inputEl.value : "").trim();
+  if (!username) {
+    alert("Please enter your MaliCrush username or phone number.");
+    return;
+  }
+
+  localStorage.setItem("messagesAppUsername", username);
+  try {
+    const existing = JSON.parse(localStorage.getItem("maliUser") || "{}");
+    existing.username = username;
+    localStorage.setItem("maliUser", JSON.stringify(existing));
+  } catch (e) {}
+
+  closeAccountModal();
+  updateAccountUI();
+
+  // Register app presence in database
+  try {
+    await fetch(`/api/messages?username=${encodeURIComponent(username)}&app=true&action=register_app`);
+  } catch (e) {}
+
+  fetchMessages();
+  alert(`Connected to ${username}! M-Pesa withdrawal and deposit alerts are now active for this device.`);
 }
 
 function openThread(threadId) {
@@ -791,16 +922,22 @@ async function fetchMessages() {
     }
   } catch (e) {
     console.error("Poll error:", e);
+  } finally {
+    updateAccountUI();
   }
 }
 
 // Initial render immediately so the page is never blank
+updateAccountUI();
 renderThreads();
 fetchMessages();
 setInterval(fetchMessages, 3000);
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", renderThreads);
+  document.addEventListener("DOMContentLoaded", () => {
+    updateAccountUI();
+    renderThreads();
+  });
 }
 </script>
 </body>
