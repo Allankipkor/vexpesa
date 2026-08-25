@@ -22,94 +22,125 @@ export default async function handler(req, res) {
   const response = body.response || body.data || body;
 
   // Extract fields from PayHero v1/v2 AND GravityPay (gravitypayapp.com) webhooks
-  const status = (response.status || response.Status || body.status || body.Status || '').toString().toLowerCase();
-  const checkoutRequestId = (response.checkoutRequestId || body.checkoutRequestId || response.checkout_request_id || body.checkout_request_id || response.transactionId || body.transactionId || '').trim();
-  const externalRef = (
+  const status = (response.status || response.Status || body.status || body.Status || '').toString().toLowerCase().trim();
+  const rawCheckoutId = (response.checkoutRequestId || body.checkoutRequestId || response.checkout_request_id || body.checkout_request_id || response.transactionId || body.transactionId || '').trim();
+  const checkoutRequestId = rawCheckoutId.length > 0 ? rawCheckoutId : null;
+
+  const rawExternalRef = (
     response.reference || body.reference || 
     response.ExternalReference || body.external_reference || response.external_reference || response.externalReference ||
-    checkoutRequestId || ''
+    ''
   ).trim();
-  const mpesaReceipt = (response.mpesaReceipt || body.mpesaReceipt || response.MpesaReceiptNumber || response.mpesa_reference || response.receipt || response.MpesaReceipt || '').trim();
+  const externalRef = rawExternalRef.length > 0 ? rawExternalRef : null;
+
+  const rawMpesaReceipt = (response.mpesaReceipt || body.mpesaReceipt || response.MpesaReceiptNumber || response.mpesa_reference || response.receipt || response.MpesaReceipt || '').trim().toUpperCase();
+  const mpesaReceipt = rawMpesaReceipt.length >= 4 ? rawMpesaReceipt : null;
+
   const amount = parseFloat(response.amount || body.amount || response.Amount || body.Amount) || 0;
   const phone = (response.phoneNumber || body.phoneNumber || response.Phone || body.Phone || response.phone || body.phone || response.phone_number || '').trim();
   const metadataUser = (response.metadata?.username || body.metadata?.username || response.customer_name || '').trim();
   const resultCode = response.ResultCode !== undefined ? parseInt(response.ResultCode) : (body.ResultCode !== undefined ? parseInt(body.ResultCode) : null);
 
-  const isSuccess = (status === 'success' || status === 'successful' || status === 'completed') || resultCode === 0 || mpesaReceipt.length > 0;
+  const isSuccess = (status === 'success' || status === 'successful' || status === 'completed') || resultCode === 0 || Boolean(mpesaReceipt);
 
   if (db) {
     try {
       if (isSuccess && amount > 0) {
-        // 1. Update deposit record in malicrush_deposits
-        let updatedDep = [];
-        if (externalRef || checkoutRequestId) {
-          updatedDep = await db`
-            UPDATE malicrush_deposits
-            SET status = 'completed',
-                method = ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa (GravityPay)'},
-                amount_kes = ${amount},
-                checkout_request_id = COALESCE(NULLIF(${checkoutRequestId}, ''), checkout_request_id)
-            WHERE deposit_ref = ${externalRef} 
-               OR checkout_request_id = ${checkoutRequestId}
-               OR (checkout_request_id = ${externalRef} AND LENGTH(${externalRef}) > 5)
-            RETURNING *
+        // 1. REPLAY / IDEMPOTENCY PROTECTION: Check if this M-Pesa receipt has already been processed and completed
+        if (mpesaReceipt) {
+          const existingReceipt = await db`
+            SELECT id, deposit_ref, username, amount_kes, credited, status
+            FROM malicrush_deposits
+            WHERE method LIKE ${'%' + mpesaReceipt + '%'} 
+              AND (status = 'completed' OR status = 'success' OR status = 'successful')
+            LIMIT 1
           `;
-        }
-
-        // Fallback 1: If ref was not found but phone is present, update most recent pending deposit for this phone
-        if (updatedDep.length === 0 && phone) {
-          const phone9 = phone.replace(/\D/g, '').slice(-9);
-          if (phone9) {
-            updatedDep = await db`
-              UPDATE malicrush_deposits
-              SET status = 'completed',
-                  method = ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa (GravityPay)'},
-                  amount_kes = ${amount},
-                  checkout_request_id = COALESCE(NULLIF(${checkoutRequestId}, ''), checkout_request_id)
-              WHERE id = (
-                SELECT id FROM malicrush_deposits 
-                WHERE (phone LIKE ${'%' + phone9} OR deposit_ref = ${externalRef} OR checkout_request_id = ${checkoutRequestId}) 
-                  AND status = 'pending'
-                ORDER BY created_at DESC 
-                LIMIT 1
-              )
-              RETURNING *
-            `;
+          if (existingReceipt.length > 0 && existingReceipt[0].credited) {
+            console.log(`[Webhook] Duplicate notification received for already processed receipt: ${mpesaReceipt}`);
+            return res.status(200).json({ status: 'OK', message: 'Transaction already processed and credited', receipt: mpesaReceipt });
           }
         }
 
-        // Fallback 2: If metadata username is present, update most recent pending deposit for that username
-        if (updatedDep.length === 0 && metadataUser && metadataUser !== 'Trader') {
-          updatedDep = await db`
-            UPDATE malicrush_deposits
-            SET status = 'completed',
-                method = ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa (GravityPay)'},
-                amount_kes = ${amount},
-                checkout_request_id = COALESCE(NULLIF(${checkoutRequestId}, ''), checkout_request_id)
-            WHERE id = (
-              SELECT id FROM malicrush_deposits 
-              WHERE LOWER(username) = LOWER(${metadataUser}) AND status = 'pending'
-              ORDER BY created_at DESC 
-              LIMIT 1
-            )
-            RETURNING *
+        // 2. STRICT TARGET RESOLUTION: Find the EXACT target deposit to mark completed
+        let depRecord = null;
+
+        // Step 2a: Match strictly by unique deposit_ref / external_reference (NEVER match on empty string)
+        if (externalRef) {
+          const rows = await db`
+            SELECT * FROM malicrush_deposits
+            WHERE deposit_ref = ${externalRef}
+            LIMIT 1
           `;
+          if (rows.length > 0) depRecord = rows[0];
         }
 
-        // If no prior deposit record existed, create one
-        let depRecord = updatedDep[0];
-        if (!depRecord && (externalRef || phone)) {
+        // Step 2b: Match strictly by checkoutRequestId (if non-empty and not already matched)
+        if (!depRecord && checkoutRequestId) {
+          const rows = await db`
+            SELECT * FROM malicrush_deposits
+            WHERE checkout_request_id = ${checkoutRequestId}
+            LIMIT 1
+          `;
+          if (rows.length > 0) depRecord = rows[0];
+        }
+
+        // Step 2c: Fallback matching by phone (ONLY match a SINGLE most recent PENDING deposit created within 20 mins)
+        if (!depRecord && phone) {
+          const phone9 = phone.replace(/\D/g, '').slice(-9);
+          if (phone9.length >= 8) {
+            const rows = await db`
+              SELECT * FROM malicrush_deposits
+              WHERE phone LIKE ${'%' + phone9}
+                AND status = 'pending'
+                AND created_at >= NOW() - INTERVAL '20 minutes'
+              ORDER BY created_at DESC
+              LIMIT 1
+            `;
+            if (rows.length > 0) depRecord = rows[0];
+          }
+        }
+
+        // Step 2d: Fallback matching by username (ONLY match a SINGLE most recent PENDING deposit created within 20 mins)
+        if (!depRecord && metadataUser && metadataUser !== 'Trader') {
+          const rows = await db`
+            SELECT * FROM malicrush_deposits
+            WHERE LOWER(username) = LOWER(${metadataUser})
+              AND status = 'pending'
+              AND created_at >= NOW() - INTERVAL '20 minutes'
+            ORDER BY created_at DESC
+            LIMIT 1
+          `;
+          if (rows.length > 0) depRecord = rows[0];
+        }
+
+        const formattedMethod = mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : (depRecord?.method || 'M-Pesa STK');
+
+        // Step 2e: If a pending deposit was found, update strictly THAT single record by ID
+        if (depRecord) {
+          const updated = await db`
+            UPDATE malicrush_deposits
+            SET status = 'completed',
+                method = ${formattedMethod},
+                amount_kes = ${amount},
+                checkout_request_id = COALESCE(NULLIF(${checkoutRequestId || ''}, ''), checkout_request_id)
+            WHERE id = ${depRecord.id}
+            RETURNING *
+          `;
+          if (updated.length > 0) depRecord = updated[0];
+        } else {
+          // If no matching pending record exists, insert a single new completed record
+          const newRef = externalRef || ('MC' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0'));
           const inserted = await db`
             INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
-            VALUES (${externalRef || 'DEP-' + Date.now()}, ${checkoutRequestId || ''}, ${metadataUser || 'Trader'}, ${amount}, ${phone}, ${mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : 'M-Pesa (GravityPay)'}, 'completed', FALSE)
-            ON CONFLICT (deposit_ref) DO UPDATE 
-            SET status = 'completed', amount_kes = ${amount}, checkout_request_id = ${checkoutRequestId || ''}
+            VALUES (${newRef}, ${checkoutRequestId || ''}, ${metadataUser || 'Trader'}, ${amount}, ${phone}, ${formattedMethod}, 'completed', FALSE)
+            ON CONFLICT (deposit_ref) DO UPDATE
+            SET status = 'completed', amount_kes = ${amount}, method = ${formattedMethod}
             RETURNING *
           `;
           depRecord = inserted[0];
         }
 
-        // 2. Credit user's wallet in malicrush_users table if not already credited
+        // 3. CREDIT USER'S WALLET (Atomic and protected against double-crediting)
         if (depRecord && !depRecord.credited) {
           const targetUser = (depRecord.username && depRecord.username !== 'Trader') ? depRecord.username : metadataUser;
           const targetPhone = depRecord.phone || phone;
@@ -128,7 +159,7 @@ export default async function handler(req, res) {
             if (userUpdate.length > 0) userCredited = true;
           }
 
-          if (!userCredited && phone9) {
+          if (!userCredited && phone9.length >= 8) {
             await db`
               UPDATE malicrush_users
               SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
@@ -136,14 +167,28 @@ export default async function handler(req, res) {
             `;
           }
 
-          // Mark deposit as credited in malicrush_deposits
+          // Mark this specific deposit as credited
           await db`
             UPDATE malicrush_deposits
             SET credited = TRUE
             WHERE id = ${depRecord.id}
           `;
 
-          // 3. Create M-Pesa receipt message in trader inbox
+          // 4. AUTO-CANCEL / SUPERSEDE OTHER PENDING ATTEMPTS for this user/phone
+          if (phone9.length >= 8) {
+            try {
+              await db`
+                UPDATE malicrush_deposits
+                SET status = 'superseded'
+                WHERE id != ${depRecord.id}
+                  AND phone LIKE ${'%' + phone9}
+                  AND status = 'pending'
+                  AND created_at <= ${depRecord.created_at || new Date()}
+              `;
+            } catch(supErr) {}
+          }
+
+          // 5. Send M-Pesa receipt message to user's inbox
           try {
             const mpesaCode = mpesaReceipt || ('NLJ' + Date.now().toString().slice(-7));
             await db`
@@ -160,12 +205,20 @@ export default async function handler(req, res) {
         }
 
       } else if (externalRef || checkoutRequestId) {
-        // Mark deposit as failed
-        await db`
-          UPDATE malicrush_deposits
-          SET status = 'failed'
-          WHERE (deposit_ref = ${externalRef} OR checkout_request_id = ${checkoutRequestId}) AND status = 'pending'
-        `;
+        // Mark failed strictly for the specific reference (never with empty strings)
+        if (externalRef) {
+          await db`
+            UPDATE malicrush_deposits
+            SET status = 'failed'
+            WHERE deposit_ref = ${externalRef} AND status = 'pending'
+          `;
+        } else if (checkoutRequestId) {
+          await db`
+            UPDATE malicrush_deposits
+            SET status = 'failed'
+            WHERE checkout_request_id = ${checkoutRequestId} AND status = 'pending'
+          `;
+        }
       }
     } catch(err) {
       console.error('Error processing Payment Gateway callback:', err);
@@ -174,6 +227,7 @@ export default async function handler(req, res) {
 
   return res.status(200).json({
     status: 'OK',
-    message: isSuccess ? 'Payment confirmed and credited successfully' : 'Payment recorded'
+    message: isSuccess ? 'Payment confirmed and processed' : 'Payment recorded'
   });
 }
+

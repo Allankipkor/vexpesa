@@ -162,6 +162,8 @@ export async function initDb() {
     await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS credited BOOLEAN DEFAULT FALSE`;
     await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
     try { await db`CREATE INDEX IF NOT EXISTS malicrush_deposits_checkout_req_idx ON malicrush_deposits (checkout_request_id)`; } catch(e) {}
+    try { await db`CREATE INDEX IF NOT EXISTS malicrush_deposits_method_idx ON malicrush_deposits (method)`; } catch(e) {}
+    try { await db`CREATE INDEX IF NOT EXISTS malicrush_deposits_phone_idx ON malicrush_deposits (phone)`; } catch(e) {}
   } catch (e) { console.error('Error creating malicrush_deposits table:', e); }
 
   // 4. malicrush_withdrawals

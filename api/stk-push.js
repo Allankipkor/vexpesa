@@ -109,6 +109,22 @@ export default async function handler(req, res) {
   // Reference is strictly maximum 12 characters to support GravityPay & Daraja
   const reference = 'MC' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
 
+  // Auto-expire older pending deposits for this phone older than 5 minutes to prevent pending accumulation
+  if (db && formattedPhone) {
+    try {
+      const phone9 = formattedPhone.replace(/\D/g, '').slice(-9);
+      if (phone9.length >= 8) {
+        await db`
+          UPDATE malicrush_deposits
+          SET status = 'expired'
+          WHERE phone LIKE ${'%' + phone9}
+            AND status = 'pending'
+            AND created_at < NOW() - INTERVAL '5 minutes'
+        `;
+      }
+    } catch(e) {}
+  }
+
   // Helper for PayHero STK Push
   async function triggerPayhero() {
     const auth = Buffer.from(`${apiUsername}:${apiPassword}`).toString('base64');

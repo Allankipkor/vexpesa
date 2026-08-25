@@ -13,9 +13,12 @@ export default async function handler(req, res) {
   const db = getDb();
 
   const action = req.query.action || (req.body ? req.body.action : '') || '';
-  const ref = (req.query.reference || req.query.ref || req.query.checkoutRequestId || (req.body ? req.body.reference : '') || '').trim();
-  const queryPhone = (req.query.phone || (req.body ? req.body.phone : '') || '').trim();
-  const queryUser = (req.query.username || (req.body ? req.body.username : '') || '').trim();
+  const rawRef = (req.query.reference || req.query.ref || req.query.checkoutRequestId || (req.body ? req.body.reference : '') || '').trim();
+  const ref = rawRef.length > 0 ? rawRef : null;
+  const rawQueryPhone = (req.query.phone || (req.body ? req.body.phone : '') || '').trim();
+  const queryPhone = rawQueryPhone.length > 0 ? rawQueryPhone : null;
+  const rawQueryUser = (req.query.username || (req.body ? req.body.username : '') || '').trim();
+  const queryUser = rawQueryUser.length > 0 ? rawQueryUser : null;
 
   // 1. SINGLE DEPOSIT STATUS CHECK (Client Polling & Active Verification)
   if (action === 'check') {
@@ -26,26 +29,20 @@ export default async function handler(req, res) {
           rows = await db`
             SELECT * FROM malicrush_deposits 
             WHERE deposit_ref = ${ref} 
-               OR checkout_request_id = ${ref} 
-               OR id::text = ${ref} 
+               OR (checkout_request_id = ${ref} AND checkout_request_id != '')
+               OR (id::text = ${ref}) 
             LIMIT 1
           `;
         }
 
-        // Fallback search by phone or username if ref is not found
-        if (rows.length === 0 && (queryPhone || queryUser)) {
+        // Fallback search strictly for recent PENDING deposits by phone or username
+        if (rows.length === 0 && queryPhone) {
           const phone9 = queryPhone.replace(/\D/g, '').slice(-9);
-          if (phone9) {
+          if (phone9.length >= 8) {
             rows = await db`
               SELECT * FROM malicrush_deposits 
               WHERE phone LIKE ${'%' + phone9}
-              ORDER BY created_at DESC 
-              LIMIT 1
-            `;
-          } else if (queryUser && queryUser !== 'Trader') {
-            rows = await db`
-              SELECT * FROM malicrush_deposits 
-              WHERE LOWER(username) = LOWER(${queryUser})
+                AND created_at >= NOW() - INTERVAL '15 minutes'
               ORDER BY created_at DESC 
               LIMIT 1
             `;
@@ -89,7 +86,7 @@ export default async function handler(req, res) {
               }
             }
 
-            if (!credited && uPhone) {
+            if (!credited && uPhone.length >= 8) {
               const uRes = await db`
                 UPDATE malicrush_users 
                 SET balance = balance + ${amt}, updated_at = CURRENT_TIMESTAMP
@@ -127,7 +124,7 @@ export default async function handler(req, res) {
               if (uName && uName !== 'Trader') {
                 uRes = await db`SELECT balance FROM malicrush_users WHERE LOWER(username) = LOWER(${uName}) LIMIT 1`;
               }
-              if (uRes.length === 0 && uPhone) {
+              if (uRes.length === 0 && uPhone.length >= 8) {
                 uRes = await db`SELECT balance FROM malicrush_users WHERE phone LIKE ${'%' + uPhone} LIMIT 1`;
               }
               if (uRes.length > 0) currentBal = parseFloat(uRes[0].balance || 0);
@@ -150,10 +147,66 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, status: 'pending', deposit_ref: ref });
   }
 
-  // 2. GET ALL DEPOSITS & STATS (Strictly Successful Deposits for Admin Ledger)
+  // 2. ADMIN RECONCILIATION ACTION (Cleans up phantom duplicate receipt rows)
+  if (action === 'reconcile' && db) {
+    try {
+      // Reconcile duplicate M-Pesa receipts: keep only earliest 1 per receipt, mark remainder as superseded
+      const dupes = await db`
+        WITH duplicates AS (
+          SELECT id, 
+                 ROW_NUMBER() OVER (
+                   PARTITION BY method 
+                   ORDER BY created_at ASC, id ASC
+                 ) AS rn
+          FROM malicrush_deposits
+          WHERE (status = 'completed' OR status = 'success' OR status = 'successful')
+            AND method LIKE 'M-Pesa (%'
+            AND method NOT LIKE 'M-Pesa (GravityPay)'
+            AND method NOT LIKE 'M-Pesa (PayHero)'
+            AND method NOT LIKE 'M-Pesa STK'
+        )
+        UPDATE malicrush_deposits
+        SET status = 'superseded'
+        WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
+        RETURNING id, deposit_ref, method
+      `;
+      return res.status(200).json({
+        success: true,
+        reconciled_count: dupes.length,
+        message: `Successfully reconciled ${dupes.length} duplicate deposit records.`
+      });
+    } catch(recErr) {
+      console.error('Error reconciling deposits:', recErr);
+      return res.status(500).json({ success: false, error: recErr.message });
+    }
+  }
+
+  // 3. GET ALL DEPOSITS & STATS (Strictly Successful Deposits for Admin Ledger)
   if (req.method === 'GET') {
     if (db) {
       try {
+        // Auto-reconcile duplicate M-Pesa receipts on fetch
+        try {
+          await db`
+            WITH duplicates AS (
+              SELECT id, 
+                     ROW_NUMBER() OVER (
+                       PARTITION BY method 
+                       ORDER BY created_at ASC, id ASC
+                     ) AS rn
+              FROM malicrush_deposits
+              WHERE (status = 'completed' OR status = 'success' OR status = 'successful')
+                AND method LIKE 'M-Pesa (%'
+                AND method NOT LIKE 'M-Pesa (GravityPay)'
+                AND method NOT LIKE 'M-Pesa (PayHero)'
+                AND method NOT LIKE 'M-Pesa STK'
+            )
+            UPDATE malicrush_deposits
+            SET status = 'superseded'
+            WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
+          `;
+        } catch(autoRecErr) {}
+
         const onlySuccess = req.query.all !== 'true';
         let deposits;
         if (onlySuccess) {
@@ -223,7 +276,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // 3. CREATE OR CONFIRM DEPOSIT
+  // 4. CREATE OR CONFIRM DEPOSIT
   if (req.method === 'POST') {
     const input = req.body || {};
     const depositRef = input.deposit_ref || input.reference || `DEP-${Date.now()}`;
@@ -264,7 +317,7 @@ export default async function handler(req, res) {
             `;
             if (uRes.length > 0) credited = true;
           }
-          if (!credited && phone9) {
+          if (!credited && phone9.length >= 8) {
             await db`
               UPDATE malicrush_users 
               SET balance = balance + ${amountKes}, updated_at = CURRENT_TIMESTAMP
@@ -292,3 +345,4 @@ export default async function handler(req, res) {
 
   return res.status(405).json({ success: false, error: 'Method not allowed' });
 }
+
