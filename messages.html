@@ -646,9 +646,11 @@ function renderThreads() {
 }
 
 function getActiveUsername() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const qUser = urlParams.get('username') || urlParams.get('user') || urlParams.get('phone');
-  if (qUser) return qUser.trim();
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const qUser = urlParams.get('username') || urlParams.get('user') || urlParams.get('phone');
+    if (qUser) return qUser.trim();
+  } catch(e) {}
 
   try {
     const userStr = localStorage.getItem('maliUser');
@@ -657,13 +659,23 @@ function getActiveUsername() {
       return (u.username || u.name || u.phone || u.email || '').trim();
     }
   } catch(e) {}
+
+  try {
+    const uList = JSON.parse(localStorage.getItem('maliUsersList') || '[]');
+    if (Array.isArray(uList) && uList.length > 0 && uList[0].username) {
+      return uList[0].username.trim();
+    }
+  } catch(e) {}
+
   return '';
 }
 
 function openThread(threadId) {
   activeThreadId = threadId;
-  document.getElementById("viewThreads").classList.add("hidden");
-  document.getElementById("viewConv").classList.add("active");
+  const viewThreads = document.getElementById("viewThreads");
+  const viewConv = document.getElementById("viewConv");
+  if (viewThreads) viewThreads.classList.add("hidden");
+  if (viewConv) viewConv.classList.add("active");
   renderConversation();
 
   const username = getActiveUsername();
@@ -674,8 +686,10 @@ function openThread(threadId) {
 
 function closeThread() {
   activeThreadId = null;
-  document.getElementById("viewThreads").classList.remove("hidden");
-  document.getElementById("viewConv").classList.remove("active");
+  const viewThreads = document.getElementById("viewThreads");
+  const viewConv = document.getElementById("viewConv");
+  if (viewThreads) viewThreads.classList.remove("hidden");
+  if (viewConv) viewConv.classList.remove("active");
   renderThreads();
 }
 
@@ -684,13 +698,16 @@ function renderConversation() {
   const thread = threads.find(t => t.id === activeThreadId);
   if (!thread) return;
 
-  document.getElementById("convSenderTitle").textContent = thread.title;
-  document.getElementById("convAvatar").style.background = thread.avatarColor;
-
+  const senderEl = document.getElementById("convSenderTitle");
+  const avatarEl = document.getElementById("convAvatar");
   const list = document.getElementById("convMessagesList");
+  if (senderEl) senderEl.textContent = thread.title;
+  if (avatarEl) avatarEl.style.background = thread.avatarColor;
+  if (!list) return;
+
   list.innerHTML = "";
 
-  thread.messages.forEach(m => {
+  (thread.messages || []).forEach(m => {
     const wrap = document.createElement("div");
     wrap.style.display = "flex";
     wrap.style.flexDirection = "column";
@@ -701,7 +718,7 @@ function renderConversation() {
         <span class="bubble-date-text">${formatBubbleDate(m.createdAt)}</span>
       </div>
       <div class="chat-bubble-card">
-        <div class="chat-bubble-text">${m.body}</div>
+        <div class="chat-bubble-text">${m.body || ''}</div>
         ${thread.title === "MPESA" ? `
           <div class="chat-bubble-preview-box" onclick="alert('Transaction Verified with Safaricom M-Pesa')">
             <svg width="16" height="16" fill="none" stroke="#444746" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
@@ -720,20 +737,22 @@ function toggleSearch(show) {
   const searchH = document.getElementById("searchHeader");
   const mainH = document.getElementById("mainHeader");
   if (show) {
-    searchH.classList.add("active");
-    mainH.style.display = "none";
-    document.getElementById("searchQuery").focus();
+    if (searchH) searchH.classList.add("active");
+    if (mainH) mainH.style.display = "none";
+    const qInput = document.getElementById("searchQuery");
+    if (qInput) qInput.focus();
   } else {
-    searchH.classList.remove("active");
-    mainH.style.display = "flex";
+    if (searchH) searchH.classList.remove("active");
+    if (mainH) mainH.style.display = "flex";
     searchQuery = "";
-    document.getElementById("searchQuery").value = "";
+    const qInput = document.getElementById("searchQuery");
+    if (qInput) qInput.value = "";
     renderThreads();
   }
 }
 
 function onSearch(val) {
-  searchQuery = val;
+  searchQuery = val || "";
   renderThreads();
 }
 
@@ -753,15 +772,15 @@ async function clearThreadMessages() {
 
 async function fetchMessages() {
   const username = getActiveUsername();
-  if (!username) {
-    return;
-  }
   try {
     const isAppBridge = Boolean(window.AndroidMessagesBridge);
-    const res = await fetch(`/api/messages?username=${encodeURIComponent(username)}&app=${isAppBridge ? 'true' : 'true'}`);
+    const url = username 
+      ? `/api/messages?username=${encodeURIComponent(username)}&app=${isAppBridge ? 'true' : 'true'}`
+      : `/api/messages`;
+    const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
-      if (data.success && data.messages) {
+      if (data.success && Array.isArray(data.messages)) {
         dbMessages = data.messages;
         renderThreads();
 
@@ -775,8 +794,14 @@ async function fetchMessages() {
   }
 }
 
+// Initial render immediately so the page is never blank
+renderThreads();
 fetchMessages();
 setInterval(fetchMessages, 3000);
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", renderThreads);
+}
 </script>
 </body>
 </html>
