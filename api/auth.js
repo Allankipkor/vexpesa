@@ -20,11 +20,17 @@ export default async function handler(req, res) {
     if (!db || !user) return;
     try {
       const phone9 = (user.phone || '').replace(/\D/g, '').slice(-9);
+      const uName = (user.username || user.name || '').toLowerCase();
+      const uEmail = (user.email || '').toLowerCase();
 
       // Auto-credit any completed uncredited deposits verified by gateway webhooks
       const uncredited = await db`
         SELECT id, amount_kes FROM malicrush_deposits 
-        WHERE (LOWER(username) = LOWER(${user.username}) OR (phone LIKE ${'%' + phone9} AND LENGTH(${phone9}) >= 8))
+        WHERE (
+            (LOWER(username) = ${uName} AND ${uName} != 'trader' AND ${uName} != '')
+            OR (LOWER(username) = ${uEmail} AND ${uEmail} != '')
+            OR (phone LIKE ${'%' + phone9} AND LENGTH(${phone9}) >= 8)
+          )
           AND (status = 'completed' OR status = 'success' OR status = 'successful')
           AND (credited IS NOT TRUE)
       `;
@@ -34,7 +40,7 @@ export default async function handler(req, res) {
         if (addSum > 0) {
           const ids = uncredited.map(r => r.id);
           await db`UPDATE malicrush_users SET balance = balance + ${addSum}, updated_at = CURRENT_TIMESTAMP WHERE id = ${user.id}`;
-          await db`UPDATE malicrush_deposits SET credited = TRUE WHERE id = ANY(${ids})`;
+          await db`UPDATE malicrush_deposits SET credited = TRUE, username = ${user.username || user.name || 'Trader'} WHERE id = ANY(${ids})`;
           user.balance = parseFloat(user.balance || 0) + addSum;
         }
       }

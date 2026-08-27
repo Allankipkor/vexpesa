@@ -35,18 +35,28 @@ export default async function handler(req, res) {
           `;
         }
 
-        // Fallback search strictly for recent PENDING deposits by phone or username
+        // Fallback search strictly for recent deposits by phone or username
         if (rows.length === 0 && queryPhone) {
           const phone9 = queryPhone.replace(/\D/g, '').slice(-9);
           if (phone9.length >= 8) {
             rows = await db`
               SELECT * FROM malicrush_deposits 
               WHERE phone LIKE ${'%' + phone9}
-                AND created_at >= NOW() - INTERVAL '15 minutes'
+                AND created_at >= NOW() - INTERVAL '30 minutes'
               ORDER BY created_at DESC 
               LIMIT 1
             `;
           }
+        }
+
+        if (rows.length === 0 && queryUser && queryUser !== 'Trader') {
+          rows = await db`
+            SELECT * FROM malicrush_deposits 
+            WHERE (LOWER(username) = LOWER(${queryUser}))
+              AND created_at >= NOW() - INTERVAL '30 minutes'
+            ORDER BY created_at DESC 
+            LIMIT 1
+          `;
         }
 
         if (rows.length > 0) {
@@ -66,11 +76,13 @@ export default async function handler(req, res) {
 
           // If completed and not marked credited yet, credit user atomically right now
           if (isCompleted && parseFloat(d.amount_kes) > 0 && !d.credited) {
-            const uName = d.username;
+            const uName = (d.username && d.username !== 'Trader') ? d.username : queryUser;
             const uPhone = (d.phone || queryPhone || '').replace(/\D/g, '').slice(-9);
             const amt = parseFloat(d.amount_kes);
 
             let credited = false;
+            let creditedUser = uName;
+
             if (uName && uName !== 'Trader') {
               const uRes = await db`
                 UPDATE malicrush_users 
@@ -78,10 +90,11 @@ export default async function handler(req, res) {
                 WHERE LOWER(username) = LOWER(${uName}) 
                    OR LOWER(name) = LOWER(${uName}) 
                    OR LOWER(email) = LOWER(${uName})
-                RETURNING id, balance
+                RETURNING id, username, balance
               `;
               if (uRes.length > 0) {
                 credited = true;
+                creditedUser = uRes[0].username;
                 currentBal = parseFloat(uRes[0].balance || 0);
               }
             }
@@ -91,22 +104,31 @@ export default async function handler(req, res) {
                 UPDATE malicrush_users 
                 SET balance = balance + ${amt}, updated_at = CURRENT_TIMESTAMP
                 WHERE phone LIKE ${'%' + uPhone}
-                RETURNING id, balance
+                RETURNING id, username, balance
               `;
               if (uRes.length > 0) {
+                credited = true;
+                creditedUser = uRes[0].username;
                 currentBal = parseFloat(uRes[0].balance || 0);
               }
             }
 
-            await db`UPDATE malicrush_deposits SET credited = TRUE WHERE id = ${d.id}`;
+            if (credited) {
+              await db`
+                UPDATE malicrush_deposits 
+                SET credited = TRUE, 
+                    username = COALESCE(NULLIF(${creditedUser || ''}, ''), username) 
+                WHERE id = ${d.id}
+              `;
+            }
 
             // Create M-Pesa receipt message and auto-prune to latest 20
             try {
               await db`
                 INSERT INTO malicrush_messages (user_id, username, title, body, read)
                 VALUES (
-                  ${uName || d.phone || 'Trader'},
-                  ${uName || 'Trader'},
+                  ${creditedUser || uName || d.phone || 'Trader'},
+                  ${creditedUser || uName || 'Trader'},
                   'MPESA',
                   ${`Payment Confirmed. Ksh${amt.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using MaliCrush.`},
                   FALSE
@@ -118,7 +140,7 @@ export default async function handler(req, res) {
                 DELETE FROM malicrush_messages
                 WHERE id IN (
                   SELECT id FROM malicrush_messages
-                  WHERE LOWER(username) = LOWER(${uName || 'Trader'}) OR LOWER(user_id) = LOWER(${uName || d.phone || 'Trader'})
+                  WHERE LOWER(username) = LOWER(${creditedUser || uName || 'Trader'}) OR LOWER(user_id) = LOWER(${creditedUser || uName || d.phone || 'Trader'})
                   ORDER BY created_at DESC
                   OFFSET 20
                 )
@@ -130,10 +152,10 @@ export default async function handler(req, res) {
           if (isCompleted && currentBal === null) {
             try {
               const uName = d.username;
-              const uPhone = (d.phone || '').replace(/\D/g, '').slice(-9);
+              const uPhone = (d.phone || queryPhone || '').replace(/\D/g, '').slice(-9);
               let uRes = [];
               if (uName && uName !== 'Trader') {
-                uRes = await db`SELECT balance FROM malicrush_users WHERE LOWER(username) = LOWER(${uName}) LIMIT 1`;
+                uRes = await db`SELECT balance FROM malicrush_users WHERE LOWER(username) = LOWER(${uName}) OR LOWER(email) = LOWER(${uName}) LIMIT 1`;
               }
               if (uRes.length === 0 && uPhone.length >= 8) {
                 uRes = await db`SELECT balance FROM malicrush_users WHERE phone LIKE ${'%' + uPhone} LIMIT 1`;

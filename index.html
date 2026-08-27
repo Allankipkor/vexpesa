@@ -2159,7 +2159,21 @@ function closeResult(){document.getElementById('resultModal').classList.remove('
 // DEPOSIT MODAL LOGIC
 // ═══════════════════════════════════════════
 function openDeposit(){
+  currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
+  if (!currentUser || (!currentUser.username && !currentUser.email)) {
+    showToast('Sign In Required', {sub: 'Please log in to your MaliCrush account to deposit funds.', kind: 'warn'});
+    setTimeout(() => {
+      window.location.href = 'login.html';
+    }, 1200);
+    return;
+  }
+
   syncPlatformSettings();
+  const depPhone = document.getElementById('depositPhone');
+  if (depPhone && currentUser.phone && !depPhone.value) {
+    depPhone.value = currentUser.phone;
+  }
+
   document.getElementById('depositModal').classList.add('show');
   document.getElementById('depositStatus').textContent='';
   const isUsd = depositCurrency === 'usd';
@@ -2277,6 +2291,13 @@ function _disableDepBtn(txt){ const b=document.getElementById('depositBtn'); b.d
 
 async function requestSTK(){
   playSound('click');
+  currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
+  if (!currentUser || (!currentUser.username && !currentUser.email)) {
+    showToast('Sign In Required', {sub: 'Please log in to deposit funds.', kind: 'warn'});
+    setTimeout(() => { window.location.href = 'login.html'; }, 1000);
+    return;
+  }
+
   const phone = document.getElementById('depositPhone').value.trim();
   const btn = document.getElementById('depositBtn');
   const status = document.getElementById('depositStatus');
@@ -2298,10 +2319,14 @@ async function requestSTK(){
   btn.disabled=true; btn.textContent='Sending M-Pesa STK...';
   status.innerHTML='<span style="color:var(--gold)">⚡ Sending M-Pesa prompt to ' + phone + '...</span>';
 
+  // Automatically switch wallet view to Real mode so user is primed to see deposited funds
+  isDemoMode = false;
+  localStorage.setItem('maliIsDemoMode', 'false');
+  updateHUD();
+
   // Fetch admin credentials from localStorage
   const adminCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
-  currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
-  const uname = currentUser ? (currentUser.username || currentUser.name || currentUser.email) : 'Trader';
+  const uname = currentUser.username || currentUser.name || currentUser.email;
 
   try {
     const res = await fetch('api/stk-push', {
@@ -2321,16 +2346,16 @@ async function requestSTK(){
     if (data.success) {
       const depRef = data.reference;
       let pollCount = 0;
-      const maxPolls = 24; // 24 * 2.5s = 60s total
+      const maxPolls = 36; // 36 * 2.5s = 90s total
 
-      status.innerHTML = `<span style="color:var(--gold)">⏳ STK Prompt dispatched to <strong>${phone}</strong>! Enter your M-Pesa PIN on your phone (<span id="depCountdown">60</span>s)...</span>`;
+      status.innerHTML = `<span style="color:var(--gold)">⏳ STK Prompt dispatched to <strong>${phone}</strong>! Enter your M-Pesa PIN on your phone (<span id="depCountdown">90</span>s)...</span>`;
       btn.disabled = true;
       btn.textContent = 'Waiting for M-Pesa PIN...';
 
       if (_ppPollInterval) clearInterval(_ppPollInterval);
       _ppPollInterval = setInterval(async () => {
         pollCount++;
-        const remaining = Math.max(0, Math.round(60 - pollCount * 2.5));
+        const remaining = Math.max(0, Math.round(90 - pollCount * 2.5));
         const cdEl = document.getElementById('depCountdown');
         if (cdEl) cdEl.textContent = remaining.toString();
 

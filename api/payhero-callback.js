@@ -22,31 +22,77 @@ export default async function handler(req, res) {
   const response = body.response || body.data || body;
 
   // Extract fields from PayHero v1/v2 AND GravityPay (gravitypayapp.com) webhooks
-  const status = (response.status || response.Status || body.status || body.Status || '').toString().toLowerCase().trim();
-  const rawCheckoutId = (response.checkoutRequestId || body.checkoutRequestId || response.checkout_request_id || body.checkout_request_id || response.transactionId || body.transactionId || '').trim();
+  const event = (body.event || response.event || '').toString().toLowerCase().trim();
+  const status = (response.status || response.Status || body.status || body.Status || body.data?.status || '').toString().toLowerCase().trim();
+  
+  const rawCheckoutId = (
+    response.checkoutRequestId || body.checkoutRequestId || 
+    response.CheckoutRequestID || body.CheckoutRequestID || 
+    response.checkout_request_id || body.checkout_request_id || 
+    response.transactionId || body.transactionId || 
+    response.transaction_id || body.transaction_id || 
+    body.data?.checkoutRequestId || body.data?.CheckoutRequestID || body.data?.transactionId ||
+    ''
+  ).trim();
   const checkoutRequestId = rawCheckoutId.length > 0 ? rawCheckoutId : null;
 
   const rawExternalRef = (
     response.reference || body.reference || 
-    response.ExternalReference || body.external_reference || response.external_reference || response.externalReference ||
+    response.ExternalReference || body.ExternalReference || 
+    response.external_reference || body.external_reference || 
+    response.externalReference || body.externalReference || 
+    body.data?.reference || response.ref || body.ref ||
     ''
   ).trim();
   const externalRef = rawExternalRef.length > 0 ? rawExternalRef : null;
 
-  const rawMpesaReceipt = (response.mpesaReceipt || body.mpesaReceipt || response.MpesaReceiptNumber || response.mpesa_reference || response.receipt || response.MpesaReceipt || '').trim().toUpperCase();
+  const rawMpesaReceipt = (
+    response.mpesaReceipt || body.mpesaReceipt || 
+    response.MpesaReceiptNumber || body.MpesaReceiptNumber || 
+    response.mpesa_reference || body.mpesa_reference || 
+    response.receipt || body.receipt || 
+    response.MpesaReceipt || body.MpesaReceipt || 
+    body.data?.mpesaReceipt || body.data?.receipt || body.data?.mpesa_reference ||
+    ''
+  ).trim().toUpperCase();
   const mpesaReceipt = rawMpesaReceipt.length >= 4 ? rawMpesaReceipt : null;
 
-  const amount = parseFloat(response.amount || body.amount || response.Amount || body.Amount) || 0;
-  const phone = (response.phoneNumber || body.phoneNumber || response.Phone || body.Phone || response.phone || body.phone || response.phone_number || '').trim();
-  const metadataUser = (response.metadata?.username || body.metadata?.username || response.customer_name || '').trim();
-  const resultCode = response.ResultCode !== undefined ? parseInt(response.ResultCode) : (body.ResultCode !== undefined ? parseInt(body.ResultCode) : null);
+  const amount = parseFloat(
+    response.amount || body.amount || 
+    response.Amount || body.Amount || 
+    body.data?.amount || 0
+  ) || 0;
 
-  const isSuccess = (status === 'success' || status === 'successful' || status === 'completed') || resultCode === 0 || Boolean(mpesaReceipt);
+  const phone = (
+    response.phoneNumber || body.phoneNumber || 
+    response.PhoneNumber || body.PhoneNumber || 
+    response.Phone || body.Phone || 
+    response.phone || body.phone || 
+    response.phone_number || body.phone_number || 
+    body.data?.phoneNumber || body.data?.phone ||
+    ''
+  ).trim();
+
+  const metadataUser = (
+    response.metadata?.username || body.metadata?.username || 
+    body.data?.metadata?.username || response.customer_name || 
+    body.customer_name || response.name || body.name || 
+    ''
+  ).trim();
+
+  const resultCode = response.ResultCode !== undefined ? parseInt(response.ResultCode) : 
+    (body.ResultCode !== undefined ? parseInt(body.ResultCode) : 
+    (response.resultCode !== undefined ? parseInt(response.resultCode) : null));
+
+  const isSuccess = (status === 'success' || status === 'successful' || status === 'completed' || status === 'paid') || 
+                    (event === 'payment.success' || event === 'transaction.success' || event === 'stk.success') || 
+                    resultCode === 0 || 
+                    Boolean(mpesaReceipt);
 
   if (db) {
     try {
       if (isSuccess && amount > 0) {
-        // 1. REPLAY / IDEMPOTENCY PROTECTION: Check if this M-Pesa receipt has already been processed and completed
+        // 1. REPLAY / IDEMPOTENCY PROTECTION: Check if this M-Pesa receipt has already been processed and credited
         if (mpesaReceipt) {
           const existingReceipt = await db`
             SELECT id, deposit_ref, username, amount_kes, credited, status
@@ -57,7 +103,7 @@ export default async function handler(req, res) {
           `;
           if (existingReceipt.length > 0 && existingReceipt[0].credited) {
             console.log(`[Webhook] Duplicate notification received for already processed receipt: ${mpesaReceipt}`);
-            return res.status(200).json({ status: 'OK', message: 'Transaction already processed and credited', receipt: mpesaReceipt });
+            return res.status(200).json({ status: 'OK', success: true, message: 'Transaction already processed and credited', receipt: mpesaReceipt });
           }
         }
 
@@ -84,15 +130,15 @@ export default async function handler(req, res) {
           if (rows.length > 0) depRecord = rows[0];
         }
 
-        // Step 2c: Fallback matching by phone (ONLY match a SINGLE most recent PENDING deposit created within 20 mins)
+        // Step 2c: Fallback matching by phone (match most recent pending or expired deposit within 30 mins)
         if (!depRecord && phone) {
           const phone9 = phone.replace(/\D/g, '').slice(-9);
           if (phone9.length >= 8) {
             const rows = await db`
               SELECT * FROM malicrush_deposits
               WHERE phone LIKE ${'%' + phone9}
-                AND status = 'pending'
-                AND created_at >= NOW() - INTERVAL '20 minutes'
+                AND status IN ('pending', 'expired')
+                AND created_at >= NOW() - INTERVAL '30 minutes'
               ORDER BY created_at DESC
               LIMIT 1
             `;
@@ -100,13 +146,13 @@ export default async function handler(req, res) {
           }
         }
 
-        // Step 2d: Fallback matching by username (ONLY match a SINGLE most recent PENDING deposit created within 20 mins)
+        // Step 2d: Fallback matching by username (match most recent pending or expired deposit within 30 mins)
         if (!depRecord && metadataUser && metadataUser !== 'Trader') {
           const rows = await db`
             SELECT * FROM malicrush_deposits
             WHERE LOWER(username) = LOWER(${metadataUser})
-              AND status = 'pending'
-              AND created_at >= NOW() - INTERVAL '20 minutes'
+              AND status IN ('pending', 'expired')
+              AND created_at >= NOW() - INTERVAL '30 minutes'
             ORDER BY created_at DESC
             LIMIT 1
           `;
@@ -115,7 +161,7 @@ export default async function handler(req, res) {
 
         const formattedMethod = mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : (depRecord?.method || 'M-Pesa STK');
 
-        // Step 2e: If a pending deposit was found, update strictly THAT single record by ID
+        // Step 2e: If a deposit was found, update strictly THAT record by ID
         if (depRecord) {
           const updated = await db`
             UPDATE malicrush_deposits
@@ -147,6 +193,8 @@ export default async function handler(req, res) {
           const phone9 = (targetPhone || '').replace(/\D/g, '').slice(-9);
 
           let userCredited = false;
+          let creditedUsername = targetUser;
+
           if (targetUser && targetUser !== 'Trader') {
             const userUpdate = await db`
               UPDATE malicrush_users
@@ -156,23 +204,34 @@ export default async function handler(req, res) {
                  OR LOWER(email) = LOWER(${targetUser})
               RETURNING id, username, balance
             `;
-            if (userUpdate.length > 0) userCredited = true;
+            if (userUpdate.length > 0) {
+              userCredited = true;
+              creditedUsername = userUpdate[0].username;
+            }
           }
 
           if (!userCredited && phone9.length >= 8) {
-            await db`
+            const userUpdatePhone = await db`
               UPDATE malicrush_users
               SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
               WHERE phone LIKE ${'%' + phone9}
+              RETURNING id, username, balance
             `;
+            if (userUpdatePhone.length > 0) {
+              userCredited = true;
+              creditedUsername = userUpdatePhone[0].username;
+            }
           }
 
-          // Mark this specific deposit as credited
-          await db`
-            UPDATE malicrush_deposits
-            SET credited = TRUE
-            WHERE id = ${depRecord.id}
-          `;
+          // CRITICAL FIX: Only mark credited = TRUE if a user was ACTUALLY found and updated
+          if (userCredited) {
+            await db`
+              UPDATE malicrush_deposits
+              SET credited = TRUE,
+                  username = COALESCE(NULLIF(${creditedUsername || ''}, ''), username)
+              WHERE id = ${depRecord.id}
+            `;
+          }
 
           // 4. AUTO-CANCEL / SUPERSEDE OTHER PENDING ATTEMPTS for this user/phone
           if (phone9.length >= 8) {
@@ -194,8 +253,8 @@ export default async function handler(req, res) {
             await db`
               INSERT INTO malicrush_messages (user_id, username, title, body, read)
               VALUES (
-                ${targetUser || phone || 'Trader'},
-                ${targetUser || 'Trader'},
+                ${creditedUsername || targetUser || phone || 'Trader'},
+                ${creditedUsername || targetUser || 'Trader'},
                 'MPESA',
                 ${`${mpesaCode} Confirmed. Ksh${amount.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using MaliCrush.`},
                 FALSE
@@ -207,7 +266,7 @@ export default async function handler(req, res) {
               DELETE FROM malicrush_messages
               WHERE id IN (
                 SELECT id FROM malicrush_messages
-                WHERE LOWER(username) = LOWER(${targetUser || 'Trader'}) OR LOWER(user_id) = LOWER(${targetUser || phone || 'Trader'})
+                WHERE LOWER(username) = LOWER(${creditedUsername || targetUser || 'Trader'}) OR LOWER(user_id) = LOWER(${creditedUsername || targetUser || phone || 'Trader'})
                 ORDER BY created_at DESC
                 OFFSET 20
               )
@@ -238,7 +297,7 @@ export default async function handler(req, res) {
 
   return res.status(200).json({
     status: 'OK',
+    success: true,
     message: isSuccess ? 'Payment confirmed and processed' : 'Payment recorded'
   });
 }
-

@@ -84,16 +84,16 @@ function formatTxMoney(amount){
 function renderTransactions(){
   const txs = JSON.parse(localStorage.getItem('maliTransactions') || '[]');
   const tbody = document.getElementById('txTableBody');
-  const empty = document.getElementById('txEmpty');
-  tbody.innerHTML = '';
+  const empty = document.getElementById('emptyState') || document.getElementById('txEmpty');
+  if (tbody) tbody.innerHTML = '';
 
   const filtered = txs.filter(t => currentFilter === 'all' || t.type === currentFilter);
 
   if (filtered.length === 0) {
-    empty.classList.remove('hidden');
+    if (empty) empty.classList.remove('hidden');
     return;
   }
-  empty.classList.add('hidden');
+  if (empty) empty.classList.add('hidden');
 
   filtered.forEach(item => {
     const tr = document.createElement('tr');
