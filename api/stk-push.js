@@ -135,7 +135,7 @@ export default async function handler(req, res) {
       provider: 'm-pesa',
       external_reference: reference,
       customer_name: resolvedUsername,
-      callback_url: callbackUrl || `https://${req.headers.host || 'malicrush.vercel.app'}/api/payhero-callback.js`
+      callback_url: callbackUrl || `https://${req.headers.host || 'malicrush.com'}/api/payhero-callback.js`
     };
 
     const response = await fetch('https://backend.payhero.co.ke/api/v2/payments', {

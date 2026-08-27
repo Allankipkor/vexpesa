@@ -47,7 +47,7 @@ const defaultSettings = {
       api_key: "",
       secret_key: "",
       webhook_secret: "",
-      callback_url: "https://malicrush.vercel.app/api/payhero-callback.js"
+      callback_url: "https://malicrush.com/api/gravitypay-callback.js"
     }
   },
   notifications: {
