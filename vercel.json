@@ -1,3 +1,9 @@
 {
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/webhooks/gravitypay", "destination": "/api/webhooks/gravitypay.js" },
+    { "source": "/api/webhooks/payhero", "destination": "/api/webhooks/payhero.js" },
+    { "source": "/api/gravitypay-callback", "destination": "/api/gravitypay-callback.js" },
+    { "source": "/api/payhero-callback", "destination": "/api/payhero-callback.js" }
+  ]
 }
