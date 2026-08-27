@@ -749,16 +749,21 @@ function updateGlobalOutcomeUI() {
 }
 
 async function setUserOutcomeOverride(username, outcome, rate) {
-  const safeUser = decodeURIComponent(username || '');
-  const outcomeVal = (rate !== undefined && outcome !== 'auto') ? `${outcome}:${rate}` : outcome;
+  const safeUser = decodeURIComponent(username || '').trim();
+  const finalRate = rate !== undefined ? rate : (outcome === 'force_win' ? 100 : (outcome === 'force_loss' ? 100 : currentWinRate));
+  const outcomeVal = outcome !== 'auto' ? `${outcome}:${finalRate}` : 'auto';
+  
   currentUserOutcomes[safeUser] = outcomeVal;
+  if (safeUser.toLowerCase() !== safeUser) {
+    currentUserOutcomes[safeUser.toLowerCase()] = outcomeVal;
+  }
 
   try {
     let res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_override: { username: safeUser, outcome, rate }
+        user_override: { username: safeUser, outcome, rate: finalRate }
       })
     });
     if (!res.ok) {
@@ -766,7 +771,7 @@ async function setUserOutcomeOverride(username, outcome, rate) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_override: { username: safeUser, outcome, rate }
+          user_override: { username: safeUser, outcome, rate: finalRate }
         })
       });
     }
@@ -777,18 +782,18 @@ async function setUserOutcomeOverride(username, outcome, rate) {
 }
 
 function promptCustomUserRate(username, mode) {
-  const safeUser = decodeURIComponent(username || '');
-  const currentVal = currentUserOutcomes[safeUser] || 'auto';
-  let defaultRate = mode === 'force_win' ? currentForceWinRate : currentForceLossRate;
+  const safeUser = decodeURIComponent(username || '').trim();
+  const currentVal = currentUserOutcomes[safeUser] || currentUserOutcomes[safeUser.toLowerCase()] || 'auto';
+  let defaultRate = mode === 'force_win' ? 100 : 100;
   if (currentVal.startsWith(mode + ':')) {
     defaultRate = parseInt(currentVal.split(':')[1]) || defaultRate;
   }
   const promptText = mode === 'force_win' 
-    ? `Enter target Win % for @${safeUser} (e.g. 85 for 85% Win / 15% Loss):`
-    : `Enter target Loss % for @${safeUser} (e.g. 85 for 85% Crash / 15% Win):`;
+    ? `Enter target Win % for @${safeUser} (e.g. 100 for 100% Guaranteed Win, 85 for 85% Win):`
+    : `Enter target Loss % for @${safeUser} (e.g. 100 for 100% Guaranteed Loss, 85 for 85% Loss):`;
   const input = prompt(promptText, defaultRate.toString());
   if (input !== null) {
-    const rate = Math.min(100, Math.max(10, parseInt(input) || defaultRate));
+    const rate = Math.min(100, Math.max(1, parseInt(input) || defaultRate));
     setUserOutcomeOverride(username, mode, rate);
   } else if (!currentVal.startsWith(mode)) {
     setUserOutcomeOverride(username, mode, defaultRate);

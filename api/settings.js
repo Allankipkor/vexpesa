@@ -224,10 +224,14 @@ export default async function handler(req, res) {
         if (input.user_override) {
           const { username, outcome, rate } = input.user_override;
           if (username) {
-            if (rate !== undefined && outcome !== 'auto') {
-              updated.controls.user_outcomes[username] = `${outcome}:${rate}`;
-            } else {
-              updated.controls.user_outcomes[username] = outcome || 'auto';
+            const cleanUser = username.trim();
+            const finalRate = rate !== undefined ? rate : (outcome === 'force_win' ? 100 : (outcome === 'force_loss' ? 100 : 45));
+            const val = (outcome !== 'auto') ? `${outcome}:${finalRate}` : 'auto';
+            
+            if (!updated.controls.user_outcomes) updated.controls.user_outcomes = {};
+            updated.controls.user_outcomes[cleanUser] = val;
+            if (cleanUser.toLowerCase() !== cleanUser) {
+              updated.controls.user_outcomes[cleanUser.toLowerCase()] = val;
             }
           }
         }
@@ -324,7 +328,8 @@ export default async function handler(req, res) {
             demo_win_rate: saved.demo_win_rate ?? saved.controls?.demo_win_rate ?? defaultSettings.controls.demo_win_rate ?? 100,
             user_outcomes: {
               ...defaultSettings.controls.user_outcomes,
-              ...(saved.user_outcomes || saved.controls?.user_outcomes || {})
+              ...(saved.controls?.user_outcomes || {}),
+              ...(saved.user_outcomes || {})
             }
           }
         });
