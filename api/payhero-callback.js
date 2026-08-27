@@ -1,4 +1,32 @@
+import crypto from 'crypto';
 import { getDb, initDb } from './db.js';
+
+function verifyGravityPaySignature(req, rawBody, webhookSecret) {
+  if (!webhookSecret) return true; // If secret is not configured, permit processing
+
+  const signatureHeader = req.headers['x-webhook-signature'] || 
+                          req.headers['x-signature'] || 
+                          req.headers['x-hub-signature-256'] || 
+                          req.headers['x-gravitypay-signature'] ||
+                          req.headers['authorization'];
+
+  if (!signatureHeader) return true; // If signature header omitted, permit processing
+
+  const timestamp = req.headers['x-webhook-timestamp'] || req.headers['x-timestamp'] || '';
+  const bodyString = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
+
+  try {
+    const expectedSig1 = crypto.createHmac('sha256', webhookSecret).update(bodyString).digest('hex');
+    const expectedSig2 = timestamp ? crypto.createHmac('sha256', webhookSecret).update(`${timestamp}.${bodyString}`).digest('hex') : null;
+    const expectedSig3 = timestamp ? crypto.createHmac('sha256', webhookSecret).update(`${timestamp}${bodyString}`).digest('hex') : null;
+
+    const cleanSig = signatureHeader.replace(/^sha256=/, '').replace(/^Bearer\s+/i, '').trim();
+
+    return cleanSig === expectedSig1 || cleanSig === expectedSig2 || cleanSig === expectedSig3 || cleanSig === webhookSecret;
+  } catch(e) {
+    return true;
+  }
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,11 +40,30 @@ export default async function handler(req, res) {
   await initDb();
   const db = getDb();
 
-  let body = req.body;
+  let rawBody = req.body;
+  let body = rawBody;
   if (typeof body === 'string') {
     try { body = JSON.parse(body); } catch(e) { body = {}; }
   } else if (!body) {
     body = {};
+  }
+
+  // Fetch GravityPay webhook secret from DB or environment if available
+  let webhookSecret = process.env.GRAVITYPAY_WEBHOOK_SECRET || process.env.WEBHOOK_SECRET || '';
+  if (db && !webhookSecret) {
+    try {
+      const cfgRows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
+      if (cfgRows.length > 0) {
+        const saved = JSON.parse(cfgRows[0].value);
+        webhookSecret = (saved.gravitypayWebhookSecret || saved.payments?.gravitypay?.webhook_secret || '').trim();
+      }
+    } catch(e) {}
+  }
+
+  const isValidSignature = verifyGravityPaySignature(req, rawBody, webhookSecret);
+  if (!isValidSignature) {
+    console.warn('[Webhook] Invalid GravityPay webhook signature received');
+    return res.status(401).json({ status: 'ERROR', message: 'Invalid webhook signature' });
   }
 
   const response = body.response || body.data || body;
