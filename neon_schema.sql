@@ -1,51 +1,8 @@
 -- ==========================================================
--- VexPesa PostgreSQL Schema for Neon Database
--- Run this in the Neon Console -> SQL Editor
+-- VexPesa Standalone PostgreSQL Schema for Neon Database
+-- This creates independent vexpesa_* tables without touching
+-- any existing zentrapesa_* tables or data in the database.
 -- ==========================================================
-
--- 0. Auto-migrate legacy tables if they exist
-DO $$ 
-BEGIN
-  -- Rename from zentrapesa tables if present
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'zentrapesa_users') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_users') THEN
-    ALTER TABLE zentrapesa_users RENAME TO vexpesa_users;
-  END IF;
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'zentrapesa_trades') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_trades') THEN
-    ALTER TABLE zentrapesa_trades RENAME TO vexpesa_trades;
-  END IF;
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'zentrapesa_deposits') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_deposits') THEN
-    ALTER TABLE zentrapesa_deposits RENAME TO vexpesa_deposits;
-  END IF;
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'zentrapesa_withdrawals') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_withdrawals') THEN
-    ALTER TABLE zentrapesa_withdrawals RENAME TO vexpesa_withdrawals;
-  END IF;
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'zentrapesa_messages') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_messages') THEN
-    ALTER TABLE zentrapesa_messages RENAME TO vexpesa_messages;
-  END IF;
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'zentrapesa_settings') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_settings') THEN
-    ALTER TABLE zentrapesa_settings RENAME TO vexpesa_settings;
-  END IF;
-
-  -- Rename from malicrush tables if present
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'malicrush_users') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_users') THEN
-    ALTER TABLE malicrush_users RENAME TO vexpesa_users;
-  END IF;
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'malicrush_trades') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_trades') THEN
-    ALTER TABLE malicrush_trades RENAME TO vexpesa_trades;
-  END IF;
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'malicrush_deposits') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_deposits') THEN
-    ALTER TABLE malicrush_deposits RENAME TO vexpesa_deposits;
-  END IF;
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'malicrush_withdrawals') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_withdrawals') THEN
-    ALTER TABLE malicrush_withdrawals RENAME TO vexpesa_withdrawals;
-  END IF;
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'malicrush_messages') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_messages') THEN
-    ALTER TABLE malicrush_messages RENAME TO vexpesa_messages;
-  END IF;
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'malicrush_settings') AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vexpesa_settings') THEN
-    ALTER TABLE malicrush_settings RENAME TO vexpesa_settings;
-  END IF;
-END $$;
 
 -- 1. Users Table (vexpesa_users)
 CREATE TABLE IF NOT EXISTS vexpesa_users (
@@ -170,7 +127,7 @@ CREATE TABLE IF NOT EXISTS vexpesa_settings (
   value TEXT NOT NULL
 );
 
--- 7. Seed Default Admin and Demo Traders
+-- 7. Seed Default Admin and Traders for VexPesa
 INSERT INTO vexpesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
 VALUES 
   ('admin', 'Admin Core', 'admin@vexpesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin', 'active'),

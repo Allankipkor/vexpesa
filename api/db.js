@@ -23,63 +23,6 @@ export async function initDb() {
   const db = getDb();
   if (!db || isInitialized) return;
 
-  // Auto-migrate legacy tables if they exist and vexpesa_ tables do not
-  const legacyTables = ['users', 'trades', 'deposits', 'withdrawals', 'messages', 'settings'];
-  for (const t of legacyTables) {
-    try {
-      const checkLegacy = await db`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' AND table_name = ${t}
-        ) AS has_legacy
-      `;
-      const checkMali = await db`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' AND table_name = ${'malicrush_' + t}
-        ) AS has_mali
-      `;
-      const checkZentra = await db`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' AND table_name = ${'zentrapesa_' + t}
-        ) AS has_zentra
-      `;
-      const checkNew = await db`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' AND table_name = ${'vexpesa_' + t}
-        ) AS has_new
-      `;
-      if (!checkNew[0]?.has_new) {
-        if (checkZentra[0]?.has_zentra) {
-          if (t === 'users') await db`ALTER TABLE zentrapesa_users RENAME TO vexpesa_users`;
-          else if (t === 'trades') await db`ALTER TABLE zentrapesa_trades RENAME TO vexpesa_trades`;
-          else if (t === 'deposits') await db`ALTER TABLE zentrapesa_deposits RENAME TO vexpesa_deposits`;
-          else if (t === 'withdrawals') await db`ALTER TABLE zentrapesa_withdrawals RENAME TO vexpesa_withdrawals`;
-          else if (t === 'messages') await db`ALTER TABLE zentrapesa_messages RENAME TO vexpesa_messages`;
-          else if (t === 'settings') await db`ALTER TABLE zentrapesa_settings RENAME TO vexpesa_settings`;
-        } else if (checkMali[0]?.has_mali) {
-          if (t === 'users') await db`ALTER TABLE malicrush_users RENAME TO vexpesa_users`;
-          else if (t === 'trades') await db`ALTER TABLE malicrush_trades RENAME TO vexpesa_trades`;
-          else if (t === 'deposits') await db`ALTER TABLE malicrush_deposits RENAME TO vexpesa_deposits`;
-          else if (t === 'withdrawals') await db`ALTER TABLE malicrush_withdrawals RENAME TO vexpesa_withdrawals`;
-          else if (t === 'messages') await db`ALTER TABLE malicrush_messages RENAME TO vexpesa_messages`;
-          else if (t === 'settings') await db`ALTER TABLE malicrush_settings RENAME TO vexpesa_settings`;
-        } else if (checkLegacy[0]?.has_legacy) {
-          if (t === 'users') await db`ALTER TABLE users RENAME TO vexpesa_users`;
-          else if (t === 'trades') await db`ALTER TABLE trades RENAME TO vexpesa_trades`;
-          else if (t === 'deposits') await db`ALTER TABLE deposits RENAME TO vexpesa_deposits`;
-          else if (t === 'withdrawals') await db`ALTER TABLE withdrawals RENAME TO vexpesa_withdrawals`;
-          else if (t === 'messages') await db`ALTER TABLE messages RENAME TO vexpesa_messages`;
-          else if (t === 'settings') await db`ALTER TABLE settings RENAME TO vexpesa_settings`;
-        }
-      }
-    } catch (migErr) {
-      // Ignore migration errors and proceed to CREATE IF NOT EXISTS
-    }
-  }
-
   // 1. vexpesa_users
   try {
     await db`
