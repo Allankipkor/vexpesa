@@ -75,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
 
                     if (!id.isEmpty() && !seenMessageIds.contains(id)) {
                         seenMessageIds.add(id);
-                        if (!isInitialCheck && !read && !body.isEmpty()) {
+                        if (!read && !body.isEmpty()) {
                             triggerNativeNotification(title, body);
                         }
                     }
@@ -317,6 +317,8 @@ public class MainActivity extends AppCompatActivity {
         String script = "(function() { " +
                 "  try { " +
                 "    var u = ''; " +
+                "    var site = localStorage.getItem('messagesAppSiteUrl') || 'https://zentrapesa.com'; " +
+                "    var base = site.replace(/\\/+$/, ''); " +
                 "    try { " +
                 "      var keys = ['zentrapesaUser', 'zentrapesa_user', 'maliUser', 'currentUser', 'messagesAppUsername']; " +
                 "      for (var i = 0; i < keys.length; i++) { " +
@@ -330,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
                 "      var qp = new URLSearchParams(window.location.search); " +
                 "      u = qp.get('username') || qp.get('user') || qp.get('phone') || ''; " +
                 "    } " +
-                "    var url = u ? ('/api/messages?username=' + encodeURIComponent(u) + '&app=true') : '/api/messages?app=true'; " +
+                "    var url = u ? (base + '/api/messages?username=' + encodeURIComponent(u) + '&app=true') : (base + '/api/messages?app=true'); " +
                 "    fetch(url)" +
                 "      .then(function(r) { return r.json(); })" +
                 "      .then(function(d) { " +
