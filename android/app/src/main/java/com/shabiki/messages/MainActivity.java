@@ -38,7 +38,7 @@ import java.util.Set;
 public class MainActivity extends AppCompatActivity {
     private static final String CHANNEL_ID = "messages_mpesa_channel";
     private static final String CHANNEL_NAME = "Messages";
-    private static final String TARGET_URL = "https://zentrapesa.com/messages.html";
+    private static final String TARGET_URL = "file:///android_asset/messages.html";
     private static final String PREFS_NAME = "messages_app_prefs";
     private static final String KEY_LAST_URL = "last_url";
     private static final int PERMISSION_REQUEST_CODE = 101;
@@ -100,6 +100,14 @@ public class MainActivity extends AppCompatActivity {
 
         requestNotificationPermission();
 
+        // Clear any outdated or legacy domain caches (such as malicrush) from preferences
+        try {
+            String savedUrl = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(KEY_LAST_URL, null);
+            if (savedUrl != null && (savedUrl.contains("malicrush") || savedUrl.contains("shabiki"))) {
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(KEY_LAST_URL).apply();
+            }
+        } catch(Exception e) {}
+
         // Persistent Cookie Management across App Lifecycles & Swipes
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
@@ -112,6 +120,8 @@ public class MainActivity extends AppCompatActivity {
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
+        settings.setAllowFileAccessFromFileURLs(true);
+        settings.setAllowUniversalAccessFromFileURLs(true);
         settings.setSaveFormData(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
@@ -133,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 CookieManager.getInstance().flush();
-                if (url != null && !url.contains("/login") && !url.contains("/register")) {
+                if (url != null && !url.contains("/login") && !url.contains("/register") && !url.contains("malicrush")) {
                     getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                             .edit()
                             .putString(KEY_LAST_URL, url)
@@ -154,18 +164,17 @@ public class MainActivity extends AppCompatActivity {
 
         swipeRefresh.setOnRefreshListener(() -> webView.reload());
 
-        // Restore state if returning from background/tab switch, otherwise load initial URL
-        if (savedInstanceState != null) {
-            webView.restoreState(savedInstanceState);
+        // Always load the embedded local Messages UI directly from APK assets
+        String initialUrl = getIntent().getStringExtra("open_url");
+        if (initialUrl != null && !initialUrl.isEmpty() && !initialUrl.contains("malicrush")) {
+            webView.loadUrl(initialUrl);
         } else {
-            String initialUrl = getIntent().getStringExtra("open_url");
-            if (initialUrl != null && !initialUrl.isEmpty()) {
-                webView.loadUrl(initialUrl);
-            } else {
-                String lastUrl = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                        .getString(KEY_LAST_URL, TARGET_URL);
-                webView.loadUrl(lastUrl);
+            String lastUrl = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .getString(KEY_LAST_URL, TARGET_URL);
+            if (lastUrl.contains("malicrush")) {
+                lastUrl = TARGET_URL;
             }
+            webView.loadUrl(lastUrl);
         }
 
         startBackgroundMessageListener();
