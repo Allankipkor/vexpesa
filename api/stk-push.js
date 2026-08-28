@@ -158,6 +158,8 @@ export default async function handler(req, res) {
       amount: Math.round(amount),
       reference: reference.slice(0, 12),
       description: 'ZentraPesa Topup',
+      callbackUrl: gpCallbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay',
+      callBackUrl: gpCallbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay',
       metadata: {
         username: resolvedUsername,
         app: 'zentrapesa'

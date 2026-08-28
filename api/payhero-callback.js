@@ -37,8 +37,15 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  await initDb();
-  const db = getDb();
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      status: 'OK',
+      webhook: 'GravityPay / PayHero Webhook Endpoint Active',
+      platform: 'ZentraPesa',
+      url: 'https://zentrapesa.com/api/webhooks/gravitypay',
+      timestamp: new Date().toISOString()
+    });
+  }
 
   let rawBody = req.body;
   let body = rawBody;

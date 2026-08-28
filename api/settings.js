@@ -47,7 +47,7 @@ const defaultSettings = {
       api_key: "",
       secret_key: "",
       webhook_secret: "",
-      callback_url: "https://zentrapesa.com/api/gravitypay-callback.js"
+      callback_url: "https://zentrapesa.com/api/webhooks/gravitypay"
     }
   },
   notifications: {
