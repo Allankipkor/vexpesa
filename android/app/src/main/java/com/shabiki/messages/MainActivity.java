@@ -239,6 +239,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            checkLatestMessages();
+        }
+    }
+
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
@@ -248,10 +256,11 @@ public class MainActivity extends AppCompatActivity {
             );
             channel.setDescription("Incoming SMS and transaction alerts");
             channel.enableLights(true);
-            channel.setLightColor(Color.BLUE);
+            channel.setLightColor(Color.GREEN);
             channel.enableVibration(true);
             channel.setVibrationPattern(new long[]{0, 250, 150, 250});
             channel.setShowBadge(true);
+            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
 
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
@@ -264,6 +273,7 @@ public class MainActivity extends AppCompatActivity {
     public void triggerNativeNotification(String title, String body) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, PERMISSION_REQUEST_CODE);
                 return;
             }
         }

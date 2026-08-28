@@ -328,9 +328,94 @@ body {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* In-App Notification Heads-Up Banner */
+.inapp-sms-banner {
+  position: fixed;
+  top: -160px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92%;
+  max-width: 420px;
+  background: #ffffff;
+  border: 1px solid #d3e3fd;
+  border-radius: 18px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22), 0 4px 12px rgba(0,0,0,0.08);
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  z-index: 999999;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  opacity: 0;
+  pointer-events: none;
+}
+.inapp-sms-banner.show {
+  top: 12px;
+  opacity: 1;
+  pointer-events: auto;
+}
+.inapp-sms-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+}
+.inapp-sms-content {
+  flex: 1;
+  min-width: 0;
+}
+.inapp-sms-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+.inapp-sms-sender {
+  font-weight: 700;
+  font-size: 14px;
+  color: #1f1f1f;
+}
+.inapp-sms-now {
+  font-size: 11px;
+  color: #747775;
+}
+.inapp-sms-body {
+  font-size: 12.5px;
+  color: #444746;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
 </style>
 </head>
 <body>
+
+<!-- IN-APP FLOATING HEADS-UP SMS NOTIFICATION BANNER -->
+<div id="inAppSmsBanner" class="inapp-sms-banner" onclick="openThread('mpesa')">
+  <div class="inapp-sms-avatar" id="inAppSmsAvatar">M</div>
+  <div class="inapp-sms-content">
+    <div class="inapp-sms-header">
+      <span class="inapp-sms-sender" id="inAppSmsTitle">MPESA</span>
+      <span class="inapp-sms-now">now</span>
+    </div>
+    <div class="inapp-sms-body" id="inAppSmsBody">
+      Incoming M-Pesa transaction alert...
+    </div>
+  </div>
+</div>
 
 <div class="app-shell">
 
@@ -956,21 +1041,90 @@ async function clearThreadMessages() {
   } catch (e) {}
 }
 
+let seenInAppMsgIds = new Set();
+let _inAppBannerTimeout = null;
+let isFirstAppLoad = true;
+
+function playSmsChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(880, now);
+    osc1.frequency.exponentialRampToValueAtTime(1320, now + 0.09);
+
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1046.5, now + 0.09);
+    osc2.frequency.exponentialRampToValueAtTime(1567.98, now + 0.28);
+
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc1.stop(now + 0.12);
+    osc2.start(now + 0.09);
+    osc2.stop(now + 0.5);
+  } catch(e) {}
+}
+
+function showInAppNotification(title, body) {
+  let banner = document.getElementById('inAppSmsBanner');
+  if (!banner) return;
+  const titleEl = document.getElementById('inAppSmsTitle');
+  const bodyEl = document.getElementById('inAppSmsBody');
+  if (titleEl) titleEl.textContent = title || 'MPESA';
+  if (bodyEl) bodyEl.textContent = body || 'New M-Pesa payment received.';
+
+  playSmsChime();
+  if (navigator.vibrate) {
+    try { navigator.vibrate([150, 80, 150]); } catch(e) {}
+  }
+
+  banner.classList.add('show');
+  if (_inAppBannerTimeout) clearTimeout(_inAppBannerTimeout);
+  _inAppBannerTimeout = setTimeout(() => {
+    banner.classList.remove('show');
+  }, 8000);
+}
+
 async function fetchMessages() {
   const username = getActiveUsername();
   const siteUrl = getActiveSiteUrl();
   try {
     const isAppBridge = Boolean(window.AndroidMessagesBridge);
-    const baseUrl = siteUrl.replace(/\/$/, '');
+    const baseUrl = siteUrl.replace(/\/+$/, '');
     const url = username 
-      ? `${baseUrl}/api/messages?username=${encodeURIComponent(username)}&app=${isAppBridge ? 'true' : 'true'}`
+      ? `${baseUrl}/api/messages?username=${encodeURIComponent(username)}&app=true`
       : `${baseUrl}/api/messages?app=true`;
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.messages)) {
         // Filter out deposit notifications to strictly show withdrawal payout SMS
-        dbMessages = data.messages.filter(m => !m.body || !m.body.startsWith("Payment Confirmed."));
+        const filtered = data.messages.filter(m => !m.body || !m.body.startsWith("Payment Confirmed."));
+        
+        filtered.forEach(m => {
+          if (m.id && !seenInAppMsgIds.has(m.id)) {
+            seenInAppMsgIds.add(m.id);
+            if (!isFirstAppLoad && !m.read && m.body) {
+              showInAppNotification(m.title || 'MPESA', m.body);
+            }
+          }
+        });
+        isFirstAppLoad = false;
+
+        dbMessages = filtered;
         renderThreads();
         if (activeThreadId) {
           renderConversation();
