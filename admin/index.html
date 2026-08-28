@@ -377,7 +377,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
 
                     <div>
                         <label class="block text-[11px] text-gray-400 mb-1">GravityPay Callback / Webhook URL</label>
-                        <input type="text" id="cfgGravitypayCallbackUrl" placeholder="https://your-domain.vercel.app/api/payhero-callback.js" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
+                        <input type="text" id="cfgGravitypayCallbackUrl" placeholder="https://zentrapesa.com/api/webhooks/gravitypay" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
                     </div>
                 </div>
 
@@ -828,7 +828,7 @@ function switchGatewayTab(tab) {
 }
 
 function onGatewaySelectChange() {
-  const gw = document.getElementById('cfgActiveGateway')?.value || 'payhero';
+  const gw = document.getElementById('cfgActiveGateway')?.value || 'gravitypay';
   const badge = document.getElementById('badgeActiveGateway');
   if (badge) {
     if (gw === 'gravitypay') {
@@ -844,6 +844,12 @@ function onGatewaySelectChange() {
       switchGatewayTab('payhero');
     }
   }
+
+  // Update local storage and persist to backend
+  const existingCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
+  existingCfg.gateway = gw;
+  localStorage.setItem('maliPlatformConfig', JSON.stringify(existingCfg));
+  saveAdminConfig(true);
 }
 
 function loadAdminConfig(){
@@ -1072,7 +1078,8 @@ function loadAdminConfig(){
   renderTradersList();
 }
 
-function saveAdminConfig(){
+async function saveAdminConfig(silent = false){
+  const activeGatewayVal = document.getElementById('cfgActiveGateway')?.value || 'gravitypay';
   const cfg = {
     speed: parseFloat(document.getElementById('cfgSpeed').value) || 120,
     spikeFreq: parseFloat(document.getElementById('cfgSpikeFreq').value) || 0.12,
@@ -1100,7 +1107,24 @@ function saveAdminConfig(){
       force_loss_rate: currentForceLossRate,
       user_outcomes: currentUserOutcomes
     },
-    gateway: document.getElementById('cfgActiveGateway')?.value || 'payhero',
+    gateway: activeGatewayVal,
+    payments: {
+      gateway: activeGatewayVal,
+      usd_rate: parseFloat(document.getElementById('cfgUsdRate').value) || 129.00,
+      deposit_currency: document.getElementById('cfgCurrency').value || 'kes',
+      payhero: {
+        api_username: document.getElementById('cfgPayheroUsername')?.value.trim() || '',
+        api_password: document.getElementById('cfgPayheroPassword')?.value.trim() || '',
+        channel_id: document.getElementById('cfgPayheroChannelId')?.value.trim() || '',
+        callback_url: document.getElementById('cfgPayheroCallbackUrl')?.value.trim() || ''
+      },
+      gravitypay: {
+        api_key: document.getElementById('cfgGravitypayApiKey')?.value.trim() || '',
+        secret_key: document.getElementById('cfgGravitypaySecretKey')?.value.trim() || '',
+        webhook_secret: document.getElementById('cfgGravitypayWebhookSecret')?.value.trim() || '',
+        callback_url: document.getElementById('cfgGravitypayCallbackUrl')?.value.trim() || 'https://zentrapesa.com/api/webhooks/gravitypay'
+      }
+    },
     payheroUsername: document.getElementById('cfgPayheroUsername')?.value.trim() || '',
     payheroPassword: document.getElementById('cfgPayheroPassword')?.value.trim() || '',
     payheroChannelId: document.getElementById('cfgPayheroChannelId')?.value.trim() || '',
@@ -1108,7 +1132,7 @@ function saveAdminConfig(){
     gravitypayApiKey: document.getElementById('cfgGravitypayApiKey')?.value.trim() || '',
     gravitypaySecretKey: document.getElementById('cfgGravitypaySecretKey')?.value.trim() || '',
     gravitypayWebhookSecret: document.getElementById('cfgGravitypayWebhookSecret')?.value.trim() || '',
-    gravitypayCallbackUrl: document.getElementById('cfgGravitypayCallbackUrl')?.value.trim() || '',
+    gravitypayCallbackUrl: document.getElementById('cfgGravitypayCallbackUrl')?.value.trim() || 'https://zentrapesa.com/api/webhooks/gravitypay',
     notifications: {
       enabled: true,
       deposit_messages: document.getElementById('cfgDepositMsgs')?.checked ?? true,
@@ -1125,25 +1149,32 @@ function saveAdminConfig(){
   localStorage.setItem('maliUserOutcomes', JSON.stringify(currentUserOutcomes));
 
   // Sync to Backend Server API
-  fetch('/api/settings', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(cfg)
-  }).catch(() => {
-    fetch('../api/settings', {
+  try {
+    let res = await fetch('/api/settings', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(cfg)
-    }).catch(() => {});
-  });
+    });
+    if (!res.ok) {
+      await fetch('../api/settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(cfg)
+      });
+    }
+  } catch(e) {}
 
-  const btn = document.getElementById('saveCfgBtn');
-  btn.textContent = 'Saved & Applied! ✓';
-  btn.classList.add('bg-green-500', 'text-black');
-  setTimeout(()=>{
-    btn.textContent = 'Save & Apply Settings';
-    btn.classList.remove('bg-green-500', 'text-black');
-  }, 1800);
+  if (!silent) {
+    const btn = document.getElementById('saveCfgBtn');
+    if (btn) {
+      btn.textContent = 'Saved & Applied! ✓';
+      btn.classList.add('bg-green-500', 'text-black');
+      setTimeout(()=>{
+        btn.textContent = 'Save & Apply Settings';
+        btn.classList.remove('bg-green-500', 'text-black');
+      }, 1800);
+    }
+  }
 
   updateAdminKPIDisplay(cfg.currency);
 }

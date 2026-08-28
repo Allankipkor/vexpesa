@@ -2360,19 +2360,44 @@ async function requestSTK(){
   const uname = currentUser.username || currentUser.name || currentUser.email;
 
   try {
-    const res = await fetch('api/stk-push', {
+    let res = await fetch('/api/stk-push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: uname,
         phone: phone,
         amount: kesAmount,
+        gateway: adminCfg.gateway || 'gravitypay',
         payheroUsername: adminCfg.payheroUsername || '',
         payheroPassword: adminCfg.payheroPassword || '',
         payheroChannelId: adminCfg.payheroChannelId || '',
-        payheroCallbackUrl: adminCfg.payheroCallbackUrl || ''
+        payheroCallbackUrl: adminCfg.payheroCallbackUrl || '',
+        gravitypayApiKey: adminCfg.gravitypayApiKey || '',
+        gravitypaySecretKey: adminCfg.gravitypaySecretKey || '',
+        gravitypayWebhookSecret: adminCfg.gravitypayWebhookSecret || '',
+        gravitypayCallbackUrl: adminCfg.gravitypayCallbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay'
       })
     });
+    if (!res.ok && res.status === 404) {
+      res = await fetch('/api/stk-push.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: uname,
+          phone: phone,
+          amount: kesAmount,
+          gateway: adminCfg.gateway || 'gravitypay',
+          payheroUsername: adminCfg.payheroUsername || '',
+          payheroPassword: adminCfg.payheroPassword || '',
+          payheroChannelId: adminCfg.payheroChannelId || '',
+          payheroCallbackUrl: adminCfg.payheroCallbackUrl || '',
+          gravitypayApiKey: adminCfg.gravitypayApiKey || '',
+          gravitypaySecretKey: adminCfg.gravitypaySecretKey || '',
+          gravitypayWebhookSecret: adminCfg.gravitypayWebhookSecret || '',
+          gravitypayCallbackUrl: adminCfg.gravitypayCallbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay'
+        })
+      });
+    }
     const data = await res.json();
     if (data.success) {
       const depRef = data.reference;

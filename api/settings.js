@@ -35,7 +35,7 @@ const defaultSettings = {
   payments: {
     usd_rate: 129.00,
     deposit_currency: "kes",
-    gateway: "payhero", // "payhero" | "gravitypay" | "auto"
+    gateway: "gravitypay", // "gravitypay" | "payhero" | "auto"
     payhero: {
       api_username: "",
       api_password: "",
@@ -103,7 +103,7 @@ export default async function handler(req, res) {
         const gpSecret = input.gravitypaySecretKey || input.payments?.gravitypay?.secret_key || currentSettings.gravitypaySecretKey || currentSettings.payments?.gravitypay?.secret_key || '';
         const gpWebhook = input.gravitypayWebhookSecret || input.payments?.gravitypay?.webhook_secret || currentSettings.gravitypayWebhookSecret || currentSettings.payments?.gravitypay?.webhook_secret || '';
         const gpCb = input.gravitypayCallbackUrl || input.payments?.gravitypay?.callback_url || currentSettings.gravitypayCallbackUrl || currentSettings.payments?.gravitypay?.callback_url || '';
-        const activeGateway = input.gateway || input.payments?.gateway || currentSettings.gateway || currentSettings.payments?.gateway || 'payhero';
+        const activeGateway = input.gateway || input.payments?.gateway || currentSettings.gateway || currentSettings.payments?.gateway || 'gravitypay';
 
         const minDep = input.minDep !== undefined ? parseFloat(input.minDep) : (input.trade?.min_deposit ?? currentSettings.trade?.min_deposit ?? 50);
         const minWithdraw = input.minWithdraw !== undefined ? parseFloat(input.minWithdraw) : (input.withdraw?.min_withdrawal ?? currentSettings.withdraw?.min_withdrawal ?? 100);

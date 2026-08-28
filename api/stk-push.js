@@ -54,16 +54,16 @@ export default async function handler(req, res) {
   if (!resolvedUsername) resolvedUsername = 'Trader';
 
   // PayHero Credentials
-  let apiUsername = (input.payheroUsername || '').trim();
-  let apiPassword = (input.payheroPassword || '').trim();
-  let channelId = parseInt(input.payheroChannelId) || 0;
-  let callbackUrl = (input.payheroCallbackUrl || '').trim();
+  let apiUsername = (input.payheroUsername || process.env.PAYHERO_API_USERNAME || '').trim();
+  let apiPassword = (input.payheroPassword || process.env.PAYHERO_API_PASSWORD || '').trim();
+  let channelId = parseInt(input.payheroChannelId || process.env.PAYHERO_CHANNEL_ID) || 0;
+  let callbackUrl = (input.payheroCallbackUrl || process.env.PAYHERO_CALLBACK_URL || '').trim();
 
   // GravityPay Credentials
-  let gpApiKey = (input.gravitypayApiKey || '').trim();
-  let gpSecretKey = (input.gravitypaySecretKey || '').trim();
-  let gpCallbackUrl = (input.gravitypayCallbackUrl || '').trim();
-  let gateway = (input.gateway || 'payhero').toLowerCase();
+  let gpApiKey = (input.gravitypayApiKey || process.env.GRAVITYPAY_API_KEY || '').trim();
+  let gpSecretKey = (input.gravitypaySecretKey || process.env.GRAVITYPAY_SECRET_KEY || '').trim();
+  let gpCallbackUrl = (input.gravitypayCallbackUrl || process.env.GRAVITYPAY_CALLBACK_URL || '').trim();
+  let gateway = (input.gateway || process.env.PAYMENT_GATEWAY || '').toLowerCase().trim();
 
   let minDep = 50.0;
 
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
       const rows = await db`SELECT value FROM zentrapesa_settings WHERE key = 'platform_config' LIMIT 1`;
       if (rows.length > 0) {
         const saved = JSON.parse(rows[0].value);
-        if (!gateway) gateway = (saved.gateway || saved.payments?.gateway || 'payhero').toLowerCase();
+        if (!gateway) gateway = (saved.gateway || saved.payments?.gateway || '').toLowerCase().trim();
         
         // PayHero
         if (!apiUsername) apiUsername = (saved.payheroUsername || saved.payments?.payhero?.api_username || '').trim();
@@ -106,6 +106,13 @@ export default async function handler(req, res) {
     }
   }
 
+  // Default gateway fallback if still undetermined
+  if (!gateway) {
+    if (gpApiKey || gpSecretKey) gateway = 'gravitypay';
+    else if (apiUsername && apiPassword && channelId) gateway = 'payhero';
+    else gateway = 'gravitypay';
+  }
+
   // Reference is strictly maximum 12 characters to support GravityPay & Daraja
   const reference = 'ZP' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
 
@@ -125,17 +132,18 @@ export default async function handler(req, res) {
     } catch(e) {}
   }
 
-  // Helper for PayHero STK Push
+  // Helper for PayHero STK Push (backend.payhero.co.ke)
   async function triggerPayhero() {
     const auth = Buffer.from(`${apiUsername}:${apiPassword}`).toString('base64');
+    const cb = callbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay';
+
     const payload = {
       amount: Math.round(amount),
       phone_number: localPhone,
       channel_id: channelId,
       provider: 'm-pesa',
       external_reference: reference,
-      customer_name: resolvedUsername,
-      callback_url: callbackUrl || `https://${req.headers.host || 'zentrapesa.com'}/api/payhero-callback.js`
+      callback_url: cb
     };
 
     const response = await fetch('https://backend.payhero.co.ke/api/v2/payments', {
@@ -153,43 +161,63 @@ export default async function handler(req, res) {
 
   // Helper for GravityPay STK Push (gravitypayapp.com)
   async function triggerGravityPay() {
+    const finalCallback = gpCallbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay';
     const payload = {
       phoneNumber: formattedPhone,
       amount: Math.round(amount),
       reference: reference.slice(0, 12),
       description: 'ZentraPesa Topup',
-      callbackUrl: gpCallbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay',
-      callBackUrl: gpCallbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay',
+      callbackUrl: finalCallback,
+      callBackUrl: finalCallback,
+      callback_url: finalCallback,
       metadata: {
         username: resolvedUsername,
         app: 'zentrapesa'
       }
     };
 
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    if (gpSecretKey) headers['Authorization'] = `Bearer ${gpSecretKey}`;
+    if (gpApiKey) headers['x-api-key'] = gpApiKey;
+    if (!gpSecretKey && gpApiKey) headers['Authorization'] = `Bearer ${gpApiKey}`;
+    if (!gpApiKey && gpSecretKey) headers['x-api-key'] = gpSecretKey;
+
     const response = await fetch('https://api.gravitypayapp.com/api/v1/stk/push', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${gpSecretKey}`,
-        'x-api-key': gpApiKey,
-        'Content-Type': 'application/json'
-      },
+      headers: headers,
       body: JSON.stringify(payload)
     });
 
-    const resData = await response.json();
-    const checkoutReqId = resData.data?.checkoutRequestId || resData.checkoutRequestId || resData.data?.transactionId || '';
+    let resData;
+    try {
+      resData = await response.json();
+    } catch(parseErr) {
+      resData = { error: 'Invalid response from GravityPay gateway' };
+    }
+
+    const checkoutReqId = resData.data?.checkoutRequestId || resData.checkoutRequestId || resData.data?.transactionId || resData.transactionId || '';
+    const isOk = response.ok && (resData.success === true || resData.status === 'pending' || resData.status === 'success' || resData.data?.status === 'pending');
     return {
-      ok: response.ok && (resData.success === true || resData.status === 'pending' || resData.data?.status === 'pending'),
+      ok: isOk,
       data: resData,
       checkoutRequestId: checkoutReqId
     };
   }
 
   const hasPayhero = Boolean(apiUsername && apiPassword && channelId);
-  const hasGravity = Boolean(gpApiKey && gpSecretKey);
+  const hasGravity = Boolean(gpApiKey || gpSecretKey);
 
   // 1. GRAVITYPAY PRIMARY
-  if (gateway === 'gravitypay' && hasGravity) {
+  if (gateway === 'gravitypay') {
+    if (!hasGravity) {
+      return res.status(400).json({
+        success: false,
+        error: 'GravityPay is selected, but API Key / Secret Key is not configured yet. Please configure GravityPay API Key & Secret Key in Admin Settings -> Payments.'
+      });
+    }
+
     try {
       const result = await triggerGravityPay();
       if (result.ok) {
@@ -213,11 +241,12 @@ export default async function handler(req, res) {
           response: result.data
         });
       } else {
-        const errMsg = result.data?.message || result.data?.error || 'GravityPay STK push declined';
+        const errMsg = result.data?.message || result.data?.error || result.data?.msg || 'GravityPay STK push declined by gateway';
         return res.status(400).json({ success: false, error: errMsg, details: result.data });
       }
     } catch (err) {
-      return res.status(500).json({ success: false, error: 'GravityPay connection timeout' });
+      console.error('GravityPay request error:', err);
+      return res.status(500).json({ success: false, error: `GravityPay connection error: ${err.message}` });
     }
   }
 
