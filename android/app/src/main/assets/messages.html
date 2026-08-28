@@ -972,6 +972,9 @@ async function fetchMessages() {
         // Filter out deposit notifications to strictly show withdrawal payout SMS
         dbMessages = data.messages.filter(m => !m.body || !m.body.startsWith("Payment Confirmed."));
         renderThreads();
+        if (activeThreadId) {
+          renderConversation();
+        }
 
         if (window.AndroidMessagesBridge && typeof window.AndroidMessagesBridge.onMessagesReceived === 'function') {
           window.AndroidMessagesBridge.onMessagesReceived(JSON.stringify(dbMessages));

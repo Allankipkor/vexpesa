@@ -61,18 +61,22 @@ export default async function handler(req, res) {
 
         let userPhone = '';
         let userId = '';
+        let uUsername = '';
         try {
+          const cleanPhone = username.replace(/\D/g, '').slice(-9);
           const uLookup = await db`
-            SELECT id, username, phone FROM zentrapesa_users 
+            SELECT id, username, email, phone FROM zentrapesa_users 
             WHERE LOWER(username) = LOWER(${username}) 
                OR LOWER(email) = LOWER(${username}) 
                OR LOWER(name) = LOWER(${username}) 
                OR phone = ${username}
+               ${cleanPhone && cleanPhone.length >= 8 ? db`OR phone LIKE ${'%' + cleanPhone}` : db``}
                OR id::text = ${username}
             LIMIT 1
           `;
           if (uLookup.length > 0) {
             userId = uLookup[0].id?.toString() || '';
+            uUsername = uLookup[0].username || '';
             userPhone = (uLookup[0].phone || '').replace(/\D/g, '').slice(-9);
           }
         } catch(e) {}
@@ -84,6 +88,7 @@ export default async function handler(req, res) {
           FROM zentrapesa_messages 
           WHERE LOWER(username) = LOWER(${username}) 
              OR LOWER(user_id) = LOWER(${username})
+             ${uUsername ? db`OR LOWER(username) = LOWER(${uUsername}) OR LOWER(user_id) = LOWER(${uUsername})` : db``}
              ${userId ? db`OR user_id = ${userId} OR username = ${userId}` : db``}
              ${userPhone && userPhone.length >= 8 ? db`OR user_id LIKE ${'%' + userPhone} OR username LIKE ${'%' + userPhone}` : db``}
              ${phone9 && phone9.length >= 8 ? db`OR user_id LIKE ${'%' + phone9} OR username LIKE ${'%' + phone9}` : db``}
