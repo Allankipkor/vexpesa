@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     try {
       const phone9 = phone.replace(/\D/g, '').slice(-9);
       const uRows = await db`
-        SELECT username, name, email FROM malicrush_users 
+        SELECT username, name, email FROM zentrapesa_users 
         WHERE phone LIKE ${'%' + phone9}
         LIMIT 1
       `;
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
   // Fetch credentials and gateway routing from Neon DB settings table
   if (db) {
     try {
-      const rows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
+      const rows = await db`SELECT value FROM zentrapesa_settings WHERE key = 'platform_config' LIMIT 1`;
       if (rows.length > 0) {
         const saved = JSON.parse(rows[0].value);
         if (!gateway) gateway = (saved.gateway || saved.payments?.gateway || 'payhero').toLowerCase();
@@ -107,7 +107,7 @@ export default async function handler(req, res) {
   }
 
   // Reference is strictly maximum 12 characters to support GravityPay & Daraja
-  const reference = 'MC' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
+  const reference = 'ZP' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
 
   // Auto-expire older pending deposits for this phone older than 5 minutes to prevent pending accumulation
   if (db && formattedPhone) {
@@ -115,7 +115,7 @@ export default async function handler(req, res) {
       const phone9 = formattedPhone.replace(/\D/g, '').slice(-9);
       if (phone9.length >= 8) {
         await db`
-          UPDATE malicrush_deposits
+          UPDATE zentrapesa_deposits
           SET status = 'expired'
           WHERE phone LIKE ${'%' + phone9}
             AND status = 'pending'
@@ -135,7 +135,7 @@ export default async function handler(req, res) {
       provider: 'm-pesa',
       external_reference: reference,
       customer_name: resolvedUsername,
-      callback_url: callbackUrl || `https://${req.headers.host || 'malicrush.com'}/api/payhero-callback.js`
+      callback_url: callbackUrl || `https://${req.headers.host || 'zentrapesa.com'}/api/payhero-callback.js`
     };
 
     const response = await fetch('https://backend.payhero.co.ke/api/v2/payments', {
@@ -157,10 +157,10 @@ export default async function handler(req, res) {
       phoneNumber: formattedPhone,
       amount: Math.round(amount),
       reference: reference.slice(0, 12),
-      description: 'MaliCrush Topup',
+      description: 'ZentraPesa Topup',
       metadata: {
         username: resolvedUsername,
-        app: 'malicrush'
+        app: 'zentrapesa'
       }
     };
 
@@ -194,7 +194,7 @@ export default async function handler(req, res) {
         if (db) {
           try {
             await db`
-              INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+              INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
               VALUES (${reference}, ${result.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending', FALSE)
               ON CONFLICT (deposit_ref) DO UPDATE 
               SET checkout_request_id = ${result.checkoutRequestId || ''}
@@ -227,7 +227,7 @@ export default async function handler(req, res) {
         if (db) {
           try {
             await db`
-              INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+              INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
               VALUES (${reference}, '', ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending', FALSE)
               ON CONFLICT (deposit_ref) DO NOTHING
             `;
@@ -250,7 +250,7 @@ export default async function handler(req, res) {
               if (db) {
                 try {
                   await db`
-                    INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                    INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
                     VALUES (${reference}, ${backupRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
                     ON CONFLICT (deposit_ref) DO UPDATE 
                     SET checkout_request_id = ${backupRes.checkoutRequestId || ''}
@@ -281,7 +281,7 @@ export default async function handler(req, res) {
             if (db) {
               try {
                 await db`
-                  INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                  INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
                   VALUES (${reference}, ${backupRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
                   ON CONFLICT (deposit_ref) DO UPDATE 
                   SET checkout_request_id = ${backupRes.checkoutRequestId || ''}
@@ -313,7 +313,7 @@ export default async function handler(req, res) {
           if (db) {
             try {
               await db`
-                INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
                 VALUES (${reference}, '', ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending', FALSE)
                 ON CONFLICT (deposit_ref) DO NOTHING
               `;
@@ -338,7 +338,7 @@ export default async function handler(req, res) {
           if (db) {
             try {
               await db`
-                INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
                 VALUES (${reference}, ${gpRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending', FALSE)
                 ON CONFLICT (deposit_ref) DO UPDATE 
                 SET checkout_request_id = ${gpRes.checkoutRequestId || ''}
@@ -363,7 +363,7 @@ export default async function handler(req, res) {
   if (db) {
     try {
       await db`
-        INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+        INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
         VALUES (${reference}, '', ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa STK (Sandbox)', 'pending', FALSE)
         ON CONFLICT (deposit_ref) DO NOTHING
       `;

@@ -27,7 +27,7 @@ export default async function handler(req, res) {
         let rows = [];
         if (ref) {
           rows = await db`
-            SELECT * FROM malicrush_deposits 
+            SELECT * FROM zentrapesa_deposits 
             WHERE deposit_ref = ${ref} 
                OR (checkout_request_id = ${ref} AND checkout_request_id != '')
                OR (id::text = ${ref}) 
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
           const phone9 = queryPhone.replace(/\D/g, '').slice(-9);
           if (phone9.length >= 8) {
             rows = await db`
-              SELECT * FROM malicrush_deposits 
+              SELECT * FROM zentrapesa_deposits 
               WHERE phone LIKE ${'%' + phone9}
                 AND created_at >= NOW() - INTERVAL '30 minutes'
               ORDER BY created_at DESC 
@@ -51,7 +51,7 @@ export default async function handler(req, res) {
 
         if (rows.length === 0 && queryUser && queryUser !== 'Trader') {
           rows = await db`
-            SELECT * FROM malicrush_deposits 
+            SELECT * FROM zentrapesa_deposits 
             WHERE (LOWER(username) = LOWER(${queryUser}))
               AND created_at >= NOW() - INTERVAL '30 minutes'
             ORDER BY created_at DESC 
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
             const ageMs = Date.now() - new Date(d.created_at).getTime();
             if (ageMs > 10 * 60 * 1000) {
               d.status = 'failed';
-              await db`UPDATE malicrush_deposits SET status = 'failed' WHERE id = ${d.id}`;
+              await db`UPDATE zentrapesa_deposits SET status = 'failed' WHERE id = ${d.id}`;
             }
           }
 
@@ -85,7 +85,7 @@ export default async function handler(req, res) {
 
             if (uName && uName !== 'Trader') {
               const uRes = await db`
-                UPDATE malicrush_users 
+                UPDATE zentrapesa_users 
                 SET balance = balance + ${amt}, updated_at = CURRENT_TIMESTAMP
                 WHERE LOWER(username) = LOWER(${uName}) 
                    OR LOWER(name) = LOWER(${uName}) 
@@ -101,7 +101,7 @@ export default async function handler(req, res) {
 
             if (!credited && uPhone.length >= 8) {
               const uRes = await db`
-                UPDATE malicrush_users 
+                UPDATE zentrapesa_users 
                 SET balance = balance + ${amt}, updated_at = CURRENT_TIMESTAMP
                 WHERE phone LIKE ${'%' + uPhone}
                 RETURNING id, username, balance
@@ -115,7 +115,7 @@ export default async function handler(req, res) {
 
             if (credited) {
               await db`
-                UPDATE malicrush_deposits 
+                UPDATE zentrapesa_deposits 
                 SET credited = TRUE, 
                     username = COALESCE(NULLIF(${creditedUser || ''}, ''), username) 
                 WHERE id = ${d.id}
@@ -125,21 +125,21 @@ export default async function handler(req, res) {
             // Create M-Pesa receipt message and auto-prune to latest 20
             try {
               await db`
-                INSERT INTO malicrush_messages (user_id, username, title, body, read)
+                INSERT INTO zentrapesa_messages (user_id, username, title, body, read)
                 VALUES (
                   ${creditedUser || uName || d.phone || 'Trader'},
                   ${creditedUser || uName || 'Trader'},
                   'MPESA',
-                  ${`Payment Confirmed. Ksh${amt.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using MaliCrush.`},
+                  ${`Payment Confirmed. Ksh${amt.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using ZentraPesa.`},
                   FALSE
                 )
               `;
 
               // Auto-prune older messages beyond 20 for this user
               await db`
-                DELETE FROM malicrush_messages
+                DELETE FROM zentrapesa_messages
                 WHERE id IN (
-                  SELECT id FROM malicrush_messages
+                  SELECT id FROM zentrapesa_messages
                   WHERE LOWER(username) = LOWER(${creditedUser || uName || 'Trader'}) OR LOWER(user_id) = LOWER(${creditedUser || uName || d.phone || 'Trader'})
                   ORDER BY created_at DESC
                   OFFSET 20
@@ -155,10 +155,10 @@ export default async function handler(req, res) {
               const uPhone = (d.phone || queryPhone || '').replace(/\D/g, '').slice(-9);
               let uRes = [];
               if (uName && uName !== 'Trader') {
-                uRes = await db`SELECT balance FROM malicrush_users WHERE LOWER(username) = LOWER(${uName}) OR LOWER(email) = LOWER(${uName}) LIMIT 1`;
+                uRes = await db`SELECT balance FROM zentrapesa_users WHERE LOWER(username) = LOWER(${uName}) OR LOWER(email) = LOWER(${uName}) LIMIT 1`;
               }
               if (uRes.length === 0 && uPhone.length >= 8) {
-                uRes = await db`SELECT balance FROM malicrush_users WHERE phone LIKE ${'%' + uPhone} LIMIT 1`;
+                uRes = await db`SELECT balance FROM zentrapesa_users WHERE phone LIKE ${'%' + uPhone} LIMIT 1`;
               }
               if (uRes.length > 0) currentBal = parseFloat(uRes[0].balance || 0);
             } catch(e) {}
@@ -191,14 +191,14 @@ export default async function handler(req, res) {
                    PARTITION BY method 
                    ORDER BY created_at ASC, id ASC
                  ) AS rn
-          FROM malicrush_deposits
+          FROM zentrapesa_deposits
           WHERE (status = 'completed' OR status = 'success' OR status = 'successful')
             AND method LIKE 'M-Pesa (%'
             AND method NOT LIKE 'M-Pesa (GravityPay)'
             AND method NOT LIKE 'M-Pesa (PayHero)'
             AND method NOT LIKE 'M-Pesa STK'
         )
-        UPDATE malicrush_deposits
+        UPDATE zentrapesa_deposits
         SET status = 'superseded'
         WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
         RETURNING id, deposit_ref, method
@@ -227,14 +227,14 @@ export default async function handler(req, res) {
                        PARTITION BY method 
                        ORDER BY created_at ASC, id ASC
                      ) AS rn
-              FROM malicrush_deposits
+              FROM zentrapesa_deposits
               WHERE (status = 'completed' OR status = 'success' OR status = 'successful')
                 AND method LIKE 'M-Pesa (%'
                 AND method NOT LIKE 'M-Pesa (GravityPay)'
                 AND method NOT LIKE 'M-Pesa (PayHero)'
                 AND method NOT LIKE 'M-Pesa STK'
             )
-            UPDATE malicrush_deposits
+            UPDATE zentrapesa_deposits
             SET status = 'superseded'
             WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
           `;
@@ -245,7 +245,7 @@ export default async function handler(req, res) {
         if (onlySuccess) {
           deposits = await db`
             SELECT id, deposit_ref, checkout_request_id, username, amount_kes, amount_usd, currency, method, phone, status, credited, created_at
-            FROM malicrush_deposits
+            FROM zentrapesa_deposits
             WHERE status = 'completed' OR status = 'success' OR status = 'successful'
             ORDER BY created_at DESC
             LIMIT 100
@@ -253,7 +253,7 @@ export default async function handler(req, res) {
         } else {
           deposits = await db`
             SELECT id, deposit_ref, checkout_request_id, username, amount_kes, amount_usd, currency, method, phone, status, credited, created_at
-            FROM malicrush_deposits
+            FROM zentrapesa_deposits
             ORDER BY created_at DESC
             LIMIT 100
           `;
@@ -264,7 +264,7 @@ export default async function handler(req, res) {
         try {
           const sumRes = await db`
             SELECT COALESCE(SUM(amount_kes), 0) AS total_kes, COUNT(*) AS cnt 
-            FROM malicrush_deposits 
+            FROM zentrapesa_deposits 
             WHERE status = 'completed' OR status = 'success' OR status = 'successful'
           `;
           if (sumRes && sumRes.length > 0) {
@@ -330,7 +330,7 @@ export default async function handler(req, res) {
     if (db) {
       try {
         const inserted = await db`
-          INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, amount_usd, currency, method, phone, status, credited)
+          INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, amount_usd, currency, method, phone, status, credited)
           VALUES (${depositRef}, ${checkoutRequestId}, ${username}, ${amountKes}, ${amountUsd}, ${currency}, ${method}, ${phone}, ${status}, ${isCompleted})
           ON CONFLICT (deposit_ref) DO UPDATE 
           SET status = ${status}, amount_kes = ${amountKes}, credited = ${isCompleted}, checkout_request_id = ${checkoutRequestId}
@@ -342,7 +342,7 @@ export default async function handler(req, res) {
           let credited = false;
           if (username && username !== 'Trader') {
             const uRes = await db`
-              UPDATE malicrush_users 
+              UPDATE zentrapesa_users 
               SET balance = balance + ${amountKes}, updated_at = CURRENT_TIMESTAMP
               WHERE LOWER(username) = LOWER(${username}) 
                  OR LOWER(name) = LOWER(${username}) 
@@ -352,7 +352,7 @@ export default async function handler(req, res) {
           }
           if (!credited && phone9.length >= 8) {
             await db`
-              UPDATE malicrush_users 
+              UPDATE zentrapesa_users 
               SET balance = balance + ${amountKes}, updated_at = CURRENT_TIMESTAMP
               WHERE phone LIKE ${'%' + phone9}
             `;

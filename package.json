@@ -1,11 +1,11 @@
 {
-  "name": "malicrush",
+  "name": "zentrapesa",
   "version": "1.0.0",
-  "description": "MaliCrush Cloud Trading Platform with PayHero M-Pesa and Neon PostgreSQL",
+  "description": "ZentraPesa Cloud Trading Platform with PayHero M-Pesa and Neon PostgreSQL",
   "main": "index.html",
   "type": "module",
   "scripts": {
-    "dev": "node -e \"console.log('Running MaliCrush')\""
+    "dev": "node -e \"console.log('Running ZentraPesa')\""
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4"

@@ -52,7 +52,7 @@ export default async function handler(req, res) {
   let webhookSecret = process.env.GRAVITYPAY_WEBHOOK_SECRET || process.env.WEBHOOK_SECRET || '';
   if (db && !webhookSecret) {
     try {
-      const cfgRows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
+      const cfgRows = await db`SELECT value FROM zentrapesa_settings WHERE key = 'platform_config' LIMIT 1`;
       if (cfgRows.length > 0) {
         const saved = JSON.parse(cfgRows[0].value);
         webhookSecret = (saved.gravitypayWebhookSecret || saved.payments?.gravitypay?.webhook_secret || '').trim();
@@ -143,7 +143,7 @@ export default async function handler(req, res) {
         if (mpesaReceipt) {
           const existingReceipt = await db`
             SELECT id, deposit_ref, username, amount_kes, credited, status
-            FROM malicrush_deposits
+            FROM zentrapesa_deposits
             WHERE method LIKE ${'%' + mpesaReceipt + '%'} 
               AND (status = 'completed' OR status = 'success' OR status = 'successful')
             LIMIT 1
@@ -160,7 +160,7 @@ export default async function handler(req, res) {
         // Step 2a: Match strictly by unique deposit_ref / external_reference (NEVER match on empty string)
         if (externalRef) {
           const rows = await db`
-            SELECT * FROM malicrush_deposits
+            SELECT * FROM zentrapesa_deposits
             WHERE deposit_ref = ${externalRef}
             LIMIT 1
           `;
@@ -170,7 +170,7 @@ export default async function handler(req, res) {
         // Step 2b: Match strictly by checkoutRequestId (if non-empty and not already matched)
         if (!depRecord && checkoutRequestId) {
           const rows = await db`
-            SELECT * FROM malicrush_deposits
+            SELECT * FROM zentrapesa_deposits
             WHERE checkout_request_id = ${checkoutRequestId}
             LIMIT 1
           `;
@@ -182,7 +182,7 @@ export default async function handler(req, res) {
           const phone9 = phone.replace(/\D/g, '').slice(-9);
           if (phone9.length >= 8) {
             const rows = await db`
-              SELECT * FROM malicrush_deposits
+              SELECT * FROM zentrapesa_deposits
               WHERE phone LIKE ${'%' + phone9}
                 AND status IN ('pending', 'expired')
                 AND created_at >= NOW() - INTERVAL '30 minutes'
@@ -196,7 +196,7 @@ export default async function handler(req, res) {
         // Step 2d: Fallback matching by username (match most recent pending or expired deposit within 30 mins)
         if (!depRecord && metadataUser && metadataUser !== 'Trader') {
           const rows = await db`
-            SELECT * FROM malicrush_deposits
+            SELECT * FROM zentrapesa_deposits
             WHERE LOWER(username) = LOWER(${metadataUser})
               AND status IN ('pending', 'expired')
               AND created_at >= NOW() - INTERVAL '30 minutes'
@@ -211,7 +211,7 @@ export default async function handler(req, res) {
         // Step 2e: If a deposit was found, update strictly THAT record by ID
         if (depRecord) {
           const updated = await db`
-            UPDATE malicrush_deposits
+            UPDATE zentrapesa_deposits
             SET status = 'completed',
                 method = ${formattedMethod},
                 amount_kes = ${amount},
@@ -222,9 +222,9 @@ export default async function handler(req, res) {
           if (updated.length > 0) depRecord = updated[0];
         } else {
           // If no matching pending record exists, insert a single new completed record
-          const newRef = externalRef || ('MC' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0'));
+          const newRef = externalRef || ('ZP' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0'));
           const inserted = await db`
-            INSERT INTO malicrush_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+            INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
             VALUES (${newRef}, ${checkoutRequestId || ''}, ${metadataUser || 'Trader'}, ${amount}, ${phone}, ${formattedMethod}, 'completed', FALSE)
             ON CONFLICT (deposit_ref) DO UPDATE
             SET status = 'completed', amount_kes = ${amount}, method = ${formattedMethod}
@@ -244,7 +244,7 @@ export default async function handler(req, res) {
 
           if (targetUser && targetUser !== 'Trader') {
             const userUpdate = await db`
-              UPDATE malicrush_users
+              UPDATE zentrapesa_users
               SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
               WHERE LOWER(username) = LOWER(${targetUser}) 
                  OR LOWER(name) = LOWER(${targetUser}) 
@@ -259,7 +259,7 @@ export default async function handler(req, res) {
 
           if (!userCredited && phone9.length >= 8) {
             const userUpdatePhone = await db`
-              UPDATE malicrush_users
+              UPDATE zentrapesa_users
               SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
               WHERE phone LIKE ${'%' + phone9}
               RETURNING id, username, balance
@@ -273,7 +273,7 @@ export default async function handler(req, res) {
           // CRITICAL FIX: Only mark credited = TRUE if a user was ACTUALLY found and updated
           if (userCredited) {
             await db`
-              UPDATE malicrush_deposits
+              UPDATE zentrapesa_deposits
               SET credited = TRUE,
                   username = COALESCE(NULLIF(${creditedUsername || ''}, ''), username)
               WHERE id = ${depRecord.id}
@@ -284,7 +284,7 @@ export default async function handler(req, res) {
           if (phone9.length >= 8) {
             try {
               await db`
-                UPDATE malicrush_deposits
+                UPDATE zentrapesa_deposits
                 SET status = 'superseded'
                 WHERE id != ${depRecord.id}
                   AND phone LIKE ${'%' + phone9}
@@ -298,21 +298,21 @@ export default async function handler(req, res) {
           try {
             const mpesaCode = mpesaReceipt || ('NLJ' + Date.now().toString().slice(-7));
             await db`
-              INSERT INTO malicrush_messages (user_id, username, title, body, read)
+              INSERT INTO zentrapesa_messages (user_id, username, title, body, read)
               VALUES (
                 ${creditedUsername || targetUser || phone || 'Trader'},
                 ${creditedUsername || targetUser || 'Trader'},
                 'MPESA',
-                ${`${mpesaCode} Confirmed. Ksh${amount.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using MaliCrush.`},
+                ${`${mpesaCode} Confirmed. Ksh${amount.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using ZentraPesa.`},
                 FALSE
               )
             `;
 
             // Prune older messages beyond 20 for this user
             await db`
-              DELETE FROM malicrush_messages
+              DELETE FROM zentrapesa_messages
               WHERE id IN (
-                SELECT id FROM malicrush_messages
+                SELECT id FROM zentrapesa_messages
                 WHERE LOWER(username) = LOWER(${creditedUsername || targetUser || 'Trader'}) OR LOWER(user_id) = LOWER(${creditedUsername || targetUser || phone || 'Trader'})
                 ORDER BY created_at DESC
                 OFFSET 20
@@ -325,13 +325,13 @@ export default async function handler(req, res) {
         // Mark failed strictly for the specific reference (never with empty strings)
         if (externalRef) {
           await db`
-            UPDATE malicrush_deposits
+            UPDATE zentrapesa_deposits
             SET status = 'failed'
             WHERE deposit_ref = ${externalRef} AND status = 'pending'
           `;
         } else if (checkoutRequestId) {
           await db`
-            UPDATE malicrush_deposits
+            UPDATE zentrapesa_deposits
             SET status = 'failed'
             WHERE checkout_request_id = ${checkoutRequestId} AND status = 'pending'
           `;

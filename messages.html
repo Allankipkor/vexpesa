@@ -357,7 +357,7 @@ body {
     <div id="accountBanner" style="display:none;background:#e8f0fe;border-bottom:1px solid #d3e3fd;padding:9px 16px;align-items:center;justify-content:space-between;cursor:pointer;" onclick="openAccountModal()">
       <div style="display:flex;align-items:center;gap:8px;min-width:0;">
         <span style="font-size:14px;flex-shrink:0;">🔔</span>
-        <span id="accountBannerText" style="font-size:12px;color:#0b57d0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Tap to connect your MaliCrush account</span>
+        <span id="accountBannerText" style="font-size:12px;color:#0b57d0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Tap to connect your ZentraPesa account</span>
       </div>
       <span id="accountBannerBtn" style="font-size:11px;font-weight:600;color:#0b57d0;background:#fff;padding:2px 8px;border-radius:10px;flex-shrink:0;">Link</span>
     </div>
@@ -389,7 +389,7 @@ body {
         👤
       </div>
       <div>
-        <h3 style="font-size:17px;font-weight:700;color:#1f1f1f;">MaliCrush Account Link</h3>
+        <h3 style="font-size:17px;font-weight:700;color:#1f1f1f;">ZentraPesa Account Link</h3>
         <p style="font-size:12px;color:#5f6368;margin-top:4px;">Connect your trader account to receive real-time M-Pesa withdrawal SMS alerts on this phone.</p>
       </div>
       <div style="text-align:left;">
@@ -758,7 +758,7 @@ async function savePairAccount() {
   const inputEl = document.getElementById("inputPairUsername");
   const username = (inputEl ? inputEl.value : "").trim();
   if (!username) {
-    alert("Please enter your MaliCrush username or phone number.");
+    alert("Please enter your ZentraPesa username or phone number.");
     return;
   }
 

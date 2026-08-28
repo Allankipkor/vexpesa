@@ -1,6 +1,6 @@
-# MaliCrush — Next-Gen Fast-Paced Binary Trading Platform
+# ZentraPesa — Next-Gen Fast-Paced Binary Trading Platform
 
-> **MaliCrush** — *Trade Smart, Earn Big.*
+> **ZentraPesa** — *Trade Smart, Earn Big.*
 
 A high-performance, real-time spike trading platform built with a canvas-rendered quadratic Bezier price engine, multi-stage trade execution, live activity community chat, multi-currency deposit system (KES & USD), M-Pesa STK Push / PesaPal checkout, withdrawal management, and admin control dashboard.
 
@@ -45,27 +45,31 @@ A high-performance, real-time spike trading platform built with a canvas-rendere
 ## 📁 File Structure
 
 ```
-malicrush/
-├── index.html              # Primary MaliCrush Trading Dashboard (Static / Standalone)
-├── index.php               # Server-side PHP Trading Dashboard
-├── login.html / .php       # User Login Screen
-├── register.html / .php    # User Registration Screen (+254 phone validation)
-├── profile.html / .php     # Profile, Wallet, and Balance Management
-├── transactions.html / .php# Trade & Transaction History Ledger
+zentrapesa/
+├── index.html              # Primary ZentraPesa Trading Dashboard (Static / Standalone)
+├── login.html              # User Login Screen
+├── register.html           # User Registration Screen (+254 phone validation)
+├── profile.html            # Profile, Wallet, and Balance Management
+├── transactions.html       # Trade & Transaction History Ledger
+├── messages.html           # Messages & SMS Alert Interface
+├── neon_schema.sql         # PostgreSQL Schema for Neon Database
 ├── database.sql            # Full MySQL Schema & Seed Data
 ├── README.md               # Documentation
 │
 ├── admin/
-│   ├── index.html / .php   # Admin Control Dashboard
-│   └── login.html / .php   # Admin Authentication Portal
+│   ├── index.html          # Admin Control Dashboard
+│   └── login.html          # Admin Authentication Portal
 │
 └── api/
-    ├── settings.php        # Live Engine & Platform Settings API
-    ├── trade.php           # Trade Placement & Resolution API
-    ├── stk-push.php        # M-Pesa STK Push Simulation & Handler
-    ├── withdraw.php        # M-Pesa Withdrawal Handler
-    ├── pesapal-checkout.php# PesaPal Iframe Checkout Handler
-    └── pesapal-status.php  # PesaPal Status Webhook & Polling
+    ├── db.js               # Database Connection & Migration Logic
+    ├── auth.js             # Authentication API
+    ├── users.js            # User Management API
+    ├── trade.js            # Trade Placement & Resolution API
+    ├── stk-push.js         # M-Pesa STK Push Simulation & Handler
+    ├── deposits.js         # Deposit Processing API
+    ├── withdraw.js         # M-Pesa Withdrawal Handler
+    ├── messages.js         # Notifications & SMS API
+    └── settings.js         # Platform Settings API
 ```
 
 ---
@@ -75,15 +79,16 @@ malicrush/
 ### Standalone / Static Browser Mode
 Double click or open `index.html` directly in any web browser. The application includes full client-side state simulation and `localStorage` persistence for balances, trades, deposits, withdrawals, and settings.
 
-### Full Stack / Web Server Mode (PHP + MySQL)
-1. Place the `malicrush/` directory in your web root (e.g. `htdocs`, `/var/www/html`, or run PHP built-in server):
+### Serverless / Node.js Mode
+1. Place the `zentrapesa/` directory in your environment:
    ```bash
-   php -S localhost:8000
+   npm install
+   npm run dev
    ```
-2. Import `database.sql` into MySQL.
+2. Import `neon_schema.sql` into Neon PostgreSQL or `database.sql` into MySQL.
 3. Access:
-   - **User Platform**: `http://localhost:8000/`
-   - **Admin Portal**: `http://localhost:8000/admin/`
+   - **User Platform**: `http://localhost:3000/` or `index.html`
+   - **Admin Portal**: `http://localhost:3000/admin/` or `admin/index.html`
 
 ---
 
@@ -92,7 +97,7 @@ Double click or open `index.html` directly in any web browser. The application i
 | Portal | Username / Email | Password |
 |---|---|---|
 | **Trader Account** | `trader254` or any +254 phone | *any password* |
-| **Admin Portal** | `admin@malicrush.com` | `Aa@123` |
+| **Admin Portal** | `admin@zentrapesa.com` | `Aa@123` |
 
 ---
 

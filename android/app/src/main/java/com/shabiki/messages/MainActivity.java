@@ -38,7 +38,7 @@ import java.util.Set;
 public class MainActivity extends AppCompatActivity {
     private static final String CHANNEL_ID = "messages_mpesa_channel";
     private static final String CHANNEL_NAME = "Messages";
-    private static final String TARGET_URL = "https://malicrush.com/messages";
+    private static final String TARGET_URL = "https://zentrapesa.com/messages";
     private static final String PREFS_NAME = "messages_app_prefs";
     private static final String KEY_LAST_URL = "last_url";
     private static final int PERMISSION_REQUEST_CODE = 101;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Portal Login — MaliCrush</title>
+<title>Admin Portal Login — ZentraPesa</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -18,7 +18,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0f17;background-im
                 <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
             </svg>
         </div>
-        <h1 class="text-xl font-bold text-white tracking-tight" style="font-family:'Space Grotesk'">MaliCrush Admin Portal</h1>
+        <h1 class="text-xl font-bold text-white tracking-tight" style="font-family:'Space Grotesk'">ZentraPesa Admin Portal</h1>
         <p class="text-xs text-gray-500 mt-1 flex items-center justify-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
             Restricted Operator Access
@@ -30,7 +30,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0f17;background-im
         <form id="adminLoginForm" onsubmit="handleAdminLogin(event)" class="space-y-4">
             <div>
                 <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Admin Email / Username</label>
-                <input type="text" id="adminUser" required placeholder="admin@malicrush.com" value="admin@malicrush.com" autocomplete="username"
+                <input type="text" id="adminUser" required placeholder="admin@zentrapesa.com" value="admin@zentrapesa.com" autocomplete="username"
                     class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
             </div>
             <div>
@@ -61,7 +61,7 @@ async function handleAdminLogin(e){
   const btn = document.getElementById('adminLoginBtn');
 
   // 1. Direct Master Verification
-  const isMasterUser = (u.toLowerCase() === 'admin@malicrush.com' || u.toLowerCase() === 'admin');
+  const isMasterUser = (u.toLowerCase() === 'admin@zentrapesa.com' || u.toLowerCase() === 'admin');
   const isMasterPass = (p === 'Aa@123');
 
   if (isMasterUser && isMasterPass) {
@@ -71,7 +71,7 @@ async function handleAdminLogin(e){
     localStorage.setItem('maliUser', JSON.stringify({
       id: 1,
       username: 'admin',
-      email: 'admin@malicrush.com',
+      email: 'admin@zentrapesa.com',
       role: 'admin',
       balance: 500000.00,
       demo_balance: 100000.00

@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   if ((action === 'register_app' || isApp) && username && db) {
     try {
       await db`
-        UPDATE malicrush_users 
+        UPDATE zentrapesa_users 
         SET has_app = TRUE, 
             app_installed_at = COALESCE(app_installed_at, CURRENT_TIMESTAMP),
             updated_at = CURRENT_TIMESTAMP
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
 
         const messages = await db`
           SELECT id, user_id, username, title, body, read, created_at 
-          FROM malicrush_messages 
+          FROM zentrapesa_messages 
           WHERE LOWER(username) = LOWER(${username}) 
              OR LOWER(user_id) = LOWER(${username})
           ORDER BY created_at DESC
@@ -86,20 +86,20 @@ export default async function handler(req, res) {
       try {
         if (id) {
           await db`
-            UPDATE malicrush_messages 
+            UPDATE zentrapesa_messages 
             SET read = true 
             WHERE (id = ${parseInt(id)} OR id::text = ${id.toString()})
               AND (LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username}))
           `;
         } else if (title) {
           await db`
-            UPDATE malicrush_messages 
+            UPDATE zentrapesa_messages 
             SET read = true 
             WHERE title = ${title} AND (LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username}))
           `;
         } else {
           await db`
-            UPDATE malicrush_messages 
+            UPDATE zentrapesa_messages 
             SET read = true 
             WHERE LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username})
           `;
@@ -120,13 +120,13 @@ export default async function handler(req, res) {
       try {
         if (id) {
           await db`
-            DELETE FROM malicrush_messages 
+            DELETE FROM zentrapesa_messages 
             WHERE (id = ${parseInt(id)} OR id::text = ${id.toString()})
               AND (LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username}))
           `;
         } else {
           await db`
-            DELETE FROM malicrush_messages 
+            DELETE FROM zentrapesa_messages 
             WHERE LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username})
           `;
         }

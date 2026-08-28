@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login — MaliCrush</title>
+<title>Login — ZentraPesa</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>body{font-family:'Plus Jakarta Sans',sans-serif;background:#060a10;}</style>
@@ -12,8 +12,8 @@
 <div class="w-full max-w-sm">
     <div class="text-center mb-8">
         <a href="index.html" class="inline-flex items-center gap-2.5 mb-3 group">
-            <div class="w-10 h-10 bg-gradient-to-br from-green-500 via-emerald-500 to-blue-600 rounded-xl flex items-center justify-center font-bold text-black text-lg shadow-lg shadow-green-500/20 group-hover:scale-105 transition-transform" style="font-family:'Space Grotesk'">M</div>
-            <span class="text-2xl font-bold text-white tracking-tight" style="font-family:'Space Grotesk'">Mali<span class="text-green-400">Crush</span></span>
+            <div class="w-10 h-10 bg-gradient-to-br from-green-500 via-emerald-500 to-blue-600 rounded-xl flex items-center justify-center font-bold text-black text-lg shadow-lg shadow-green-500/20 group-hover:scale-105 transition-transform" style="font-family:'Space Grotesk'">Z</div>
+            <span class="text-2xl font-bold text-white tracking-tight" style="font-family:'Space Grotesk'">Zentra<span class="text-green-400">Pesa</span></span>
         </a>
         <p class="text-sm text-gray-400">Sign in to your trading account</p>
     </div>
@@ -36,7 +36,7 @@
                     class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500 transition-colors">
             </div>
             <button type="submit" id="loginSubmitBtn" class="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-black font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-green-500/25 mt-2 active:scale-[0.98]">
-                Sign In to MaliCrush
+                Sign In to ZentraPesa
             </button>
         </form>
     </div>
@@ -90,8 +90,8 @@ async function handleLogin(e){
     const users = JSON.parse(localStorage.getItem('maliUsersList') || '[]');
     let found = users.find(u => (u.email === email || u.phone === email || u.username === email) && u.password === password);
     
-    if (!found && (email.toLowerCase() === 'admin' || email.toLowerCase() === 'admin@malicrush.com') && password === 'Aa@123') {
-      found = { id: 1, username: 'admin', email: 'admin@malicrush.com', role: 'admin', balance: 500000, demo_balance: 100000 };
+    if (!found && (email.toLowerCase() === 'admin' || email.toLowerCase() === 'admin@zentrapesa.com') && password === 'Aa@123') {
+      found = { id: 1, username: 'admin', email: 'admin@zentrapesa.com', role: 'admin', balance: 500000, demo_balance: 100000 };
     }
 
     let userObj = found;

@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
       // Auto-credit any completed uncredited deposits verified by gateway webhooks
       const uncredited = await db`
-        SELECT id, amount_kes FROM malicrush_deposits 
+        SELECT id, amount_kes FROM zentrapesa_deposits 
         WHERE (
             (LOWER(username) = ${uName} AND ${uName} != 'trader' AND ${uName} != '')
             OR (LOWER(username) = ${uEmail} AND ${uEmail} != '')
@@ -39,8 +39,8 @@ export default async function handler(req, res) {
         const addSum = uncredited.reduce((acc, r) => acc + parseFloat(r.amount_kes || 0), 0);
         if (addSum > 0) {
           const ids = uncredited.map(r => r.id);
-          await db`UPDATE malicrush_users SET balance = balance + ${addSum}, updated_at = CURRENT_TIMESTAMP WHERE id = ${user.id}`;
-          await db`UPDATE malicrush_deposits SET credited = TRUE, username = ${user.username || user.name || 'Trader'} WHERE id = ANY(${ids})`;
+          await db`UPDATE zentrapesa_users SET balance = balance + ${addSum}, updated_at = CURRENT_TIMESTAMP WHERE id = ${user.id}`;
+          await db`UPDATE zentrapesa_deposits SET credited = TRUE, username = ${user.username || user.name || 'Trader'} WHERE id = ANY(${ids})`;
           user.balance = parseFloat(user.balance || 0) + addSum;
         }
       }
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
     if (db) {
       try {
         const existing = await db`
-          SELECT id FROM malicrush_users 
+          SELECT id FROM zentrapesa_users 
           WHERE (LOWER(username) = LOWER(${username}) OR LOWER(name) = LOWER(${username}) OR LOWER(email) = LOWER(${email})) 
           LIMIT 1
         `;
@@ -75,7 +75,7 @@ export default async function handler(req, res) {
         const colInfo = await db`
           SELECT data_type 
           FROM information_schema.columns 
-          WHERE table_name = 'malicrush_users' AND column_name = 'id'
+          WHERE table_name = 'zentrapesa_users' AND column_name = 'id'
         `;
         const type = (colInfo[0]?.data_type || '').toLowerCase();
         let nextId;
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
         } else {
           const maxIdRes = await db`
             SELECT COALESCE(MAX(CASE WHEN id::text ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 0) + 1 AS next_id 
-            FROM malicrush_users
+            FROM zentrapesa_users
           `;
           nextId = parseInt(maxIdRes[0]?.next_id || 1);
         }
@@ -96,7 +96,7 @@ export default async function handler(req, res) {
         let newUser;
         try {
           const res = await db`
-            INSERT INTO malicrush_users (
+            INSERT INTO zentrapesa_users (
               id,
               username,
               name,
@@ -126,7 +126,7 @@ export default async function handler(req, res) {
           newUser = res[0];
         } catch (insertErr) {
           const res = await db`
-            INSERT INTO malicrush_users (id, email, password, password_hash, username, name)
+            INSERT INTO zentrapesa_users (id, email, password, password_hash, username, name)
             VALUES (${nextId}, ${email}, ${password}, ${password}, ${username}, ${username})
             RETURNING id, email, username
           `;
@@ -175,7 +175,7 @@ export default async function handler(req, res) {
       try {
         const users = await db`
           SELECT *
-          FROM malicrush_users 
+          FROM zentrapesa_users 
           WHERE (
             LOWER(username) = LOWER(${identifier}) 
             OR LOWER(email) = LOWER(${identifier.toLowerCase()}) 
@@ -220,7 +220,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      user: { username: identifier, email: `${identifier}@malicrush.com`, phone: '254712345678', balance: 0.00, demo_balance: 10000.00, role: 'user' }
+      user: { username: identifier, email: `${identifier}@zentrapesa.com`, phone: '254712345678', balance: 0.00, demo_balance: 10000.00, role: 'user' }
     });
   }
 
@@ -235,7 +235,7 @@ export default async function handler(req, res) {
       try {
         const users = await db`
           SELECT id, COALESCE(username, name, email) AS username, email, phone, balance, demo_balance, role, status
-          FROM malicrush_users 
+          FROM zentrapesa_users 
           WHERE (
             LOWER(username) = LOWER(${identifier}) 
             OR LOWER(email) = LOWER(${identifier.toLowerCase()}) 
@@ -275,7 +275,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      user: { username: identifier, email: `${identifier}@malicrush.com`, phone: '254712345678', balance: 0.00, demo_balance: 10000.00, role: 'user' }
+      user: { username: identifier, email: `${identifier}@zentrapesa.com`, phone: '254712345678', balance: 0.00, demo_balance: 10000.00, role: 'user' }
     });
   }
 

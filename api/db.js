@@ -23,7 +23,7 @@ export async function initDb() {
   const db = getDb();
   if (!db || isInitialized) return;
 
-  // Auto-migrate legacy tables if they exist and malicrush_ tables do not
+  // Auto-migrate legacy tables if they exist and zentrapesa_ tables do not
   const legacyTables = ['users', 'trades', 'deposits', 'withdrawals', 'messages', 'settings'];
   for (const t of legacyTables) {
     try {
@@ -33,25 +33,33 @@ export async function initDb() {
           WHERE table_schema = 'public' AND table_name = ${t}
         ) AS has_legacy
       `;
-      const checkNew = await db`
+      const checkMali = await db`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' AND table_name = ${'malicrush_' + t}
+        ) AS has_mali
+      `;
+      const checkNew = await db`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = ${'zentrapesa_' + t}
         ) AS has_new
       `;
-      if (checkLegacy[0]?.has_legacy && !checkNew[0]?.has_new) {
-        if (t === 'users') {
-          await db`ALTER TABLE users RENAME TO malicrush_users`;
-        } else if (t === 'trades') {
-          await db`ALTER TABLE trades RENAME TO malicrush_trades`;
-        } else if (t === 'deposits') {
-          await db`ALTER TABLE deposits RENAME TO malicrush_deposits`;
-        } else if (t === 'withdrawals') {
-          await db`ALTER TABLE withdrawals RENAME TO malicrush_withdrawals`;
-        } else if (t === 'messages') {
-          await db`ALTER TABLE messages RENAME TO malicrush_messages`;
-        } else if (t === 'settings') {
-          await db`ALTER TABLE settings RENAME TO malicrush_settings`;
+      if (!checkNew[0]?.has_new) {
+        if (checkMali[0]?.has_mali) {
+          if (t === 'users') await db`ALTER TABLE malicrush_users RENAME TO zentrapesa_users`;
+          else if (t === 'trades') await db`ALTER TABLE malicrush_trades RENAME TO zentrapesa_trades`;
+          else if (t === 'deposits') await db`ALTER TABLE malicrush_deposits RENAME TO zentrapesa_deposits`;
+          else if (t === 'withdrawals') await db`ALTER TABLE malicrush_withdrawals RENAME TO zentrapesa_withdrawals`;
+          else if (t === 'messages') await db`ALTER TABLE malicrush_messages RENAME TO zentrapesa_messages`;
+          else if (t === 'settings') await db`ALTER TABLE malicrush_settings RENAME TO zentrapesa_settings`;
+        } else if (checkLegacy[0]?.has_legacy) {
+          if (t === 'users') await db`ALTER TABLE users RENAME TO zentrapesa_users`;
+          else if (t === 'trades') await db`ALTER TABLE trades RENAME TO zentrapesa_trades`;
+          else if (t === 'deposits') await db`ALTER TABLE deposits RENAME TO zentrapesa_deposits`;
+          else if (t === 'withdrawals') await db`ALTER TABLE withdrawals RENAME TO zentrapesa_withdrawals`;
+          else if (t === 'messages') await db`ALTER TABLE messages RENAME TO zentrapesa_messages`;
+          else if (t === 'settings') await db`ALTER TABLE settings RENAME TO zentrapesa_settings`;
         }
       }
     } catch (migErr) {
@@ -59,10 +67,10 @@ export async function initDb() {
     }
   }
 
-  // 1. malicrush_users
+  // 1. zentrapesa_users
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS malicrush_users (
+      CREATE TABLE IF NOT EXISTS zentrapesa_users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(50) NOT NULL UNIQUE,
         email VARCHAR(100) NOT NULL UNIQUE,
@@ -78,47 +86,47 @@ export async function initDb() {
     `;
 
     // Ensure ALL columns exist and legacy constraints do not block inserts
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS name VARCHAR(100)`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS email VARCHAR(100)`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT ''`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT ''`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS balance NUMERIC(12,2) DEFAULT 0.00`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS demo_balance NUMERIC(12,2) DEFAULT 10000.00`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS has_app BOOLEAN DEFAULT FALSE`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS app_installed_at TIMESTAMP WITH TIME ZONE`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
-    await db`ALTER TABLE malicrush_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS name VARCHAR(100)`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS email VARCHAR(100)`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT ''`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT ''`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS balance NUMERIC(12,2) DEFAULT 0.00`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS demo_balance NUMERIC(12,2) DEFAULT 10000.00`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS has_app BOOLEAN DEFAULT FALSE`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS app_installed_at TIMESTAMP WITH TIME ZONE`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
 
-    try { await db`ALTER TABLE malicrush_users ALTER COLUMN name DROP NOT NULL`; } catch (e) {}
-    try { await db`ALTER TABLE malicrush_users ALTER COLUMN password_hash DROP NOT NULL`; } catch (e) {}
-    try { await db`ALTER TABLE malicrush_users ALTER COLUMN password DROP NOT NULL`; } catch (e) {}
-    try { await db`ALTER TABLE malicrush_users ALTER COLUMN phone DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE zentrapesa_users ALTER COLUMN name DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE zentrapesa_users ALTER COLUMN password_hash DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE zentrapesa_users ALTER COLUMN password DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE zentrapesa_users ALTER COLUMN phone DROP NOT NULL`; } catch (e) {}
 
     // Ensure ID column has an auto-increment sequence
     try {
-      await db`CREATE SEQUENCE IF NOT EXISTS malicrush_users_id_seq`;
-      await db`ALTER TABLE malicrush_users ALTER COLUMN id SET DEFAULT nextval('malicrush_users_id_seq')`;
-      await db`ALTER SEQUENCE malicrush_users_id_seq OWNED BY malicrush_users.id`;
+      await db`CREATE SEQUENCE IF NOT EXISTS zentrapesa_users_id_seq`;
+      await db`ALTER TABLE zentrapesa_users ALTER COLUMN id SET DEFAULT nextval('zentrapesa_users_id_seq')`;
+      await db`ALTER SEQUENCE zentrapesa_users_id_seq OWNED BY zentrapesa_users.id`;
     } catch (seqErr) {}
 
     // Ensure Unique Indexes exist
     try {
-      await db`CREATE UNIQUE INDEX IF NOT EXISTS malicrush_users_username_idx ON malicrush_users (username)`;
-      await db`CREATE UNIQUE INDEX IF NOT EXISTS malicrush_users_email_idx ON malicrush_users (email)`;
+      await db`CREATE UNIQUE INDEX IF NOT EXISTS zentrapesa_users_username_idx ON zentrapesa_users (username)`;
+      await db`CREATE UNIQUE INDEX IF NOT EXISTS zentrapesa_users_email_idx ON zentrapesa_users (email)`;
     } catch (idxErr) {}
-  } catch (e) { console.error('Error creating/migrating malicrush_users table:', e); }
+  } catch (e) { console.error('Error creating/migrating zentrapesa_users table:', e); }
 
-  // 2. malicrush_trades
+  // 2. zentrapesa_trades
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS malicrush_trades (
+      CREATE TABLE IF NOT EXISTS zentrapesa_trades (
         id SERIAL PRIMARY KEY,
         trade_ref VARCHAR(50) NOT NULL UNIQUE,
-        user_id INT NOT NULL REFERENCES malicrush_users(id) ON DELETE CASCADE,
+        user_id INT NOT NULL REFERENCES zentrapesa_users(id) ON DELETE CASCADE,
         trade_type VARCHAR(10) NOT NULL,
         stake NUMERIC(10,2) NOT NULL,
         entry_rate NUMERIC(10,4) NOT NULL,
@@ -131,12 +139,12 @@ export async function initDb() {
         resolved_at TIMESTAMP WITH TIME ZONE
       )
     `;
-  } catch (e) { console.error('Error creating malicrush_trades table:', e); }
+  } catch (e) { console.error('Error creating zentrapesa_trades table:', e); }
 
-  // 3. malicrush_deposits
+  // 3. zentrapesa_deposits
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS malicrush_deposits (
+      CREATE TABLE IF NOT EXISTS zentrapesa_deposits (
         id SERIAL PRIMARY KEY,
         deposit_ref VARCHAR(100) NOT NULL UNIQUE,
         checkout_request_id VARCHAR(100) DEFAULT '',
@@ -153,25 +161,25 @@ export async function initDb() {
     `;
 
     // Ensure all columns exist
-    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS checkout_request_id VARCHAR(100) DEFAULT ''`;
-    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
-    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS amount_kes NUMERIC(12,2) DEFAULT 0.00`;
-    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS amount_usd NUMERIC(12,2)`;
-    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'kes'`;
-    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS method VARCHAR(100) DEFAULT 'mpesa'`;
-    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
-    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`;
-    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS credited BOOLEAN DEFAULT FALSE`;
-    await db`ALTER TABLE malicrush_deposits ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
-    try { await db`CREATE INDEX IF NOT EXISTS malicrush_deposits_checkout_req_idx ON malicrush_deposits (checkout_request_id)`; } catch(e) {}
-    try { await db`CREATE INDEX IF NOT EXISTS malicrush_deposits_method_idx ON malicrush_deposits (method)`; } catch(e) {}
-    try { await db`CREATE INDEX IF NOT EXISTS malicrush_deposits_phone_idx ON malicrush_deposits (phone)`; } catch(e) {}
-  } catch (e) { console.error('Error creating malicrush_deposits table:', e); }
+    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS checkout_request_id VARCHAR(100) DEFAULT ''`;
+    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
+    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS amount_kes NUMERIC(12,2) DEFAULT 0.00`;
+    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS amount_usd NUMERIC(12,2)`;
+    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'kes'`;
+    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS method VARCHAR(100) DEFAULT 'mpesa'`;
+    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
+    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`;
+    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS credited BOOLEAN DEFAULT FALSE`;
+    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+    try { await db`CREATE INDEX IF NOT EXISTS zentrapesa_deposits_checkout_req_idx ON zentrapesa_deposits (checkout_request_id)`; } catch(e) {}
+    try { await db`CREATE INDEX IF NOT EXISTS zentrapesa_deposits_method_idx ON zentrapesa_deposits (method)`; } catch(e) {}
+    try { await db`CREATE INDEX IF NOT EXISTS zentrapesa_deposits_phone_idx ON zentrapesa_deposits (phone)`; } catch(e) {}
+  } catch (e) { console.error('Error creating zentrapesa_deposits table:', e); }
 
-  // 4. malicrush_withdrawals
+  // 4. zentrapesa_withdrawals
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS malicrush_withdrawals (
+      CREATE TABLE IF NOT EXISTS zentrapesa_withdrawals (
         id SERIAL PRIMARY KEY,
         withdraw_ref VARCHAR(50) NOT NULL UNIQUE,
         username VARCHAR(50),
@@ -181,12 +189,12 @@ export async function initDb() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
-  } catch (e) { console.error('Error creating malicrush_withdrawals table:', e); }
+  } catch (e) { console.error('Error creating zentrapesa_withdrawals table:', e); }
 
-  // 5. malicrush_messages
+  // 5. zentrapesa_messages
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS malicrush_messages (
+      CREATE TABLE IF NOT EXISTS zentrapesa_messages (
         id SERIAL PRIMARY KEY,
         user_id VARCHAR(100),
         username VARCHAR(50),
@@ -196,36 +204,36 @@ export async function initDb() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
-    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS username VARCHAR(50)`;
-    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS user_id VARCHAR(100)`;
-    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS title VARCHAR(50) DEFAULT 'MPESA'`;
-    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS body TEXT DEFAULT ''`;
-    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS read BOOLEAN DEFAULT FALSE`;
-    await db`ALTER TABLE malicrush_messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
-  } catch (e) { console.error('Error creating malicrush_messages table:', e); }
+    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS username VARCHAR(50)`;
+    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS user_id VARCHAR(100)`;
+    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS title VARCHAR(50) DEFAULT 'MPESA'`;
+    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS body TEXT DEFAULT ''`;
+    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS read BOOLEAN DEFAULT FALSE`;
+    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+  } catch (e) { console.error('Error creating zentrapesa_messages table:', e); }
 
-  // 6. malicrush_settings
+  // 6. zentrapesa_settings
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS malicrush_settings (
+      CREATE TABLE IF NOT EXISTS zentrapesa_settings (
         key VARCHAR(50) PRIMARY KEY,
         value TEXT NOT NULL
       )
     `;
-  } catch (e) { console.error('Error creating malicrush_settings table:', e); }
+  } catch (e) { console.error('Error creating zentrapesa_settings table:', e); }
 
   // Seed default admin and traders if table is empty
   try {
-    const userCountRes = await db`SELECT COUNT(*) AS cnt FROM malicrush_users`;
+    const userCountRes = await db`SELECT COUNT(*) AS cnt FROM zentrapesa_users`;
     const count = parseInt(userCountRes[0]?.cnt || 0);
     if (count < 2) {
       await db`
-        INSERT INTO malicrush_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
+        INSERT INTO zentrapesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
         VALUES 
-          ('admin', 'Admin Core', 'admin@malicrush.com', '254700000000', 'Aa@123', 'Aa@123', 500000.00, 100000.00, 'admin', 'active'),
+          ('admin', 'Admin Core', 'admin@zentrapesa.com', '254700000000', 'Aa@123', 'Aa@123', 500000.00, 100000.00, 'admin', 'active'),
           ('trader254', 'Brian Kip', 'trader254@gmail.com', '254712345678', 'Aa@123', 'Aa@123', 2500.00, 10000.00, 'user', 'active'),
           ('kamau_fx', 'John Kamau', 'kamau@gmail.com', '254722114455', 'Aa@123', 'Aa@123', 8750.00, 10000.00, 'user', 'active'),
-          ('sarah_mali', 'Sarah Wanjiru', 'sarah.w@yahoo.com', '254733889900', 'Aa@123', 'Aa@123', 14200.00, 10000.00, 'user', 'active'),
+          ('sarah_w', 'Sarah Wanjiru', 'sarah.w@yahoo.com', '254733889900', 'Aa@123', 'Aa@123', 14200.00, 10000.00, 'user', 'active'),
           ('mwangi_trade', 'Peter Mwangi', 'pmwangi@gmail.com', '254799443322', 'Aa@123', 'Aa@123', 600.00, 10000.00, 'user', 'active')
         ON CONFLICT (username) DO NOTHING
       `;

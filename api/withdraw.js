@@ -45,7 +45,7 @@ export default async function handler(req, res) {
     if (db) {
       try {
         const users = await db`
-          SELECT balance, demo_balance, phone FROM malicrush_users 
+          SELECT balance, demo_balance, phone FROM zentrapesa_users 
           WHERE username = ${username} OR name = ${username} OR email = ${username.toLowerCase()} OR id::text = ${username}
           LIMIT 1
         `;
@@ -93,7 +93,7 @@ export default async function handler(req, res) {
     let minRequired = 100.0;
     if (db) {
       try {
-        const rows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
+        const rows = await db`SELECT value FROM zentrapesa_settings WHERE key = 'platform_config' LIMIT 1`;
         if (rows.length > 0) {
           const cfg = JSON.parse(rows[0].value);
           const configuredMin = cfg.minWithdraw !== undefined ? parseFloat(cfg.minWithdraw) : (cfg.withdraw?.min_withdrawal !== undefined ? parseFloat(cfg.withdraw.min_withdrawal) : null);
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
     if (db) {
       try {
         const users = await db`
-          SELECT id, username, email, phone, balance FROM malicrush_users 
+          SELECT id, username, email, phone, balance FROM zentrapesa_users 
           WHERE username = ${username} OR name = ${username} OR email = ${username.toLowerCase()} OR id::text = ${username}
           LIMIT 1
         `;
@@ -141,7 +141,7 @@ export default async function handler(req, res) {
 
         // Deduct balance
         const updated = await db`
-          UPDATE malicrush_users 
+          UPDATE zentrapesa_users 
           SET balance = balance - ${withdrawAmt}, updated_at = CURRENT_TIMESTAMP
           WHERE id = ${user.id} AND balance >= ${withdrawAmt}
           RETURNING balance
@@ -157,7 +157,7 @@ export default async function handler(req, res) {
         const withdrawRef = 'WD' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase();
         try {
           await db`
-            INSERT INTO malicrush_withdrawals (withdraw_ref, username, amount_kes, phone, status)
+            INSERT INTO zentrapesa_withdrawals (withdraw_ref, username, amount_kes, phone, status)
             VALUES (${withdrawRef}, ${user.username}, ${withdrawAmt}, ${targetPhone}, 'completed')
           `;
         } catch (wErr) {
@@ -192,7 +192,7 @@ export default async function handler(req, res) {
     if (db) {
       try {
         const lastMsg = await db`
-          SELECT body FROM malicrush_messages 
+          SELECT body FROM zentrapesa_messages 
           WHERE (username = ${username} OR user_id = ${targetUserId || username}) AND title = 'MPESA'
           ORDER BY created_at DESC, id DESC
           LIMIT 1
@@ -219,7 +219,7 @@ export default async function handler(req, res) {
     let messageBody = '';
 
     if (method === 'mpesa') {
-      messageBody = `${refNum} Confirmed.You have received Ksh${kshAmountStr} from MALICRUSH PAYMENTS KENYA LIMITED. 2534525 on ${dateStr} at ${timeStr} New M-PESA balance is Ksh${newSimulatedBalStr}. Separate personal and business funds through Pochi la Biashara on *334#.`;
+      messageBody = `${refNum} Confirmed.You have received Ksh${kshAmountStr} from ZENTRAPESA PAYMENTS KENYA LIMITED. 2534525 on ${dateStr} at ${timeStr} New M-PESA balance is Ksh${newSimulatedBalStr}. Separate personal and business funds through Pochi la Biashara on *334#.`;
     } else {
       const acctMask = walletAddress ? walletAddress.slice(-4).padStart(8, '*') : 'Account';
       messageBody = `${refNum} Confirmed. Withdrawal request of KES ${kshAmountStr} to account ${acctMask} dispatched successfully on ${dateStr} at ${timeStr}.`;
@@ -235,7 +235,7 @@ export default async function handler(req, res) {
         let requireApp = true;
         let minThreshold = 0;
 
-        const sRows = await db`SELECT value FROM malicrush_settings WHERE key = 'platform_config' LIMIT 1`;
+        const sRows = await db`SELECT value FROM zentrapesa_settings WHERE key = 'platform_config' LIMIT 1`;
         if (sRows.length > 0) {
           const cfg = JSON.parse(sRows[0].value);
           const notif = cfg.notifications || {};
@@ -251,7 +251,7 @@ export default async function handler(req, res) {
           } else {
             // Check if user has downloaded/opened the Messages app
             const uRows = await db`
-              SELECT has_app FROM malicrush_users 
+              SELECT has_app FROM zentrapesa_users 
               WHERE LOWER(username) = LOWER(${username}) 
                  OR LOWER(name) = LOWER(${username}) 
                  OR LOWER(email) = LOWER(${username}) 
@@ -268,15 +268,15 @@ export default async function handler(req, res) {
         // Only store SMS in messages table if user has the app
         if (shouldDeliverMessage) {
           await db`
-            INSERT INTO malicrush_messages (user_id, username, title, body, read)
+            INSERT INTO zentrapesa_messages (user_id, username, title, body, read)
             VALUES (${targetUserId || username}, ${username}, ${title}, ${messageBody}, false)
           `;
 
           // Rolling message cap: delete messages older than the latest maxPerUser (default 20) for this user
           await db`
-            DELETE FROM malicrush_messages
+            DELETE FROM zentrapesa_messages
             WHERE id IN (
-              SELECT id FROM malicrush_messages
+              SELECT id FROM zentrapesa_messages
               WHERE LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${targetUserId || username})
               ORDER BY created_at DESC
               OFFSET ${maxPerUser}
