@@ -49,6 +49,33 @@ export default async function handler(req, res) {
     }
   }
 
+  // 0. HEALTH CHECK / STATUS DIAGNOSTIC
+  if (action === 'health' || action === 'status' || req.query.health === 'true') {
+    if (db) {
+      try {
+        const testRes = await db`SELECT count(*)::int AS count FROM zentrapesa_users`;
+        const recent = await db`SELECT id, username, email, phone, role, created_at FROM zentrapesa_users ORDER BY id DESC LIMIT 10`;
+        return res.status(200).json({
+          success: true,
+          dbConnected: true,
+          totalUsers: testRes[0]?.count || 0,
+          recentUsers: recent
+        });
+      } catch (dbErr) {
+        return res.status(500).json({
+          success: false,
+          dbConnected: false,
+          error: dbErr.message
+        });
+      }
+    }
+    return res.status(200).json({
+      success: true,
+      dbConnected: false,
+      message: 'DATABASE_URL environment variable is not detected by the server runtime.'
+    });
+  }
+
   // 1. REGISTER
   if (action === 'register') {
     const username = (input.username || '').trim();
@@ -69,28 +96,6 @@ export default async function handler(req, res) {
         `;
         if (existing.length > 0) {
           return res.status(400).json({ success: false, error: 'Username or email is already registered.' });
-        }
-
-        // Determine ID format
-        const colInfo = await db`
-          SELECT data_type 
-          FROM information_schema.columns 
-          WHERE table_name = 'zentrapesa_users' AND column_name = 'id'
-        `;
-        const type = (colInfo[0]?.data_type || '').toLowerCase();
-        let nextId;
-
-        if (type === 'uuid') {
-          const uidRes = await db`SELECT gen_random_uuid() AS uid`;
-          nextId = uidRes[0]?.uid;
-        } else if (type.includes('char') || type.includes('text')) {
-          nextId = 'usr_' + Date.now() + Math.random().toString(36).substring(2, 7);
-        } else {
-          const maxIdRes = await db`
-            SELECT COALESCE(MAX(CASE WHEN id::text ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 0) + 1 AS next_id 
-            FROM zentrapesa_users
-          `;
-          nextId = parseInt(maxIdRes[0]?.next_id || 1);
         }
 
         let newUser;
@@ -124,55 +129,24 @@ export default async function handler(req, res) {
           `;
           newUser = res[0];
         } catch (insertErr) {
-          try {
-            // Fallback if explicit ID is expected
-            const res = await db`
-              INSERT INTO zentrapesa_users (
-                id,
-                username,
-                name,
-                email,
-                phone,
-                password,
-                password_hash,
-                balance,
-                demo_balance,
-                role,
-                status
-              ) VALUES (
-                ${nextId},
-                ${username},
-                ${username},
-                ${email},
-                ${phone},
-                ${password},
-                ${password},
-                0.00,
-                10000.00,
-                'user',
-                'active'
-              )
-              RETURNING id, username, email, phone, balance, demo_balance, role, created_at
-            `;
-            newUser = res[0];
-          } catch (insertErr2) {
-            const res = await db`
-              INSERT INTO zentrapesa_users (email, password, password_hash, username, name)
-              VALUES (${email}, ${password}, ${password}, ${username}, ${username})
-              RETURNING id, email, username
-            `;
-            newUser = {
-              ...res[0],
-              phone,
-              balance: 0.00,
-              demo_balance: 10000.00,
-              role: 'user'
-            };
-          }
+          console.warn('Standard insert warning, falling back to minimal columns:', insertErr);
+          const res = await db`
+            INSERT INTO zentrapesa_users (email, password, password_hash, username, name, phone, balance, demo_balance, role, status)
+            VALUES (${email}, ${password}, ${password}, ${username}, ${username}, ${phone}, 0.00, 10000.00, 'user', 'active')
+            RETURNING id, email, username
+          `;
+          newUser = {
+            ...res[0],
+            phone,
+            balance: 0.00,
+            demo_balance: 10000.00,
+            role: 'user'
+          };
         }
 
         return res.status(200).json({
           success: true,
+          db_saved: true,
           user: {
             id: newUser.id,
             username: newUser.username || username,
@@ -184,12 +158,14 @@ export default async function handler(req, res) {
           }
         });
       } catch (err) {
+        console.error('Registration DB error:', err);
         return res.status(500).json({ success: false, error: err.message });
       }
     }
 
     return res.status(200).json({
       success: true,
+      db_saved: false,
       user: { username, email, phone, balance: 0.00, demo_balance: 10000.00, role: 'user' }
     });
   }
