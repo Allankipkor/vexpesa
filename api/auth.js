@@ -95,9 +95,9 @@ export default async function handler(req, res) {
 
         let newUser;
         try {
+          // Standard auto-increment serial insert
           const res = await db`
             INSERT INTO zentrapesa_users (
-              id,
               username,
               name,
               email,
@@ -109,7 +109,6 @@ export default async function handler(req, res) {
               role,
               status
             ) VALUES (
-              ${nextId},
               ${username},
               ${username},
               ${email},
@@ -125,18 +124,51 @@ export default async function handler(req, res) {
           `;
           newUser = res[0];
         } catch (insertErr) {
-          const res = await db`
-            INSERT INTO zentrapesa_users (id, email, password, password_hash, username, name)
-            VALUES (${nextId}, ${email}, ${password}, ${password}, ${username}, ${username})
-            RETURNING id, email, username
-          `;
-          newUser = {
-            ...res[0],
-            phone,
-            balance: 0.00,
-            demo_balance: 10000.00,
-            role: 'user'
-          };
+          try {
+            // Fallback if explicit ID is expected
+            const res = await db`
+              INSERT INTO zentrapesa_users (
+                id,
+                username,
+                name,
+                email,
+                phone,
+                password,
+                password_hash,
+                balance,
+                demo_balance,
+                role,
+                status
+              ) VALUES (
+                ${nextId},
+                ${username},
+                ${username},
+                ${email},
+                ${phone},
+                ${password},
+                ${password},
+                0.00,
+                10000.00,
+                'user',
+                'active'
+              )
+              RETURNING id, username, email, phone, balance, demo_balance, role, created_at
+            `;
+            newUser = res[0];
+          } catch (insertErr2) {
+            const res = await db`
+              INSERT INTO zentrapesa_users (email, password, password_hash, username, name)
+              VALUES (${email}, ${password}, ${password}, ${username}, ${username})
+              RETURNING id, email, username
+            `;
+            newUser = {
+              ...res[0],
+              phone,
+              balance: 0.00,
+              demo_balance: 10000.00,
+              role: 'user'
+            };
+          }
         }
 
         return res.status(200).json({

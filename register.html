@@ -95,7 +95,7 @@ async function handleRegister(e){
   btn.textContent = 'Creating Account...';
 
   try {
-    const res = await fetch('api/auth', {
+    let res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -106,6 +106,19 @@ async function handleRegister(e){
         password
       })
     });
+    if (!res.ok && res.status === 404) {
+      res = await fetch('/api/auth.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'register',
+          username,
+          email,
+          phone: fullPhone,
+          password
+        })
+      });
+    }
 
     const data = await res.json();
     if (data.success && data.user) {
