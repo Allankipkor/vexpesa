@@ -1,11 +1,11 @@
 {
-  "name": "zentrapesa",
+  "name": "vexpesa",
   "version": "1.0.0",
-  "description": "ZentraPesa Cloud Trading Platform with PayHero M-Pesa and Neon PostgreSQL",
+  "description": "VexPesa Cloud Trading Platform with PayHero M-Pesa and Neon PostgreSQL",
   "main": "index.html",
   "type": "module",
   "scripts": {
-    "dev": "node -e \"console.log('Running ZentraPesa')\""
+    "dev": "node -e \"console.log('Running VexPesa')\""
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4"

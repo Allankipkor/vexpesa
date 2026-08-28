@@ -1,6 +1,6 @@
-# ZentraPesa — Next-Gen Fast-Paced Binary Trading Platform
+# VexPesa — Next-Gen Fast-Paced Binary Trading Platform
 
-> **ZentraPesa** — *Trade Smart, Earn Big.*
+> **VexPesa** — *Trade Smart, Earn Big.*
 
 A high-performance, real-time spike trading platform built with a canvas-rendered quadratic Bezier price engine, multi-stage trade execution, live activity community chat, multi-currency deposit system (KES & USD), M-Pesa STK Push / PesaPal checkout, withdrawal management, and admin control dashboard.
 
@@ -45,8 +45,8 @@ A high-performance, real-time spike trading platform built with a canvas-rendere
 ## 📁 File Structure
 
 ```
-zentrapesa/
-├── index.html              # Primary ZentraPesa Trading Dashboard (Static / Standalone)
+vexpesa/
+├── index.html              # Primary VexPesa Trading Dashboard (Static / Standalone)
 ├── login.html              # User Login Screen
 ├── register.html           # User Registration Screen (+254 phone validation)
 ├── profile.html            # Profile, Wallet, and Balance Management
@@ -80,7 +80,7 @@ zentrapesa/
 Double click or open `index.html` directly in any web browser. The application includes full client-side state simulation and `localStorage` persistence for balances, trades, deposits, withdrawals, and settings.
 
 ### Serverless / Node.js Mode
-1. Place the `zentrapesa/` directory in your environment:
+1. Place the `vexpesa/` directory in your environment:
    ```bash
    npm install
    npm run dev
@@ -97,7 +97,7 @@ Double click or open `index.html` directly in any web browser. The application i
 | Portal | Username / Email | Password |
 |---|---|---|
 | **Trader Account** | `trader254` or any +254 phone | *any password* |
-| **Admin Portal** | `admin@zentrapesa.com` | `Aa@22` |
+| **Admin Portal** | `admin@vexpesa.com` | `Aa@22` |
 
 ---
 

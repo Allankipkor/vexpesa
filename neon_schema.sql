@@ -1,7 +1,7 @@
--- ZentraPesa PostgreSQL Schema for Neon Database
+-- VexPesa PostgreSQL Schema for Neon Database
 
 -- 1. Users Table
-CREATE TABLE IF NOT EXISTS zentrapesa_users (
+CREATE TABLE IF NOT EXISTS vexpesa_users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(50) NOT NULL UNIQUE,
   name VARCHAR(100),
@@ -17,29 +17,29 @@ CREATE TABLE IF NOT EXISTS zentrapesa_users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Ensure all columns exist in zentrapesa_users table
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS username VARCHAR(50);
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS name VARCHAR(100);
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS email VARCHAR(100);
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT '';
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT '';
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT '';
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS balance NUMERIC(12,2) DEFAULT 0.00;
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS demo_balance NUMERIC(12,2) DEFAULT 10000.00;
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+-- Ensure all columns exist in vexpesa_users table
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS username VARCHAR(50);
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS name VARCHAR(100);
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS email VARCHAR(100);
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT '';
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT '';
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT '';
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS balance NUMERIC(12,2) DEFAULT 0.00;
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS demo_balance NUMERIC(12,2) DEFAULT 10000.00;
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 
 -- Unique Indexes
-CREATE UNIQUE INDEX IF NOT EXISTS zentrapesa_users_username_idx ON zentrapesa_users (username);
-CREATE UNIQUE INDEX IF NOT EXISTS zentrapesa_users_email_idx ON zentrapesa_users (email);
+CREATE UNIQUE INDEX IF NOT EXISTS vexpesa_users_username_idx ON vexpesa_users (username);
+CREATE UNIQUE INDEX IF NOT EXISTS vexpesa_users_email_idx ON vexpesa_users (email);
 
 -- 2. Trades Table
-CREATE TABLE IF NOT EXISTS zentrapesa_trades (
+CREATE TABLE IF NOT EXISTS vexpesa_trades (
   id SERIAL PRIMARY KEY,
   trade_ref VARCHAR(50) NOT NULL UNIQUE,
-  user_id INT NOT NULL REFERENCES zentrapesa_users(id) ON DELETE CASCADE,
+  user_id INT NOT NULL REFERENCES vexpesa_users(id) ON DELETE CASCADE,
   trade_type VARCHAR(10) NOT NULL,
   stake NUMERIC(10,2) NOT NULL,
   entry_rate NUMERIC(10,4) NOT NULL,
@@ -53,10 +53,10 @@ CREATE TABLE IF NOT EXISTS zentrapesa_trades (
 );
 
 -- 3. Deposits Table
-CREATE TABLE IF NOT EXISTS zentrapesa_deposits (
+CREATE TABLE IF NOT EXISTS vexpesa_deposits (
   id SERIAL PRIMARY KEY,
   deposit_ref VARCHAR(50) NOT NULL UNIQUE,
-  user_id INT REFERENCES zentrapesa_users(id) ON DELETE SET NULL,
+  user_id INT REFERENCES vexpesa_users(id) ON DELETE SET NULL,
   username VARCHAR(50),
   amount_kes NUMERIC(10,2) NOT NULL,
   amount_usd NUMERIC(10,2),
@@ -68,10 +68,10 @@ CREATE TABLE IF NOT EXISTS zentrapesa_deposits (
 );
 
 -- 4. Withdrawals Table
-CREATE TABLE IF NOT EXISTS zentrapesa_withdrawals (
+CREATE TABLE IF NOT EXISTS vexpesa_withdrawals (
   id SERIAL PRIMARY KEY,
   withdraw_ref VARCHAR(50) NOT NULL UNIQUE,
-  user_id INT REFERENCES zentrapesa_users(id) ON DELETE SET NULL,
+  user_id INT REFERENCES vexpesa_users(id) ON DELETE SET NULL,
   username VARCHAR(50),
   amount_kes NUMERIC(10,2) NOT NULL,
   phone VARCHAR(20) NOT NULL,
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS zentrapesa_withdrawals (
 );
 
 -- 5. Messages Table
-CREATE TABLE IF NOT EXISTS zentrapesa_messages (
+CREATE TABLE IF NOT EXISTS vexpesa_messages (
   id SERIAL PRIMARY KEY,
   user_id VARCHAR(100),
   username VARCHAR(50),
@@ -91,12 +91,12 @@ CREATE TABLE IF NOT EXISTS zentrapesa_messages (
 );
 
 -- 6. Platform Settings Table
-CREATE TABLE IF NOT EXISTS zentrapesa_settings (
+CREATE TABLE IF NOT EXISTS vexpesa_settings (
   key VARCHAR(50) PRIMARY KEY,
   value TEXT NOT NULL
 );
 
 -- Seed Default Admin Account (password: Aa@22)
-INSERT INTO zentrapesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role)
-VALUES ('admin', 'Admin Core', 'admin@zentrapesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin')
+INSERT INTO vexpesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role)
+VALUES ('admin', 'Admin Core', 'admin@vexpesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin')
 ON CONFLICT (username) DO NOTHING;

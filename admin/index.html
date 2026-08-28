@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Dashboard — ZentraPesa Platform Control</title>
+<title>Admin Dashboard — VexPesa Platform Control</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -33,7 +33,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
         <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20" style="font-family:'Space Grotesk'">Z</div>
         <div>
             <div class="font-bold text-white tracking-tight flex items-center gap-2" style="font-family:'Space Grotesk'">
-                ZentraPesa <span class="px-2 py-0.5 text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-md font-mono">ADMIN PANEL</span>
+                VexPesa <span class="px-2 py-0.5 text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-md font-mono">ADMIN PANEL</span>
             </div>
         </div>
     </div>
@@ -377,7 +377,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
 
                     <div>
                         <label class="block text-[11px] text-gray-400 mb-1">GravityPay Callback / Webhook URL</label>
-                        <input type="text" id="cfgGravitypayCallbackUrl" placeholder="https://zentrapesa.com/api/webhooks/gravitypay" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
+                        <input type="text" id="cfgGravitypayCallbackUrl" placeholder="https://vexpesa.com/api/webhooks/gravitypay" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
                     </div>
                 </div>
 
@@ -593,7 +593,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
 </div>
 
 <footer class="text-center py-6 text-[10px] text-gray-600 border-t border-gray-900">
-    ZentraPesa Administrator Core · Licensed in the Commonwealth of The Bahamas
+    VexPesa Administrator Core · Licensed in the Commonwealth of The Bahamas
 </footer>
 
 <script>
@@ -1122,7 +1122,7 @@ async function saveAdminConfig(silent = false){
         api_key: document.getElementById('cfgGravitypayApiKey')?.value.trim() || '',
         secret_key: document.getElementById('cfgGravitypaySecretKey')?.value.trim() || '',
         webhook_secret: document.getElementById('cfgGravitypayWebhookSecret')?.value.trim() || '',
-        callback_url: document.getElementById('cfgGravitypayCallbackUrl')?.value.trim() || 'https://zentrapesa.com/api/webhooks/gravitypay'
+        callback_url: document.getElementById('cfgGravitypayCallbackUrl')?.value.trim() || 'https://vexpesa.com/api/webhooks/gravitypay'
       }
     },
     payheroUsername: document.getElementById('cfgPayheroUsername')?.value.trim() || '',
@@ -1132,7 +1132,7 @@ async function saveAdminConfig(silent = false){
     gravitypayApiKey: document.getElementById('cfgGravitypayApiKey')?.value.trim() || '',
     gravitypaySecretKey: document.getElementById('cfgGravitypaySecretKey')?.value.trim() || '',
     gravitypayWebhookSecret: document.getElementById('cfgGravitypayWebhookSecret')?.value.trim() || '',
-    gravitypayCallbackUrl: document.getElementById('cfgGravitypayCallbackUrl')?.value.trim() || 'https://zentrapesa.com/api/webhooks/gravitypay',
+    gravitypayCallbackUrl: document.getElementById('cfgGravitypayCallbackUrl')?.value.trim() || 'https://vexpesa.com/api/webhooks/gravitypay',
     notifications: {
       enabled: true,
       deposit_messages: document.getElementById('cfgDepositMsgs')?.checked ?? true,

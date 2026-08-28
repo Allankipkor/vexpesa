@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ZentraPesa — Trade Smart, Earn Big</title>
+<title>VexPesa — Trade Smart, Earn Big</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg-primary:#0a0e17;--bg-secondary:#0f1520;--bg-card:#131b2a;--border:#1e2d44;--border-light:#253550;--text-primary:#e8edf5;--text-secondary:#7b8ca8;--text-muted:#4a5d7a;--green:#00c853;--green-dark:#00a844;--green-bg:rgba(0,200,83,.08);--green-glow:rgba(0,200,83,.35);--red:#ff1744;--red-bg:rgba(255,23,68,.08);--red-glow:rgba(255,23,68,.35);--gold:#ffc107;--gold-bg:rgba(255,193,7,.1);--blue:#2979ff;--chart-bg:#000;--chart-green-fill:rgba(16,96,16,0.85);--chart-red-fill:rgba(80,16,16,0.85);--chart-line:#40D040;--chart-dot:rgba(64,208,64,0.25);--chart-grid:rgba(255,255,255,.07);--chart-grid-zero:rgba(255,255,255,.22);--chart-label:rgba(255,255,255,.35);--chart-ratebox:rgba(0,0,0,.75);--chart-ratebox-border:rgba(255,255,255,.45);--chart-rate-text:#fff}
@@ -524,7 +524,7 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
 <div class="header">
   <a href="index.html" class="logo-area">
     <div class="logo-icon">Z</div>
-    <div class="logo-text" id="siteLogo">Zentra<span>Pesa</span></div>
+    <div class="logo-text" id="siteLogo">Vex<span>Pesa</span></div>
   </a>
   <div class="header-center">
     <div class="header-stat"><span class="header-stat-label">24h Volume</span><span class="header-stat-val" id="stat24Volume" style="color:var(--green)">KES 4.8M</span></div>
@@ -812,7 +812,7 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
 
 <script>
 // ═══════════════════════════════════════════
-// ZENTRAPESA CLIENT STATE & PERSISTENCE
+// VEXPESA CLIENT STATE & PERSISTENCE
 // ═══════════════════════════════════════════
 // Load current logged in user from localStorage
 let currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
@@ -1538,7 +1538,7 @@ function logoutUser(){
   balance = 0.00;
   checkUserSession();
   updateHUD();
-  showToast('Signed out', {sub: 'You have been logged out of ZentraPesa', kind: 'info'});
+  showToast('Signed out', {sub: 'You have been logged out of VexPesa', kind: 'info'});
 }
 
 function applyPlatformConfig(){
@@ -2182,7 +2182,7 @@ async function resolveTrade(reason) {
   if (won) {
     launchCelebration();
     const traderName = currentUser ? currentUser.username : (isDemo ? 'DemoTrader' : 'Guest');
-    setTimeout(()=>addMsg(`System: CONGRATULATIONS @${traderName} on earning ${formatCurrency(payout)} on ZentraPesa 🎉🎉`,'win'),400);
+    setTimeout(()=>addMsg(`System: CONGRATULATIONS @${traderName} on earning ${formatCurrency(payout)} on VexPesa 🎉🎉`,'win'),400);
   }
 
   activeTrade=null; tradePhase='idle';
@@ -2230,7 +2230,7 @@ function closeResult(){document.getElementById('resultModal').classList.remove('
 function openDeposit(){
   currentUser = JSON.parse(localStorage.getItem('maliUser') || 'null');
   if (!currentUser || (!currentUser.username && !currentUser.email)) {
-    showToast('Sign In Required', {sub: 'Please log in to your ZentraPesa account to deposit funds.', kind: 'warn'});
+    showToast('Sign In Required', {sub: 'Please log in to your VexPesa account to deposit funds.', kind: 'warn'});
     setTimeout(() => {
       window.location.href = 'login.html';
     }, 1200);
@@ -2413,7 +2413,7 @@ async function requestSTK(){
         gravitypayApiKey: adminCfg.gravitypayApiKey || '',
         gravitypaySecretKey: adminCfg.gravitypaySecretKey || '',
         gravitypayWebhookSecret: adminCfg.gravitypayWebhookSecret || '',
-        gravitypayCallbackUrl: adminCfg.gravitypayCallbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay'
+        gravitypayCallbackUrl: adminCfg.gravitypayCallbackUrl || 'https://vexpesa.com/api/webhooks/gravitypay'
       })
     });
     if (!res.ok && res.status === 404) {
@@ -2432,7 +2432,7 @@ async function requestSTK(){
           gravitypayApiKey: adminCfg.gravitypayApiKey || '',
           gravitypaySecretKey: adminCfg.gravitypaySecretKey || '',
           gravitypayWebhookSecret: adminCfg.gravitypayWebhookSecret || '',
-          gravitypayCallbackUrl: adminCfg.gravitypayCallbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay'
+          gravitypayCallbackUrl: adminCfg.gravitypayCallbackUrl || 'https://vexpesa.com/api/webhooks/gravitypay'
         })
       });
     }
@@ -2739,7 +2739,7 @@ NAMES.slice(0,10).forEach((n,i)=>{
 });
 setTimeout(()=>{
   const bAmt = '10.00 KES';
-  addMsg(`Jojo25paul: ZentraPesa bonus of ${bAmt} received! 🎁`,'bonus');
+  addMsg(`Jojo25paul: VexPesa bonus of ${bAmt} received! 🎁`,'bonus');
 },1200);
 
 setInterval(()=>{
@@ -2756,7 +2756,7 @@ setInterval(()=>{
   }
 },8000);
 
-const uMsgs=['Just cashed out 1,500 KES 🔥','Green spike incoming!','SELL SELL SELL','BUY now guys!','ZentraPesa is flying 🚀','Trade smart with the wave 📈','Fastest withdrawals in 254!'];
+const uMsgs=['Just cashed out 1,500 KES 🔥','Green spike incoming!','SELL SELL SELL','BUY now guys!','VexPesa is flying 🚀','Trade smart with the wave 📈','Fastest withdrawals in 254!'];
 setInterval(()=>{
   if(Math.random()>.5){
     const n=NAMES[Math.floor(Math.random()*NAMES.length)],m=uMsgs[Math.floor(Math.random()*uMsgs.length)];

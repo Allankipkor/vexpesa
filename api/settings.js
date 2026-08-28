@@ -41,13 +41,13 @@ const defaultSettings = {
       api_password: "",
       channel_id: "",
       callback_url: "",
-      service_name: "ZentraPesa M-Pesa"
+      service_name: "VexPesa M-Pesa"
     },
     gravitypay: {
       api_key: "",
       secret_key: "",
       webhook_secret: "",
-      callback_url: "https://zentrapesa.com/api/webhooks/gravitypay"
+      callback_url: "https://vexpesa.com/api/webhooks/gravitypay"
     }
   },
   notifications: {
@@ -59,7 +59,7 @@ const defaultSettings = {
     min_amount_threshold: 10
   },
   site: {
-    name: "ZentraPesa",
+    name: "VexPesa",
     tagline: "Trade Smart, Earn Big",
     licence: "BHA-0023-1873201"
   }
@@ -85,7 +85,7 @@ export default async function handler(req, res) {
       try {
         // Read existing settings
         let currentSettings = { ...defaultSettings };
-        const rows = await db`SELECT key, value FROM zentrapesa_settings WHERE key = 'platform_config' LIMIT 1`;
+        const rows = await db`SELECT key, value FROM vexpesa_settings WHERE key = 'platform_config' LIMIT 1`;
         if (rows.length > 0) {
           try {
             currentSettings = { ...defaultSettings, ...JSON.parse(rows[0].value) };
@@ -238,7 +238,7 @@ export default async function handler(req, res) {
 
         const jsonStr = JSON.stringify(updated);
         await db`
-          INSERT INTO zentrapesa_settings (key, value)
+          INSERT INTO vexpesa_settings (key, value)
           VALUES ('platform_config', ${jsonStr})
           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
         `;
@@ -255,7 +255,7 @@ export default async function handler(req, res) {
   // 2. GET SETTINGS
   if (db) {
     try {
-      const rows = await db`SELECT key, value FROM zentrapesa_settings WHERE key = 'platform_config' LIMIT 1`;
+      const rows = await db`SELECT key, value FROM vexpesa_settings WHERE key = 'platform_config' LIMIT 1`;
       if (rows.length > 0) {
         const saved = JSON.parse(rows[0].value);
         return res.status(200).json({

@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
       // Auto-credit any completed uncredited deposits verified by gateway webhooks
       const uncredited = await db`
-        SELECT id, amount_kes FROM zentrapesa_deposits 
+        SELECT id, amount_kes FROM vexpesa_deposits 
         WHERE (
             (LOWER(username) = ${uName} AND ${uName} != 'trader' AND ${uName} != '')
             OR (LOWER(username) = ${uEmail} AND ${uEmail} != '')
@@ -39,8 +39,8 @@ export default async function handler(req, res) {
         const addSum = uncredited.reduce((acc, r) => acc + parseFloat(r.amount_kes || 0), 0);
         if (addSum > 0) {
           const ids = uncredited.map(r => r.id);
-          await db`UPDATE zentrapesa_users SET balance = balance + ${addSum}, updated_at = CURRENT_TIMESTAMP WHERE id = ${user.id}`;
-          await db`UPDATE zentrapesa_deposits SET credited = TRUE, username = ${user.username || user.name || 'Trader'} WHERE id = ANY(${ids})`;
+          await db`UPDATE vexpesa_users SET balance = balance + ${addSum}, updated_at = CURRENT_TIMESTAMP WHERE id = ${user.id}`;
+          await db`UPDATE vexpesa_deposits SET credited = TRUE, username = ${user.username || user.name || 'Trader'} WHERE id = ANY(${ids})`;
           user.balance = parseFloat(user.balance || 0) + addSum;
         }
       }
@@ -53,8 +53,8 @@ export default async function handler(req, res) {
   if (action === 'health' || action === 'status' || req.query.health === 'true') {
     if (db) {
       try {
-        const testRes = await db`SELECT count(*)::int AS count FROM zentrapesa_users`;
-        const recent = await db`SELECT id, username, email, phone, role, created_at FROM zentrapesa_users ORDER BY id DESC LIMIT 10`;
+        const testRes = await db`SELECT count(*)::int AS count FROM vexpesa_users`;
+        const recent = await db`SELECT id, username, email, phone, role, created_at FROM vexpesa_users ORDER BY id DESC LIMIT 10`;
         return res.status(200).json({
           success: true,
           dbConnected: true,
@@ -90,7 +90,7 @@ export default async function handler(req, res) {
     if (db) {
       try {
         const existing = await db`
-          SELECT id FROM zentrapesa_users 
+          SELECT id FROM vexpesa_users 
           WHERE (LOWER(username) = LOWER(${username}) OR LOWER(name) = LOWER(${username}) OR LOWER(email) = LOWER(${email})) 
           LIMIT 1
         `;
@@ -102,7 +102,7 @@ export default async function handler(req, res) {
         try {
           // Standard auto-increment serial insert
           const res = await db`
-            INSERT INTO zentrapesa_users (
+            INSERT INTO vexpesa_users (
               username,
               name,
               email,
@@ -131,7 +131,7 @@ export default async function handler(req, res) {
         } catch (insertErr) {
           console.warn('Standard insert warning, falling back to minimal columns:', insertErr);
           const res = await db`
-            INSERT INTO zentrapesa_users (email, password, password_hash, username, name, phone, balance, demo_balance, role, status)
+            INSERT INTO vexpesa_users (email, password, password_hash, username, name, phone, balance, demo_balance, role, status)
             VALUES (${email}, ${password}, ${password}, ${username}, ${username}, ${phone}, 0.00, 10000.00, 'user', 'active')
             RETURNING id, email, username
           `;
@@ -183,7 +183,7 @@ export default async function handler(req, res) {
       try {
         const users = await db`
           SELECT *
-          FROM zentrapesa_users 
+          FROM vexpesa_users 
           WHERE (
             LOWER(username) = LOWER(${identifier}) 
             OR LOWER(email) = LOWER(${identifier.toLowerCase()}) 
@@ -228,7 +228,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      user: { username: identifier, email: `${identifier}@zentrapesa.com`, phone: '254712345678', balance: 0.00, demo_balance: 10000.00, role: 'user' }
+      user: { username: identifier, email: `${identifier}@vexpesa.com`, phone: '254712345678', balance: 0.00, demo_balance: 10000.00, role: 'user' }
     });
   }
 
@@ -243,7 +243,7 @@ export default async function handler(req, res) {
       try {
         const users = await db`
           SELECT id, COALESCE(username, name, email) AS username, email, phone, balance, demo_balance, role, status
-          FROM zentrapesa_users 
+          FROM vexpesa_users 
           WHERE (
             LOWER(username) = LOWER(${identifier}) 
             OR LOWER(email) = LOWER(${identifier.toLowerCase()}) 
@@ -283,7 +283,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      user: { username: identifier, email: `${identifier}@zentrapesa.com`, phone: '254712345678', balance: 0.00, demo_balance: 10000.00, role: 'user' }
+      user: { username: identifier, email: `${identifier}@vexpesa.com`, phone: '254712345678', balance: 0.00, demo_balance: 10000.00, role: 'user' }
     });
   }
 

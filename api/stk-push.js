@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     try {
       const phone9 = phone.replace(/\D/g, '').slice(-9);
       const uRows = await db`
-        SELECT username, name, email FROM zentrapesa_users 
+        SELECT username, name, email FROM vexpesa_users 
         WHERE phone LIKE ${'%' + phone9}
         LIMIT 1
       `;
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
   // Fetch credentials and gateway routing from Neon DB settings table
   if (db) {
     try {
-      const rows = await db`SELECT value FROM zentrapesa_settings WHERE key = 'platform_config' LIMIT 1`;
+      const rows = await db`SELECT value FROM vexpesa_settings WHERE key = 'platform_config' LIMIT 1`;
       if (rows.length > 0) {
         const saved = JSON.parse(rows[0].value);
         if (!gateway) gateway = (saved.gateway || saved.payments?.gateway || '').toLowerCase().trim();
@@ -122,7 +122,7 @@ export default async function handler(req, res) {
       const phone9 = formattedPhone.replace(/\D/g, '').slice(-9);
       if (phone9.length >= 8) {
         await db`
-          UPDATE zentrapesa_deposits
+          UPDATE vexpesa_deposits
           SET status = 'expired'
           WHERE phone LIKE ${'%' + phone9}
             AND status = 'pending'
@@ -135,7 +135,7 @@ export default async function handler(req, res) {
   // Helper for PayHero STK Push (backend.payhero.co.ke)
   async function triggerPayhero() {
     const auth = Buffer.from(`${apiUsername}:${apiPassword}`).toString('base64');
-    const cb = callbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay';
+    const cb = callbackUrl || 'https://vexpesa.com/api/webhooks/gravitypay';
 
     const payload = {
       amount: Math.round(amount),
@@ -161,18 +161,18 @@ export default async function handler(req, res) {
 
   // Helper for GravityPay STK Push (gravitypayapp.com)
   async function triggerGravityPay() {
-    const finalCallback = gpCallbackUrl || 'https://zentrapesa.com/api/webhooks/gravitypay';
+    const finalCallback = gpCallbackUrl || 'https://vexpesa.com/api/webhooks/gravitypay';
     const payload = {
       phoneNumber: formattedPhone,
       amount: Math.round(amount),
       reference: reference.slice(0, 12),
-      description: 'ZentraPesa Topup',
+      description: 'VexPesa Topup',
       callbackUrl: finalCallback,
       callBackUrl: finalCallback,
       callback_url: finalCallback,
       metadata: {
         username: resolvedUsername,
-        app: 'zentrapesa'
+        app: 'vexpesa'
       }
     };
 
@@ -224,7 +224,7 @@ export default async function handler(req, res) {
         if (db) {
           try {
             await db`
-              INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+              INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
               VALUES (${reference}, ${result.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending', FALSE)
               ON CONFLICT (deposit_ref) DO UPDATE 
               SET checkout_request_id = ${result.checkoutRequestId || ''}
@@ -258,7 +258,7 @@ export default async function handler(req, res) {
         if (db) {
           try {
             await db`
-              INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+              INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
               VALUES (${reference}, '', ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending', FALSE)
               ON CONFLICT (deposit_ref) DO NOTHING
             `;
@@ -281,7 +281,7 @@ export default async function handler(req, res) {
               if (db) {
                 try {
                   await db`
-                    INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                    INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
                     VALUES (${reference}, ${backupRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
                     ON CONFLICT (deposit_ref) DO UPDATE 
                     SET checkout_request_id = ${backupRes.checkoutRequestId || ''}
@@ -312,7 +312,7 @@ export default async function handler(req, res) {
             if (db) {
               try {
                 await db`
-                  INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                  INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
                   VALUES (${reference}, ${backupRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
                   ON CONFLICT (deposit_ref) DO UPDATE 
                   SET checkout_request_id = ${backupRes.checkoutRequestId || ''}
@@ -344,7 +344,7 @@ export default async function handler(req, res) {
           if (db) {
             try {
               await db`
-                INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
                 VALUES (${reference}, '', ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending', FALSE)
                 ON CONFLICT (deposit_ref) DO NOTHING
               `;
@@ -369,7 +369,7 @@ export default async function handler(req, res) {
           if (db) {
             try {
               await db`
-                INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+                INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
                 VALUES (${reference}, ${gpRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending', FALSE)
                 ON CONFLICT (deposit_ref) DO UPDATE 
                 SET checkout_request_id = ${gpRes.checkoutRequestId || ''}
@@ -394,7 +394,7 @@ export default async function handler(req, res) {
   if (db) {
     try {
       await db`
-        INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
+        INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
         VALUES (${reference}, '', ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa STK (Sandbox)', 'pending', FALSE)
         ON CONFLICT (deposit_ref) DO NOTHING
       `;

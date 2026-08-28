@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   if ((action === 'register_app' || isApp) && username && db) {
     try {
       await db`
-        UPDATE zentrapesa_users 
+        UPDATE vexpesa_users 
         SET has_app = TRUE, 
             app_installed_at = COALESCE(app_installed_at, CURRENT_TIMESTAMP),
             updated_at = CURRENT_TIMESTAMP
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
           // If no specific user is provided, check if there are recent messages for the active session
           const fallbackMessages = await db`
             SELECT id, user_id, username, title, body, read, created_at 
-            FROM zentrapesa_messages 
+            FROM vexpesa_messages 
             ORDER BY created_at DESC 
             LIMIT 20
           `;
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
         let messages = [];
         try {
           const uLookup = await db`
-            SELECT id, username, email, phone FROM zentrapesa_users 
+            SELECT id, username, email, phone FROM vexpesa_users 
             WHERE LOWER(username) = LOWER(${username}) 
                OR LOWER(email) = LOWER(${username}) 
                OR LOWER(name) = LOWER(${username}) 
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
 
             messages = await db`
               SELECT id, user_id, username, title, body, read, created_at 
-              FROM zentrapesa_messages 
+              FROM vexpesa_messages 
               WHERE LOWER(username) = LOWER(${username}) 
                  OR LOWER(user_id) = LOWER(${username})
                  OR LOWER(username) = ${uname}
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
           } else {
             messages = await db`
               SELECT id, user_id, username, title, body, read, created_at 
-              FROM zentrapesa_messages 
+              FROM vexpesa_messages 
               WHERE LOWER(username) = LOWER(${username}) 
                  OR LOWER(user_id) = LOWER(${username})
               ORDER BY created_at DESC 
@@ -107,7 +107,7 @@ export default async function handler(req, res) {
           // Fallback to recent messages
           messages = await db`
             SELECT id, user_id, username, title, body, read, created_at 
-            FROM zentrapesa_messages 
+            FROM vexpesa_messages 
             ORDER BY created_at DESC 
             LIMIT 20
           `;
@@ -145,20 +145,20 @@ export default async function handler(req, res) {
       try {
         if (id) {
           await db`
-            UPDATE zentrapesa_messages 
+            UPDATE vexpesa_messages 
             SET read = true 
             WHERE (id = ${parseInt(id)} OR id::text = ${id.toString()})
               AND (LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username}))
           `;
         } else if (title) {
           await db`
-            UPDATE zentrapesa_messages 
+            UPDATE vexpesa_messages 
             SET read = true 
             WHERE title = ${title} AND (LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username}))
           `;
         } else {
           await db`
-            UPDATE zentrapesa_messages 
+            UPDATE vexpesa_messages 
             SET read = true 
             WHERE LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username})
           `;
@@ -179,13 +179,13 @@ export default async function handler(req, res) {
       try {
         if (id) {
           await db`
-            DELETE FROM zentrapesa_messages 
+            DELETE FROM vexpesa_messages 
             WHERE (id = ${parseInt(id)} OR id::text = ${id.toString()})
               AND (LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username}))
           `;
         } else {
           await db`
-            DELETE FROM zentrapesa_messages 
+            DELETE FROM vexpesa_messages 
             WHERE LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${username})
           `;
         }

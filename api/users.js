@@ -28,28 +28,28 @@ export default async function handler(req, res) {
                    COALESCE(role, 'user') AS role, 
                    COALESCE(status, 'active') AS status, 
                    COALESCE(created_at, CURRENT_TIMESTAMP) AS created_at
-            FROM zentrapesa_users
+            FROM vexpesa_users
             ORDER BY id DESC
           `;
         } catch (qErr) {
           console.error('Initial user query failed, attempting select all:', qErr);
-          users = await db`SELECT * FROM zentrapesa_users ORDER BY id DESC`;
+          users = await db`SELECT * FROM vexpesa_users ORDER BY id DESC`;
         }
 
         // If no traders in DB, seed active traders
         if (!users || users.length === 0) {
           try {
             await db`
-              INSERT INTO zentrapesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
+              INSERT INTO vexpesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
               VALUES 
-                ('admin', 'Admin Core', 'admin@zentrapesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin', 'active'),
+                ('admin', 'Admin Core', 'admin@vexpesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin', 'active'),
                 ('trader254', 'Brian Kip', 'trader254@gmail.com', '254712345678', 'Aa@22', 'Aa@22', 2500.00, 10000.00, 'user', 'active'),
                 ('kamau_fx', 'John Kamau', 'kamau@gmail.com', '254722114455', 'Aa@22', 'Aa@22', 8750.00, 10000.00, 'user', 'active'),
                 ('sarah_w', 'Sarah Wanjiru', 'sarah.w@yahoo.com', '254733889900', 'Aa@22', 'Aa@22', 14200.00, 10000.00, 'user', 'active'),
                 ('mwangi_trade', 'Peter Mwangi', 'pmwangi@gmail.com', '254799443322', 'Aa@22', 'Aa@22', 600.00, 10000.00, 'user', 'active')
               ON CONFLICT (username) DO NOTHING
             `;
-            users = await db`SELECT * FROM zentrapesa_users ORDER BY id DESC`;
+            users = await db`SELECT * FROM vexpesa_users ORDER BY id DESC`;
           } catch(seedErr) {
             console.error('Error auto-seeding users in api/users.js:', seedErr);
           }
@@ -58,11 +58,11 @@ export default async function handler(req, res) {
         let totalVol = 4820400;
         let totalPay = 32491000;
         try {
-          const totalVolRes = await db`SELECT COALESCE(SUM(stake), 0) AS total_vol FROM zentrapesa_trades`;
+          const totalVolRes = await db`SELECT COALESCE(SUM(stake), 0) AS total_vol FROM vexpesa_trades`;
           if (totalVolRes && totalVolRes[0]?.total_vol > 0) totalVol = parseFloat(totalVolRes[0].total_vol);
         } catch(e) {}
         try {
-          const totalPayRes = await db`SELECT COALESCE(SUM(payout), 0) AS total_payouts FROM zentrapesa_trades WHERE result = 'win'`;
+          const totalPayRes = await db`SELECT COALESCE(SUM(payout), 0) AS total_payouts FROM vexpesa_trades WHERE result = 'win'`;
           if (totalPayRes && totalPayRes[0]?.total_payouts > 0) totalPay = parseFloat(totalPayRes[0].total_payouts);
         } catch(e) {}
 
@@ -127,13 +127,13 @@ export default async function handler(req, res) {
           if (type === 'demo') {
             if (rawUserId && rawUserId !== 'null' && rawUserId !== 'undefined') {
               await db`
-                UPDATE zentrapesa_users 
+                UPDATE vexpesa_users 
                 SET demo_balance = demo_balance + ${amount}, updated_at = CURRENT_TIMESTAMP
                 WHERE id::text = ${rawUserId} OR LOWER(username) = LOWER(${username}) OR LOWER(name) = LOWER(${username})
               `;
             } else {
               await db`
-                UPDATE zentrapesa_users 
+                UPDATE vexpesa_users 
                 SET demo_balance = demo_balance + ${amount}, updated_at = CURRENT_TIMESTAMP
                 WHERE LOWER(username) = LOWER(${username}) OR LOWER(name) = LOWER(${username})
               `;
@@ -141,13 +141,13 @@ export default async function handler(req, res) {
           } else {
             if (rawUserId && rawUserId !== 'null' && rawUserId !== 'undefined') {
               await db`
-                UPDATE zentrapesa_users 
+                UPDATE vexpesa_users 
                 SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
                 WHERE id::text = ${rawUserId} OR LOWER(username) = LOWER(${username}) OR LOWER(name) = LOWER(${username})
               `;
             } else {
               await db`
-                UPDATE zentrapesa_users 
+                UPDATE vexpesa_users 
                 SET balance = balance + ${amount}, updated_at = CURRENT_TIMESTAMP
                 WHERE LOWER(username) = LOWER(${username}) OR LOWER(name) = LOWER(${username})
               `;
@@ -157,7 +157,7 @@ export default async function handler(req, res) {
           // Also record in deposits table
           try {
             await db`
-              INSERT INTO zentrapesa_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
+              INSERT INTO vexpesa_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
               VALUES (${'CREDIT-' + Date.now()}, ${username}, ${amount}, 'Admin', 'Admin Credit', 'completed', TRUE)
               ON CONFLICT (deposit_ref) DO NOTHING
             `;
@@ -177,7 +177,7 @@ export default async function handler(req, res) {
       const newStatus = input.status === 'suspended' ? 'suspended' : 'active';
       if (db && userId) {
         try {
-          await db`UPDATE zentrapesa_users SET status = ${newStatus} WHERE id = ${userId}`;
+          await db`UPDATE vexpesa_users SET status = ${newStatus} WHERE id = ${userId}`;
           return res.status(200).json({ success: true, status: newStatus });
         } catch (err) {
           return res.status(500).json({ success: false, error: err.message });

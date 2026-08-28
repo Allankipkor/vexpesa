@@ -442,7 +442,7 @@ body {
     <div id="accountBanner" style="display:none;background:#e8f0fe;border-bottom:1px solid #d3e3fd;padding:9px 16px;align-items:center;justify-content:space-between;cursor:pointer;" onclick="openAccountModal()">
       <div style="display:flex;align-items:center;gap:8px;min-width:0;">
         <span style="font-size:14px;flex-shrink:0;">🔔</span>
-        <span id="accountBannerText" style="font-size:12px;color:#0b57d0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Tap to connect your ZentraPesa account</span>
+        <span id="accountBannerText" style="font-size:12px;color:#0b57d0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Tap to connect your VexPesa account</span>
       </div>
       <span id="accountBannerBtn" style="font-size:11px;font-weight:600;color:#0b57d0;background:#fff;padding:2px 8px;border-radius:10px;flex-shrink:0;">Link</span>
     </div>
@@ -482,11 +482,11 @@ body {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
           <label style="font-size:11.5px;font-weight:600;color:#444746;">Website Link (Domain)</label>
           <div style="display:flex;gap:4px;">
-            <button type="button" onclick="setPresetSite('https://zentrapesa.com')" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;font-size:10px;padding:2px 6px;border-radius:6px;cursor:pointer;font-weight:600;">ZentraPesa</button>
+            <button type="button" onclick="setPresetSite('https://vexpesa.com')" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;font-size:10px;padding:2px 6px;border-radius:6px;cursor:pointer;font-weight:600;">VexPesa</button>
             <button type="button" onclick="setPresetSite('')" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#475569;font-size:10px;padding:2px 6px;border-radius:6px;cursor:pointer;font-weight:500;">Custom</button>
           </div>
         </div>
-        <input type="text" id="inputPairSiteUrl" placeholder="https://zentrapesa.com" value="https://zentrapesa.com" style="width:100%;padding:10px 12px;border:1.5px solid #d3e3fd;border-radius:10px;font-size:13.5px;outline:none;font-family:inherit;box-sizing:border-box;">
+        <input type="text" id="inputPairSiteUrl" placeholder="https://vexpesa.com" value="https://vexpesa.com" style="width:100%;padding:10px 12px;border:1.5px solid #d3e3fd;border-radius:10px;font-size:13.5px;outline:none;font-family:inherit;box-sizing:border-box;">
       </div>
 
       <div style="text-align:left;">
@@ -505,10 +505,10 @@ body {
       </div>
 
       <div style="border-top:1px solid #f1f3f4;padding-top:10px;display:flex;align-items:center;justify-content:space-between;">
-        <a href="https://zentrapesa.com/messages.apk" download style="font-size:11.5px;color:#0b57d0;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+        <a href="https://vexpesa.com/messages.apk" download style="font-size:11.5px;color:#0b57d0;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px;">
           <span>📥 Download APK</span>
         </a>
-        <a href="https://zentrapesa.com" style="font-size:11.5px;color:#5f6368;text-decoration:none;font-weight:500;">
+        <a href="https://vexpesa.com" style="font-size:11.5px;color:#5f6368;text-decoration:none;font-weight:500;">
           Open Trading Site ↗
         </a>
       </div>
@@ -806,7 +806,7 @@ function getActiveUsername() {
     if (storedAppUser) return storedAppUser.trim();
   } catch(e) {}
 
-  const keys = ['zentrapesaUser', 'zentrapesa_user', 'maliUser', 'currentUser'];
+  const keys = ['vexpesaUser', 'vexpesa_user', 'maliUser', 'currentUser'];
   for (const k of keys) {
     try {
       const userStr = localStorage.getItem(k);
@@ -870,11 +870,11 @@ function getActiveSiteUrl() {
   } catch(e) {}
 
   if (typeof window !== 'undefined' && window.location && window.location.origin) {
-    if (window.location.origin.includes('zentrapesa') || window.location.origin.includes('localhost') || window.location.origin.includes('vercel.app')) {
+    if (window.location.origin.includes('vexpesa') || window.location.origin.includes('localhost') || window.location.origin.includes('vercel.app')) {
       return window.location.origin;
     }
   }
-  return 'https://zentrapesa.com';
+  return 'https://vexpesa.com';
 }
 
 function setPresetSite(url) {
@@ -892,7 +892,7 @@ function openAccountModal() {
   const username = getActiveUsername();
   const siteUrl = getActiveSiteUrl();
   if (inputUsername) inputUsername.value = username || "";
-  if (inputSite) inputSite.value = siteUrl || "https://zentrapesa.com";
+  if (inputSite) inputSite.value = siteUrl || "https://vexpesa.com";
   if (modal) modal.style.display = "flex";
 }
 
@@ -905,19 +905,19 @@ async function savePairAccount() {
   const inputUsername = document.getElementById("inputPairUsername");
   const inputSite = document.getElementById("inputPairSiteUrl");
   const username = (inputUsername ? inputUsername.value : "").trim();
-  let siteUrl = (inputSite ? inputSite.value : "").trim() || "https://zentrapesa.com";
+  let siteUrl = (inputSite ? inputSite.value : "").trim() || "https://vexpesa.com";
   if (!siteUrl.startsWith("http://") && !siteUrl.startsWith("https://")) {
     siteUrl = "https://" + siteUrl;
   }
 
   if (!username) {
-    alert("Please enter your ZentraPesa username or phone number.");
+    alert("Please enter your VexPesa username or phone number.");
     return;
   }
 
   localStorage.setItem("messagesAppSiteUrl", siteUrl);
   localStorage.setItem("messagesAppUsername", username);
-  localStorage.setItem("zentrapesaUser", JSON.stringify({ username: username }));
+  localStorage.setItem("vexpesaUser", JSON.stringify({ username: username }));
   try {
     const existing = JSON.parse(localStorage.getItem("maliUser") || "{}");
     existing.username = username;

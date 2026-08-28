@@ -1,11 +1,11 @@
--- ZentraPesa Database Schema
+-- VexPesa Database Schema
 -- Compatible with MySQL 5.7+ / MariaDB / Cloud SQL
 
-CREATE DATABASE IF NOT EXISTS `zentrapesa` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `zentrapesa`;
+CREATE DATABASE IF NOT EXISTS `vexpesa` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `vexpesa`;
 
 -- 1. Users Table
-CREATE TABLE IF NOT EXISTS `zentrapesa_users` (
+CREATE TABLE IF NOT EXISTS `vexpesa_users` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `username` VARCHAR(50) NOT NULL UNIQUE,
   `name` VARCHAR(100) NULL,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS `zentrapesa_users` (
 ) ENGINE=InnoDB;
 
 -- 2. Trades Table
-CREATE TABLE IF NOT EXISTS `zentrapesa_trades` (
+CREATE TABLE IF NOT EXISTS `vexpesa_trades` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `trade_ref` VARCHAR(50) NOT NULL UNIQUE,
   `user_id` INT UNSIGNED NOT NULL,
@@ -36,11 +36,11 @@ CREATE TABLE IF NOT EXISTS `zentrapesa_trades` (
   `is_demo` TINYINT(1) NOT NULL DEFAULT 0,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `resolved_at` TIMESTAMP NULL,
-  FOREIGN KEY (`user_id`) REFERENCES `zentrapesa_users`(`id`) ON DELETE CASCADE
+  FOREIGN KEY (`user_id`) REFERENCES `vexpesa_users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- 3. Deposits Table
-CREATE TABLE IF NOT EXISTS `zentrapesa_deposits` (
+CREATE TABLE IF NOT EXISTS `vexpesa_deposits` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `deposit_ref` VARCHAR(50) NOT NULL UNIQUE,
   `user_id` INT UNSIGNED NULL,
@@ -52,11 +52,11 @@ CREATE TABLE IF NOT EXISTS `zentrapesa_deposits` (
   `phone` VARCHAR(20) NOT NULL,
   `status` ENUM('pending', 'completed', 'failed') NOT NULL DEFAULT 'pending',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`user_id`) REFERENCES `zentrapesa_users`(`id`) ON DELETE CASCADE
+  FOREIGN KEY (`user_id`) REFERENCES `vexpesa_users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- 4. Withdrawals Table
-CREATE TABLE IF NOT EXISTS `zentrapesa_withdrawals` (
+CREATE TABLE IF NOT EXISTS `vexpesa_withdrawals` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `withdraw_ref` VARCHAR(50) NOT NULL UNIQUE,
   `user_id` INT UNSIGNED NULL,
@@ -65,11 +65,11 @@ CREATE TABLE IF NOT EXISTS `zentrapesa_withdrawals` (
   `phone` VARCHAR(20) NOT NULL,
   `status` ENUM('pending', 'processed', 'rejected') NOT NULL DEFAULT 'pending',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`user_id`) REFERENCES `zentrapesa_users`(`id`) ON DELETE CASCADE
+  FOREIGN KEY (`user_id`) REFERENCES `vexpesa_users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- 5. Messages Table
-CREATE TABLE IF NOT EXISTS `zentrapesa_messages` (
+CREATE TABLE IF NOT EXISTS `vexpesa_messages` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `user_id` VARCHAR(100) NULL,
   `username` VARCHAR(50) NULL,
@@ -80,13 +80,13 @@ CREATE TABLE IF NOT EXISTS `zentrapesa_messages` (
 ) ENGINE=InnoDB;
 
 -- 6. Platform Settings Table
-CREATE TABLE IF NOT EXISTS `zentrapesa_settings` (
+CREATE TABLE IF NOT EXISTS `vexpesa_settings` (
   `key` VARCHAR(50) PRIMARY KEY,
   `value` TEXT NOT NULL
 ) ENGINE=InnoDB;
 
 -- Seed Default Settings
-INSERT INTO `zentrapesa_settings` (`key`, `value`) VALUES
+INSERT INTO `vexpesa_settings` (`key`, `value`) VALUES
 ('graph_speed', '300'),
 ('graph_y_max', '0.12'),
 ('graph_spike_freq', '0.10'),
@@ -106,6 +106,6 @@ INSERT INTO `zentrapesa_settings` (`key`, `value`) VALUES
 ON DUPLICATE KEY UPDATE `value`=VALUES(`value`);
 
 -- Seed Default Admin Account (password: Aa@22)
-INSERT INTO `zentrapesa_users` (`username`, `name`, `email`, `phone`, `password_hash`, `password`, `balance`, `demo_balance`, `role`) VALUES
-('admin', 'Admin Core', 'admin@zentrapesa.com', '254700000000', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Aa@22', 500000.00, 100000.00, 'admin')
+INSERT INTO `vexpesa_users` (`username`, `name`, `email`, `phone`, `password_hash`, `password`, `balance`, `demo_balance`, `role`) VALUES
+('admin', 'Admin Core', 'admin@vexpesa.com', '254700000000', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Aa@22', 500000.00, 100000.00, 'admin')
 ON DUPLICATE KEY UPDATE `username`=VALUES(`username`);

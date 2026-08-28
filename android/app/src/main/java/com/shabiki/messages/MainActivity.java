@@ -327,10 +327,10 @@ public class MainActivity extends AppCompatActivity {
         String script = "(function() { " +
                 "  try { " +
                 "    var u = ''; " +
-                "    var site = localStorage.getItem('messagesAppSiteUrl') || 'https://zentrapesa.com'; " +
+                "    var site = localStorage.getItem('messagesAppSiteUrl') || 'https://vexpesa.com'; " +
                 "    var base = site.replace(/\\/+$/, ''); " +
                 "    try { " +
-                "      var keys = ['zentrapesaUser', 'zentrapesa_user', 'maliUser', 'currentUser', 'messagesAppUsername']; " +
+                "      var keys = ['vexpesaUser', 'vexpesa_user', 'maliUser', 'currentUser', 'messagesAppUsername']; " +
                 "      for (var i = 0; i < keys.length; i++) { " +
                 "        var s = localStorage.getItem(keys[i]); " +
                 "        if (s) { " +

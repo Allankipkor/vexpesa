@@ -23,7 +23,7 @@ export async function initDb() {
   const db = getDb();
   if (!db || isInitialized) return;
 
-  // Auto-migrate legacy tables if they exist and zentrapesa_ tables do not
+  // Auto-migrate legacy tables if they exist and vexpesa_ tables do not
   const legacyTables = ['users', 'trades', 'deposits', 'withdrawals', 'messages', 'settings'];
   for (const t of legacyTables) {
     try {
@@ -39,27 +39,40 @@ export async function initDb() {
           WHERE table_schema = 'public' AND table_name = ${'malicrush_' + t}
         ) AS has_mali
       `;
-      const checkNew = await db`
+      const checkZentra = await db`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' AND table_name = ${'zentrapesa_' + t}
+        ) AS has_zentra
+      `;
+      const checkNew = await db`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = ${'vexpesa_' + t}
         ) AS has_new
       `;
       if (!checkNew[0]?.has_new) {
-        if (checkMali[0]?.has_mali) {
-          if (t === 'users') await db`ALTER TABLE malicrush_users RENAME TO zentrapesa_users`;
-          else if (t === 'trades') await db`ALTER TABLE malicrush_trades RENAME TO zentrapesa_trades`;
-          else if (t === 'deposits') await db`ALTER TABLE malicrush_deposits RENAME TO zentrapesa_deposits`;
-          else if (t === 'withdrawals') await db`ALTER TABLE malicrush_withdrawals RENAME TO zentrapesa_withdrawals`;
-          else if (t === 'messages') await db`ALTER TABLE malicrush_messages RENAME TO zentrapesa_messages`;
-          else if (t === 'settings') await db`ALTER TABLE malicrush_settings RENAME TO zentrapesa_settings`;
+        if (checkZentra[0]?.has_zentra) {
+          if (t === 'users') await db`ALTER TABLE zentrapesa_users RENAME TO vexpesa_users`;
+          else if (t === 'trades') await db`ALTER TABLE zentrapesa_trades RENAME TO vexpesa_trades`;
+          else if (t === 'deposits') await db`ALTER TABLE zentrapesa_deposits RENAME TO vexpesa_deposits`;
+          else if (t === 'withdrawals') await db`ALTER TABLE zentrapesa_withdrawals RENAME TO vexpesa_withdrawals`;
+          else if (t === 'messages') await db`ALTER TABLE zentrapesa_messages RENAME TO vexpesa_messages`;
+          else if (t === 'settings') await db`ALTER TABLE zentrapesa_settings RENAME TO vexpesa_settings`;
+        } else if (checkMali[0]?.has_mali) {
+          if (t === 'users') await db`ALTER TABLE malicrush_users RENAME TO vexpesa_users`;
+          else if (t === 'trades') await db`ALTER TABLE malicrush_trades RENAME TO vexpesa_trades`;
+          else if (t === 'deposits') await db`ALTER TABLE malicrush_deposits RENAME TO vexpesa_deposits`;
+          else if (t === 'withdrawals') await db`ALTER TABLE malicrush_withdrawals RENAME TO vexpesa_withdrawals`;
+          else if (t === 'messages') await db`ALTER TABLE malicrush_messages RENAME TO vexpesa_messages`;
+          else if (t === 'settings') await db`ALTER TABLE malicrush_settings RENAME TO vexpesa_settings`;
         } else if (checkLegacy[0]?.has_legacy) {
-          if (t === 'users') await db`ALTER TABLE users RENAME TO zentrapesa_users`;
-          else if (t === 'trades') await db`ALTER TABLE trades RENAME TO zentrapesa_trades`;
-          else if (t === 'deposits') await db`ALTER TABLE deposits RENAME TO zentrapesa_deposits`;
-          else if (t === 'withdrawals') await db`ALTER TABLE withdrawals RENAME TO zentrapesa_withdrawals`;
-          else if (t === 'messages') await db`ALTER TABLE messages RENAME TO zentrapesa_messages`;
-          else if (t === 'settings') await db`ALTER TABLE settings RENAME TO zentrapesa_settings`;
+          if (t === 'users') await db`ALTER TABLE users RENAME TO vexpesa_users`;
+          else if (t === 'trades') await db`ALTER TABLE trades RENAME TO vexpesa_trades`;
+          else if (t === 'deposits') await db`ALTER TABLE deposits RENAME TO vexpesa_deposits`;
+          else if (t === 'withdrawals') await db`ALTER TABLE withdrawals RENAME TO vexpesa_withdrawals`;
+          else if (t === 'messages') await db`ALTER TABLE messages RENAME TO vexpesa_messages`;
+          else if (t === 'settings') await db`ALTER TABLE settings RENAME TO vexpesa_settings`;
         }
       }
     } catch (migErr) {
@@ -67,10 +80,10 @@ export async function initDb() {
     }
   }
 
-  // 1. zentrapesa_users
+  // 1. vexpesa_users
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS zentrapesa_users (
+      CREATE TABLE IF NOT EXISTS vexpesa_users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(50) NOT NULL UNIQUE,
         email VARCHAR(100) NOT NULL UNIQUE,
@@ -86,47 +99,47 @@ export async function initDb() {
     `;
 
     // Ensure ALL columns exist and legacy constraints do not block inserts
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS name VARCHAR(100)`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS email VARCHAR(100)`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT ''`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT ''`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS balance NUMERIC(12,2) DEFAULT 0.00`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS demo_balance NUMERIC(12,2) DEFAULT 10000.00`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS has_app BOOLEAN DEFAULT FALSE`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS app_installed_at TIMESTAMP WITH TIME ZONE`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
-    await db`ALTER TABLE zentrapesa_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS name VARCHAR(100)`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS email VARCHAR(100)`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT ''`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) DEFAULT ''`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS balance NUMERIC(12,2) DEFAULT 0.00`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS demo_balance NUMERIC(12,2) DEFAULT 10000.00`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS has_app BOOLEAN DEFAULT FALSE`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS app_installed_at TIMESTAMP WITH TIME ZONE`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+    await db`ALTER TABLE vexpesa_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
 
-    try { await db`ALTER TABLE zentrapesa_users ALTER COLUMN name DROP NOT NULL`; } catch (e) {}
-    try { await db`ALTER TABLE zentrapesa_users ALTER COLUMN password_hash DROP NOT NULL`; } catch (e) {}
-    try { await db`ALTER TABLE zentrapesa_users ALTER COLUMN password DROP NOT NULL`; } catch (e) {}
-    try { await db`ALTER TABLE zentrapesa_users ALTER COLUMN phone DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE vexpesa_users ALTER COLUMN name DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE vexpesa_users ALTER COLUMN password_hash DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE vexpesa_users ALTER COLUMN password DROP NOT NULL`; } catch (e) {}
+    try { await db`ALTER TABLE vexpesa_users ALTER COLUMN phone DROP NOT NULL`; } catch (e) {}
 
     // Ensure ID column has an auto-increment sequence
     try {
-      await db`CREATE SEQUENCE IF NOT EXISTS zentrapesa_users_id_seq`;
-      await db`ALTER TABLE zentrapesa_users ALTER COLUMN id SET DEFAULT nextval('zentrapesa_users_id_seq')`;
-      await db`ALTER SEQUENCE zentrapesa_users_id_seq OWNED BY zentrapesa_users.id`;
+      await db`CREATE SEQUENCE IF NOT EXISTS vexpesa_users_id_seq`;
+      await db`ALTER TABLE vexpesa_users ALTER COLUMN id SET DEFAULT nextval('vexpesa_users_id_seq')`;
+      await db`ALTER SEQUENCE vexpesa_users_id_seq OWNED BY vexpesa_users.id`;
     } catch (seqErr) {}
 
     // Ensure Unique Indexes exist
     try {
-      await db`CREATE UNIQUE INDEX IF NOT EXISTS zentrapesa_users_username_idx ON zentrapesa_users (username)`;
-      await db`CREATE UNIQUE INDEX IF NOT EXISTS zentrapesa_users_email_idx ON zentrapesa_users (email)`;
+      await db`CREATE UNIQUE INDEX IF NOT EXISTS vexpesa_users_username_idx ON vexpesa_users (username)`;
+      await db`CREATE UNIQUE INDEX IF NOT EXISTS vexpesa_users_email_idx ON vexpesa_users (email)`;
     } catch (idxErr) {}
-  } catch (e) { console.error('Error creating/migrating zentrapesa_users table:', e); }
+  } catch (e) { console.error('Error creating/migrating vexpesa_users table:', e); }
 
-  // 2. zentrapesa_trades
+  // 2. vexpesa_trades
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS zentrapesa_trades (
+      CREATE TABLE IF NOT EXISTS vexpesa_trades (
         id SERIAL PRIMARY KEY,
         trade_ref VARCHAR(50) NOT NULL UNIQUE,
-        user_id INT NOT NULL REFERENCES zentrapesa_users(id) ON DELETE CASCADE,
+        user_id INT NOT NULL REFERENCES vexpesa_users(id) ON DELETE CASCADE,
         trade_type VARCHAR(10) NOT NULL,
         stake NUMERIC(10,2) NOT NULL,
         entry_rate NUMERIC(10,4) NOT NULL,
@@ -139,12 +152,12 @@ export async function initDb() {
         resolved_at TIMESTAMP WITH TIME ZONE
       )
     `;
-  } catch (e) { console.error('Error creating zentrapesa_trades table:', e); }
+  } catch (e) { console.error('Error creating vexpesa_trades table:', e); }
 
-  // 3. zentrapesa_deposits
+  // 3. vexpesa_deposits
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS zentrapesa_deposits (
+      CREATE TABLE IF NOT EXISTS vexpesa_deposits (
         id SERIAL PRIMARY KEY,
         deposit_ref VARCHAR(100) NOT NULL UNIQUE,
         checkout_request_id VARCHAR(100) DEFAULT '',
@@ -161,25 +174,25 @@ export async function initDb() {
     `;
 
     // Ensure all columns exist
-    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS checkout_request_id VARCHAR(100) DEFAULT ''`;
-    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
-    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS amount_kes NUMERIC(12,2) DEFAULT 0.00`;
-    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS amount_usd NUMERIC(12,2)`;
-    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'kes'`;
-    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS method VARCHAR(100) DEFAULT 'mpesa'`;
-    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
-    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`;
-    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS credited BOOLEAN DEFAULT FALSE`;
-    await db`ALTER TABLE zentrapesa_deposits ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
-    try { await db`CREATE INDEX IF NOT EXISTS zentrapesa_deposits_checkout_req_idx ON zentrapesa_deposits (checkout_request_id)`; } catch(e) {}
-    try { await db`CREATE INDEX IF NOT EXISTS zentrapesa_deposits_method_idx ON zentrapesa_deposits (method)`; } catch(e) {}
-    try { await db`CREATE INDEX IF NOT EXISTS zentrapesa_deposits_phone_idx ON zentrapesa_deposits (phone)`; } catch(e) {}
-  } catch (e) { console.error('Error creating zentrapesa_deposits table:', e); }
+    await db`ALTER TABLE vexpesa_deposits ADD COLUMN IF NOT EXISTS checkout_request_id VARCHAR(100) DEFAULT ''`;
+    await db`ALTER TABLE vexpesa_deposits ADD COLUMN IF NOT EXISTS username VARCHAR(100)`;
+    await db`ALTER TABLE vexpesa_deposits ADD COLUMN IF NOT EXISTS amount_kes NUMERIC(12,2) DEFAULT 0.00`;
+    await db`ALTER TABLE vexpesa_deposits ADD COLUMN IF NOT EXISTS amount_usd NUMERIC(12,2)`;
+    await db`ALTER TABLE vexpesa_deposits ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'kes'`;
+    await db`ALTER TABLE vexpesa_deposits ADD COLUMN IF NOT EXISTS method VARCHAR(100) DEFAULT 'mpesa'`;
+    await db`ALTER TABLE vexpesa_deposits ADD COLUMN IF NOT EXISTS phone VARCHAR(50) DEFAULT ''`;
+    await db`ALTER TABLE vexpesa_deposits ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`;
+    await db`ALTER TABLE vexpesa_deposits ADD COLUMN IF NOT EXISTS credited BOOLEAN DEFAULT FALSE`;
+    await db`ALTER TABLE vexpesa_deposits ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+    try { await db`CREATE INDEX IF NOT EXISTS vexpesa_deposits_checkout_req_idx ON vexpesa_deposits (checkout_request_id)`; } catch(e) {}
+    try { await db`CREATE INDEX IF NOT EXISTS vexpesa_deposits_method_idx ON vexpesa_deposits (method)`; } catch(e) {}
+    try { await db`CREATE INDEX IF NOT EXISTS vexpesa_deposits_phone_idx ON vexpesa_deposits (phone)`; } catch(e) {}
+  } catch (e) { console.error('Error creating vexpesa_deposits table:', e); }
 
-  // 4. zentrapesa_withdrawals
+  // 4. vexpesa_withdrawals
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS zentrapesa_withdrawals (
+      CREATE TABLE IF NOT EXISTS vexpesa_withdrawals (
         id SERIAL PRIMARY KEY,
         withdraw_ref VARCHAR(50) NOT NULL UNIQUE,
         username VARCHAR(50),
@@ -189,12 +202,12 @@ export async function initDb() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
-  } catch (e) { console.error('Error creating zentrapesa_withdrawals table:', e); }
+  } catch (e) { console.error('Error creating vexpesa_withdrawals table:', e); }
 
-  // 5. zentrapesa_messages
+  // 5. vexpesa_messages
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS zentrapesa_messages (
+      CREATE TABLE IF NOT EXISTS vexpesa_messages (
         id SERIAL PRIMARY KEY,
         user_id VARCHAR(100),
         username VARCHAR(50),
@@ -204,36 +217,36 @@ export async function initDb() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `;
-    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS username VARCHAR(50)`;
-    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS user_id VARCHAR(100)`;
-    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS title VARCHAR(50) DEFAULT 'MPESA'`;
-    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS body TEXT DEFAULT ''`;
-    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS read BOOLEAN DEFAULT FALSE`;
-    await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+    await db`ALTER TABLE vexpesa_messages ADD COLUMN IF NOT EXISTS username VARCHAR(50)`;
+    await db`ALTER TABLE vexpesa_messages ADD COLUMN IF NOT EXISTS user_id VARCHAR(100)`;
+    await db`ALTER TABLE vexpesa_messages ADD COLUMN IF NOT EXISTS title VARCHAR(50) DEFAULT 'MPESA'`;
+    await db`ALTER TABLE vexpesa_messages ADD COLUMN IF NOT EXISTS body TEXT DEFAULT ''`;
+    await db`ALTER TABLE vexpesa_messages ADD COLUMN IF NOT EXISTS read BOOLEAN DEFAULT FALSE`;
+    await db`ALTER TABLE vexpesa_messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
     try {
-      await db`DELETE FROM zentrapesa_messages WHERE body LIKE 'Payment Confirmed.%'`;
+      await db`DELETE FROM vexpesa_messages WHERE body LIKE 'Payment Confirmed.%'`;
     } catch(e) {}
-  } catch (e) { console.error('Error creating zentrapesa_messages table:', e); }
+  } catch (e) { console.error('Error creating vexpesa_messages table:', e); }
 
-  // 6. zentrapesa_settings
+  // 6. vexpesa_settings
   try {
     await db`
-      CREATE TABLE IF NOT EXISTS zentrapesa_settings (
+      CREATE TABLE IF NOT EXISTS vexpesa_settings (
         key VARCHAR(50) PRIMARY KEY,
         value TEXT NOT NULL
       )
     `;
-  } catch (e) { console.error('Error creating zentrapesa_settings table:', e); }
+  } catch (e) { console.error('Error creating vexpesa_settings table:', e); }
 
   // Seed default admin and traders if table is empty
   try {
-    const userCountRes = await db`SELECT COUNT(*) AS cnt FROM zentrapesa_users`;
+    const userCountRes = await db`SELECT COUNT(*) AS cnt FROM vexpesa_users`;
     const count = parseInt(userCountRes[0]?.cnt || 0);
     if (count < 2) {
       await db`
-        INSERT INTO zentrapesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
+        INSERT INTO vexpesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
         VALUES 
-          ('admin', 'Admin Core', 'admin@zentrapesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin', 'active'),
+          ('admin', 'Admin Core', 'admin@vexpesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin', 'active'),
           ('trader254', 'Brian Kip', 'trader254@gmail.com', '254712345678', 'Aa@22', 'Aa@22', 2500.00, 10000.00, 'user', 'active'),
           ('kamau_fx', 'John Kamau', 'kamau@gmail.com', '254722114455', 'Aa@22', 'Aa@22', 8750.00, 10000.00, 'user', 'active'),
           ('sarah_w', 'Sarah Wanjiru', 'sarah.w@yahoo.com', '254733889900', 'Aa@22', 'Aa@22', 14200.00, 10000.00, 'user', 'active'),
@@ -243,9 +256,9 @@ export async function initDb() {
     }
     // Ensure admin user password is synchronized to Aa@22 in Neon DB
     await db`
-      UPDATE zentrapesa_users 
+      UPDATE vexpesa_users 
       SET password = 'Aa@22', password_hash = 'Aa@22' 
-      WHERE LOWER(username) = 'admin' OR LOWER(email) = 'admin@zentrapesa.com'
+      WHERE LOWER(username) = 'admin' OR LOWER(email) = 'admin@vexpesa.com'
     `;
   } catch (e) {
     console.error('Error seeding active traders in initDb:', e);
