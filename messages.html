@@ -698,14 +698,17 @@ function getActiveUsername() {
     if (storedAppUser) return storedAppUser.trim();
   } catch(e) {}
 
-  try {
-    const userStr = localStorage.getItem('maliUser');
-    if (userStr) {
-      const u = JSON.parse(userStr);
-      const res = (u.username || u.name || u.phone || u.email || '').trim();
-      if (res) return res;
-    }
-  } catch(e) {}
+  const keys = ['zentrapesaUser', 'zentrapesa_user', 'maliUser', 'currentUser'];
+  for (const k of keys) {
+    try {
+      const userStr = localStorage.getItem(k);
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        const res = (u.username || u.name || u.phone || u.email || '').trim();
+        if (res) return res;
+      }
+    } catch(e) {}
+  }
 
   try {
     const uList = JSON.parse(localStorage.getItem('maliUsersList') || '[]');

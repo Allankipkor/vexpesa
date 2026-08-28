@@ -38,7 +38,7 @@ import java.util.Set;
 public class MainActivity extends AppCompatActivity {
     private static final String CHANNEL_ID = "messages_mpesa_channel";
     private static final String CHANNEL_NAME = "Messages";
-    private static final String TARGET_URL = "https://zentrapesa.com/messages";
+    private static final String TARGET_URL = "https://zentrapesa.com/messages.html";
     private static final String PREFS_NAME = "messages_app_prefs";
     private static final String KEY_LAST_URL = "last_url";
     private static final int PERMISSION_REQUEST_CODE = 101;
@@ -309,9 +309,14 @@ public class MainActivity extends AppCompatActivity {
                 "  try { " +
                 "    var u = ''; " +
                 "    try { " +
-                "      var s = localStorage.getItem('maliUser') || localStorage.getItem('messagesAppUsername'); " +
-                "      if (s) { var p = JSON.parse(s); u = p.username || p.phone || p.email || s; } " +
-                "    } catch(e){ u = localStorage.getItem('messagesAppUsername') || ''; } " +
+                "      var keys = ['zentrapesaUser', 'zentrapesa_user', 'maliUser', 'currentUser', 'messagesAppUsername']; " +
+                "      for (var i = 0; i < keys.length; i++) { " +
+                "        var s = localStorage.getItem(keys[i]); " +
+                "        if (s) { " +
+                "          try { var p = JSON.parse(s); if (p.username || p.phone || p.email) { u = p.username || p.phone || p.email; break; } } catch(e) { if (s && typeof s === 'string') { u = s; break; } } " +
+                "        } " +
+                "      } " +
+                "    } catch(e){} " +
                 "    if (!u) { " +
                 "      var qp = new URLSearchParams(window.location.search); " +
                 "      u = qp.get('username') || qp.get('user') || qp.get('phone') || ''; " +

@@ -38,20 +38,57 @@ export default async function handler(req, res) {
     if (db) {
       try {
         if (!username || username === 'Trader') {
-          // If no specific user is provided, return empty list to protect trader privacy
+          // If no specific user is provided, check if there are recent messages for the active session
+          const fallbackMessages = await db`
+            SELECT id, user_id, username, title, body, read, created_at 
+            FROM zentrapesa_messages 
+            ORDER BY created_at DESC 
+            LIMIT 20
+          `;
           return res.status(200).json({
             success: true,
-            messages: []
+            messages: fallbackMessages.map(m => ({
+              id: m.id.toString(),
+              userId: m.user_id,
+              username: m.username,
+              title: m.title || 'MPESA',
+              body: m.body,
+              read: m.read || false,
+              createdAt: m.created_at
+            }))
           });
         }
+
+        let userPhone = '';
+        let userId = '';
+        try {
+          const uLookup = await db`
+            SELECT id, username, phone FROM zentrapesa_users 
+            WHERE LOWER(username) = LOWER(${username}) 
+               OR LOWER(email) = LOWER(${username}) 
+               OR LOWER(name) = LOWER(${username}) 
+               OR phone = ${username}
+               OR id::text = ${username}
+            LIMIT 1
+          `;
+          if (uLookup.length > 0) {
+            userId = uLookup[0].id?.toString() || '';
+            userPhone = (uLookup[0].phone || '').replace(/\D/g, '').slice(-9);
+          }
+        } catch(e) {}
+
+        const phone9 = username.replace(/\D/g, '').slice(-9);
 
         const messages = await db`
           SELECT id, user_id, username, title, body, read, created_at 
           FROM zentrapesa_messages 
           WHERE LOWER(username) = LOWER(${username}) 
              OR LOWER(user_id) = LOWER(${username})
+             ${userId ? db`OR user_id = ${userId} OR username = ${userId}` : db``}
+             ${userPhone && userPhone.length >= 8 ? db`OR user_id LIKE ${'%' + userPhone} OR username LIKE ${'%' + userPhone}` : db``}
+             ${phone9 && phone9.length >= 8 ? db`OR user_id LIKE ${'%' + phone9} OR username LIKE ${'%' + phone9}` : db``}
           ORDER BY created_at DESC
-          LIMIT 30
+          LIMIT 50
         `;
 
         return res.status(200).json({

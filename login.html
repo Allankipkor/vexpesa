@@ -82,6 +82,8 @@ async function handleLogin(e){
     const data = await res.json();
     if (data.success && data.user) {
       const userObj = data.user;
+      localStorage.setItem('zentrapesaUser', JSON.stringify(userObj));
+      localStorage.setItem('messagesAppUsername', userObj.username || userObj.phone || userObj.email || '');
       localStorage.setItem('maliUser', JSON.stringify(userObj));
       localStorage.setItem('maliRealBalance', (userObj.balance || 0).toString());
       localStorage.setItem('maliDemoBalance', (userObj.demo_balance || 10000).toString());
