@@ -217,35 +217,37 @@ export default async function handler(req, res) {
 
         const formattedMethod = mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : (depRecord?.method || 'M-Pesa STK');
 
-        // Step 2e: If a deposit was found, update strictly THAT record by ID
+        // Step 2e: If a deposit was found, claim it atomically so only 1 process (webhook or polling) can credit the user
+        let claim = [];
         if (depRecord) {
-          const updated = await db`
+          claim = await db`
             UPDATE zentrapesa_deposits
-            SET status = 'completed',
+            SET credited = TRUE,
+                status = 'completed',
                 method = ${formattedMethod},
                 amount_kes = ${amount},
                 checkout_request_id = COALESCE(NULLIF(${checkoutRequestId || ''}, ''), checkout_request_id)
-            WHERE id = ${depRecord.id}
-            RETURNING *
+            WHERE id = ${depRecord.id} AND credited = FALSE
+            RETURNING id, username, phone, amount_kes
           `;
-          if (updated.length > 0) depRecord = updated[0];
         } else {
-          // If no matching pending record exists, insert a single new completed record
+          // If no matching pending record exists, insert a single new completed credited record
           const newRef = externalRef || ('ZP' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0'));
-          const inserted = await db`
+          claim = await db`
             INSERT INTO zentrapesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
-            VALUES (${newRef}, ${checkoutRequestId || ''}, ${metadataUser || 'Trader'}, ${amount}, ${phone}, ${formattedMethod}, 'completed', FALSE)
+            VALUES (${newRef}, ${checkoutRequestId || ''}, ${metadataUser || 'Trader'}, ${amount}, ${phone}, ${formattedMethod}, 'completed', TRUE)
             ON CONFLICT (deposit_ref) DO UPDATE
             SET status = 'completed', amount_kes = ${amount}, method = ${formattedMethod}
-            RETURNING *
+            WHERE zentrapesa_deposits.credited = FALSE
+            RETURNING id, username, phone, amount_kes
           `;
-          depRecord = inserted[0];
         }
 
-        // 3. CREDIT USER'S WALLET (Atomic and protected against double-crediting)
-        if (depRecord && !depRecord.credited) {
-          const targetUser = (depRecord.username && depRecord.username !== 'Trader') ? depRecord.username : metadataUser;
-          const targetPhone = depRecord.phone || phone;
+        // 3. CREDIT USER'S WALLET (Only executed if THIS webhook request successfully claimed the deposit)
+        if (claim.length > 0) {
+          const targetDep = claim[0];
+          const targetUser = (targetDep.username && targetDep.username !== 'Trader') ? targetDep.username : metadataUser;
+          const targetPhone = targetDep.phone || phone;
           const phone9 = (targetPhone || '').replace(/\D/g, '').slice(-9);
 
           let userCredited = false;
@@ -279,15 +281,34 @@ export default async function handler(req, res) {
             }
           }
 
-          // CRITICAL FIX: Only mark credited = TRUE if a user was ACTUALLY found and updated
-          if (userCredited) {
-            await db`
-              UPDATE zentrapesa_deposits
-              SET credited = TRUE,
-                  username = COALESCE(NULLIF(${creditedUsername || ''}, ''), username)
-              WHERE id = ${depRecord.id}
-            `;
+          if (userCredited && creditedUsername && creditedUsername !== targetDep.username) {
+            await db`UPDATE zentrapesa_deposits SET username = ${creditedUsername} WHERE id = ${targetDep.id}`;
           }
+
+          // Create M-Pesa receipt message and auto-prune to latest 20
+          try {
+            await db`
+              INSERT INTO zentrapesa_messages (user_id, username, title, body, read)
+              VALUES (
+                ${creditedUsername || targetUser || phone || 'Trader'},
+                ${creditedUsername || targetUser || 'Trader'},
+                'MPESA',
+                ${`Payment Confirmed. Ksh${amount.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using ZentraPesa.`},
+                FALSE
+              )
+            `;
+
+            await db`
+              DELETE FROM zentrapesa_messages
+              WHERE id IN (
+                SELECT id FROM zentrapesa_messages
+                WHERE LOWER(username) = LOWER(${creditedUsername || targetUser || 'Trader'}) OR LOWER(user_id) = LOWER(${creditedUsername || targetUser || phone || 'Trader'})
+                ORDER BY created_at DESC
+                OFFSET 20
+              )
+            `;
+          } catch(mErr) {}
+        }
 
           // 4. AUTO-CANCEL / SUPERSEDE OTHER PENDING ATTEMPTS for this user/phone
           if (phone9.length >= 8) {

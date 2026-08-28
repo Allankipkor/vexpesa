@@ -136,84 +136,94 @@ export default async function handler(req, res) {
 
           let currentBal = null;
 
-          // If completed and not marked credited yet, credit user atomically right now
-          if (isCompleted && parseFloat(d.amount_kes) > 0 && !d.credited) {
-            const uName = (d.username && d.username !== 'Trader') ? d.username : queryUser;
-            const uPhone = (d.phone || queryPhone || '').replace(/\D/g, '').slice(-9);
-            const amt = parseFloat(d.amount_kes);
+          // ATOMIC CLAIM: Only one process (webhook or polling) can EVER credit this deposit
+          if (isCompleted && parseFloat(d.amount_kes) > 0) {
+            const finalMethod = d.method || 'M-Pesa STK';
+            
+            // Atomic conditional update: transitions credited from FALSE to TRUE exactly ONCE
+            const claim = await db`
+              UPDATE zentrapesa_deposits 
+              SET credited = TRUE, 
+                  status = 'completed',
+                  method = ${finalMethod}
+              WHERE id = ${d.id} AND credited = FALSE
+              RETURNING id, username, phone, amount_kes
+            `;
 
-            let credited = false;
-            let creditedUser = uName;
+            // Only execute wallet crediting if THIS request successfully won the claim
+            if (claim.length > 0) {
+              const targetDep = claim[0];
+              const amt = parseFloat(targetDep.amount_kes || d.amount_kes);
+              const uName = (targetDep.username && targetDep.username !== 'Trader') ? targetDep.username : queryUser;
+              const uPhone = (targetDep.phone || queryPhone || '').replace(/\D/g, '').slice(-9);
 
-            if (uName && uName !== 'Trader') {
-              const uRes = await db`
-                UPDATE zentrapesa_users 
-                SET balance = balance + ${amt}, updated_at = CURRENT_TIMESTAMP
-                WHERE LOWER(username) = LOWER(${uName}) 
-                   OR LOWER(name) = LOWER(${uName}) 
-                   OR LOWER(email) = LOWER(${uName})
-                RETURNING id, username, balance
-              `;
-              if (uRes.length > 0) {
-                credited = true;
-                creditedUser = uRes[0].username;
-                currentBal = parseFloat(uRes[0].balance || 0);
+              let credited = false;
+              let creditedUser = uName;
+
+              if (uName && uName !== 'Trader') {
+                const uRes = await db`
+                  UPDATE zentrapesa_users 
+                  SET balance = balance + ${amt}, updated_at = CURRENT_TIMESTAMP
+                  WHERE LOWER(username) = LOWER(${uName}) 
+                     OR LOWER(name) = LOWER(${uName}) 
+                     OR LOWER(email) = LOWER(${uName})
+                  RETURNING id, username, balance
+                `;
+                if (uRes.length > 0) {
+                  credited = true;
+                  creditedUser = uRes[0].username;
+                  currentBal = parseFloat(uRes[0].balance || 0);
+                }
               }
-            }
 
-            if (!credited && uPhone.length >= 8) {
-              const uRes = await db`
-                UPDATE zentrapesa_users 
-                SET balance = balance + ${amt}, updated_at = CURRENT_TIMESTAMP
-                WHERE phone LIKE ${'%' + uPhone}
-                RETURNING id, username, balance
-              `;
-              if (uRes.length > 0) {
-                credited = true;
-                creditedUser = uRes[0].username;
-                currentBal = parseFloat(uRes[0].balance || 0);
+              if (!credited && uPhone.length >= 8) {
+                const uRes = await db`
+                  UPDATE zentrapesa_users 
+                  SET balance = balance + ${amt}, updated_at = CURRENT_TIMESTAMP
+                  WHERE phone LIKE ${'%' + uPhone}
+                  RETURNING id, username, balance
+                `;
+                if (uRes.length > 0) {
+                  credited = true;
+                  creditedUser = uRes[0].username;
+                  currentBal = parseFloat(uRes[0].balance || 0);
+                }
               }
+
+              if (creditedUser && creditedUser !== targetDep.username) {
+                await db`UPDATE zentrapesa_deposits SET username = ${creditedUser} WHERE id = ${targetDep.id}`;
+              }
+
+              // Create M-Pesa receipt message and auto-prune to latest 20
+              try {
+                await db`
+                  INSERT INTO zentrapesa_messages (user_id, username, title, body, read)
+                  VALUES (
+                    ${creditedUser || uName || targetDep.phone || 'Trader'},
+                    ${creditedUser || uName || 'Trader'},
+                    'MPESA',
+                    ${`Payment Confirmed. Ksh${amt.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using ZentraPesa.`},
+                    FALSE
+                  )
+                `;
+
+                await db`
+                  DELETE FROM zentrapesa_messages
+                  WHERE id IN (
+                    SELECT id FROM zentrapesa_messages
+                    WHERE LOWER(username) = LOWER(${creditedUser || uName || 'Trader'}) OR LOWER(user_id) = LOWER(${creditedUser || uName || targetDep.phone || 'Trader'})
+                    ORDER BY created_at DESC
+                    OFFSET 20
+                  )
+                `;
+              } catch(mErr) {}
             }
-
-            if (credited) {
-              await db`
-                UPDATE zentrapesa_deposits 
-                SET credited = TRUE, 
-                    username = COALESCE(NULLIF(${creditedUser || ''}, ''), username) 
-                WHERE id = ${d.id}
-              `;
-            }
-
-            // Create M-Pesa receipt message and auto-prune to latest 20
-            try {
-              await db`
-                INSERT INTO zentrapesa_messages (user_id, username, title, body, read)
-                VALUES (
-                  ${creditedUser || uName || d.phone || 'Trader'},
-                  ${creditedUser || uName || 'Trader'},
-                  'MPESA',
-                  ${`Payment Confirmed. Ksh${amt.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using ZentraPesa.`},
-                  FALSE
-                )
-              `;
-
-              // Auto-prune older messages beyond 20 for this user
-              await db`
-                DELETE FROM zentrapesa_messages
-                WHERE id IN (
-                  SELECT id FROM zentrapesa_messages
-                  WHERE LOWER(username) = LOWER(${creditedUser || uName || 'Trader'}) OR LOWER(user_id) = LOWER(${creditedUser || uName || d.phone || 'Trader'})
-                  ORDER BY created_at DESC
-                  OFFSET 20
-                )
-              `;
-            } catch(mErr) {}
           }
 
-          // If already credited, get latest user balance
+          // If already credited by another worker or previously, get latest user balance
           if (isCompleted && currentBal === null) {
             try {
-              const uName = d.username;
+              const uName = d.username || queryUser;
               const uPhone = (d.phone || queryPhone || '').replace(/\D/g, '').slice(-9);
               let uRes = [];
               if (uName && uName !== 'Trader') {
