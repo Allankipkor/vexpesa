@@ -193,30 +193,6 @@ export default async function handler(req, res) {
               if (creditedUser && creditedUser !== targetDep.username) {
                 await db`UPDATE zentrapesa_deposits SET username = ${creditedUser} WHERE id = ${targetDep.id}`;
               }
-
-              // Create M-Pesa receipt message and auto-prune to latest 20
-              try {
-                await db`
-                  INSERT INTO zentrapesa_messages (user_id, username, title, body, read)
-                  VALUES (
-                    ${creditedUser || uName || targetDep.phone || 'Trader'},
-                    ${creditedUser || uName || 'Trader'},
-                    'MPESA',
-                    ${`Payment Confirmed. Ksh${amt.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using ZentraPesa.`},
-                    FALSE
-                  )
-                `;
-
-                await db`
-                  DELETE FROM zentrapesa_messages
-                  WHERE id IN (
-                    SELECT id FROM zentrapesa_messages
-                    WHERE LOWER(username) = LOWER(${creditedUser || uName || 'Trader'}) OR LOWER(user_id) = LOWER(${creditedUser || uName || targetDep.phone || 'Trader'})
-                    ORDER BY created_at DESC
-                    OFFSET 20
-                  )
-                `;
-              } catch(mErr) {}
             }
           }
 

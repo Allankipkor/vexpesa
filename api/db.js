@@ -210,6 +210,9 @@ export async function initDb() {
     await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS body TEXT DEFAULT ''`;
     await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS read BOOLEAN DEFAULT FALSE`;
     await db`ALTER TABLE zentrapesa_messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`;
+    try {
+      await db`DELETE FROM zentrapesa_messages WHERE body LIKE 'Payment Confirmed.%'`;
+    } catch(e) {}
   } catch (e) { console.error('Error creating zentrapesa_messages table:', e); }
 
   // 6. zentrapesa_settings

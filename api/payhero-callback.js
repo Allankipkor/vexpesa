@@ -284,71 +284,20 @@ export default async function handler(req, res) {
           if (userCredited && creditedUsername && creditedUsername !== targetDep.username) {
             await db`UPDATE zentrapesa_deposits SET username = ${creditedUsername} WHERE id = ${targetDep.id}`;
           }
-
-          // Create M-Pesa receipt message and auto-prune to latest 20
-          try {
-            await db`
-              INSERT INTO zentrapesa_messages (user_id, username, title, body, read)
-              VALUES (
-                ${creditedUsername || targetUser || phone || 'Trader'},
-                ${creditedUsername || targetUser || 'Trader'},
-                'MPESA',
-                ${`Payment Confirmed. Ksh${amount.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using ZentraPesa.`},
-                FALSE
-              )
-            `;
-
-            await db`
-              DELETE FROM zentrapesa_messages
-              WHERE id IN (
-                SELECT id FROM zentrapesa_messages
-                WHERE LOWER(username) = LOWER(${creditedUsername || targetUser || 'Trader'}) OR LOWER(user_id) = LOWER(${creditedUsername || targetUser || phone || 'Trader'})
-                ORDER BY created_at DESC
-                OFFSET 20
-              )
-            `;
-          } catch(mErr) {}
         }
 
-          // 4. AUTO-CANCEL / SUPERSEDE OTHER PENDING ATTEMPTS for this user/phone
-          if (phone9.length >= 8) {
-            try {
-              await db`
-                UPDATE zentrapesa_deposits
-                SET status = 'superseded'
-                WHERE id != ${depRecord.id}
-                  AND phone LIKE ${'%' + phone9}
-                  AND status = 'pending'
-                  AND created_at <= ${depRecord.created_at || new Date()}
-              `;
-            } catch(supErr) {}
-          }
-
-          // 5. Send M-Pesa receipt message to user's inbox and auto-prune to latest 20
+        // 4. AUTO-CANCEL / SUPERSEDE OTHER PENDING ATTEMPTS for this user/phone
+        if (phone9.length >= 8 && depRecord) {
           try {
-            const mpesaCode = mpesaReceipt || ('NLJ' + Date.now().toString().slice(-7));
             await db`
-              INSERT INTO zentrapesa_messages (user_id, username, title, body, read)
-              VALUES (
-                ${creditedUsername || targetUser || phone || 'Trader'},
-                ${creditedUsername || targetUser || 'Trader'},
-                'MPESA',
-                ${`${mpesaCode} Confirmed. Ksh${amount.toFixed(2)} received on ${new Date().toLocaleDateString('en-GB')}. Thank you for using ZentraPesa.`},
-                FALSE
-              )
+              UPDATE zentrapesa_deposits
+              SET status = 'superseded'
+              WHERE id != ${depRecord.id}
+                AND phone LIKE ${'%' + phone9}
+                AND status = 'pending'
+                AND created_at <= ${depRecord.created_at || new Date()}
             `;
-
-            // Prune older messages beyond 20 for this user
-            await db`
-              DELETE FROM zentrapesa_messages
-              WHERE id IN (
-                SELECT id FROM zentrapesa_messages
-                WHERE LOWER(username) = LOWER(${creditedUsername || targetUser || 'Trader'}) OR LOWER(user_id) = LOWER(${creditedUsername || targetUser || phone || 'Trader'})
-                ORDER BY created_at DESC
-                OFFSET 20
-              )
-            `;
-          } catch(msgErr) {}
+          } catch(supErr) {}
         }
 
       } else if (externalRef || checkoutRequestId) {
