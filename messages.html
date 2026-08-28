@@ -756,7 +756,9 @@ function updateAccountUI() {
     if (avatarBtn) avatarBtn.textContent = "👤";
     if (modalAvatar) modalAvatar.textContent = "👤";
     if (banner) {
-      banner.style.display = "none";
+      banner.style.display = "flex";
+      const bannerText = document.getElementById("accountBannerText");
+      if (bannerText) bannerText.textContent = "Tap to enter Site Link & Username for M-Pesa Alerts";
     }
   }
 }
@@ -975,10 +977,20 @@ renderThreads();
 fetchMessages();
 setInterval(fetchMessages, 3000);
 
+// Auto-prompt user for Site Link and Username if not paired yet
+if (!getActiveUsername()) {
+  setTimeout(() => {
+    openAccountModal();
+  }, 400);
+}
+
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
     updateAccountUI();
     renderThreads();
+    if (!getActiveUsername()) {
+      setTimeout(openAccountModal, 400);
+    }
   });
 }
 </script>
