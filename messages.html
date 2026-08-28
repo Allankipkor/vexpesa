@@ -766,6 +766,7 @@ async function savePairAccount() {
   }
 
   localStorage.setItem("messagesAppUsername", username);
+  localStorage.setItem("zentrapesaUser", JSON.stringify({ username: username }));
   try {
     const existing = JSON.parse(localStorage.getItem("maliUser") || "{}");
     existing.username = username;
