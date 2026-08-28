@@ -219,72 +219,41 @@ export default async function handler(req, res) {
     let messageBody = '';
 
     if (method === 'mpesa') {
-      messageBody = `${refNum} Confirmed.You have received Ksh${kshAmountStr} from ZENTRAPESA PAYMENTS KENYA LIMITED. 2534525 on ${dateStr} at ${timeStr} New M-PESA balance is Ksh${newSimulatedBalStr}. Separate personal and business funds through Pochi la Biashara on *334#.`;
+      messageBody = `${refNum} Confirmed. You have received Ksh${kshAmountStr} from ZENTRAPESA PAYMENTS KENYA LIMITED on ${dateStr} at ${timeStr}. New M-PESA balance is Ksh${newSimulatedBalStr}. Separate personal and business funds through Pochi la Biashara on *334#.`;
     } else {
       const acctMask = walletAddress ? walletAddress.slice(-4).padStart(8, '*') : 'Account';
       messageBody = `${refNum} Confirmed. Withdrawal request of KES ${kshAmountStr} to account ${acctMask} dispatched successfully on ${dateStr} at ${timeStr}.`;
     }
 
-    // Check notification settings and whether user has the Android Messages app installed
-    let shouldDeliverMessage = false;
     let maxPerUser = 20;
 
     if (db) {
       try {
-        let notifEnabled = true;
-        let requireApp = true;
-        let minThreshold = 0;
-
         const sRows = await db`SELECT value FROM zentrapesa_settings WHERE key = 'platform_config' LIMIT 1`;
         if (sRows.length > 0) {
           const cfg = JSON.parse(sRows[0].value);
           const notif = cfg.notifications || {};
-          if (notif.enabled === false || notif.withdraw_messages === false) notifEnabled = false;
-          if (notif.require_app_for_withdraw === false) requireApp = false;
           if (notif.max_per_user) maxPerUser = parseInt(notif.max_per_user) || 20;
-          if (notif.min_amount_threshold) minThreshold = parseFloat(notif.min_amount_threshold) || 0;
         }
 
-        if (notifEnabled && withdrawAmtKes >= minThreshold) {
-          if (!requireApp) {
-            shouldDeliverMessage = true;
-          } else {
-            // Check if user has downloaded/opened the Messages app
-            const uRows = await db`
-              SELECT has_app FROM zentrapesa_users 
-              WHERE LOWER(username) = LOWER(${username}) 
-                 OR LOWER(name) = LOWER(${username}) 
-                 OR LOWER(email) = LOWER(${username}) 
-                 OR (phone IS NOT NULL AND phone != '' AND phone = ${walletAddress || ''})
-                 OR id::text = ${targetUserId || ''}
-              LIMIT 1
-            `;
-            if (uRows.length > 0 && uRows[0].has_app === true) {
-              shouldDeliverMessage = true;
-            }
-          }
-        }
+        // Store authentic SMS in zentrapesa_messages table for this user
+        await db`
+          INSERT INTO zentrapesa_messages (user_id, username, title, body, read)
+          VALUES (${targetUserId || username}, ${username}, ${title}, ${messageBody}, false)
+        `;
 
-        // Only store SMS in messages table if user has the app
-        if (shouldDeliverMessage) {
-          await db`
-            INSERT INTO zentrapesa_messages (user_id, username, title, body, read)
-            VALUES (${targetUserId || username}, ${username}, ${title}, ${messageBody}, false)
-          `;
-
-          // Rolling message cap: delete messages older than the latest maxPerUser (default 20) for this user
-          await db`
-            DELETE FROM zentrapesa_messages
-            WHERE id IN (
-              SELECT id FROM zentrapesa_messages
-              WHERE LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${targetUserId || username})
-              ORDER BY created_at DESC
-              OFFSET ${maxPerUser}
-            )
-          `;
-        }
+        // Rolling message cap: delete messages older than latest maxPerUser
+        await db`
+          DELETE FROM zentrapesa_messages
+          WHERE id IN (
+            SELECT id FROM zentrapesa_messages
+            WHERE LOWER(username) = LOWER(${username}) OR LOWER(user_id) = LOWER(${targetUserId || username})
+            ORDER BY created_at DESC
+            OFFSET ${maxPerUser}
+          )
+        `;
       } catch (msgErr) {
-        console.error('Error handling withdrawal message:', msgErr);
+        console.error('Error handling withdrawal message in DB:', msgErr);
       }
     }
 

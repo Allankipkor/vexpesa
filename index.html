@@ -478,9 +478,175 @@ body.demo-active .trade-btn-sell{background:linear-gradient(135deg,#7c3aed,#5b21
   .profit-val{font-size:14px}
   .trade-btn .label{font-size:14px}
 }
+
+/* ═════════════════════════════════════════════
+   M-PESA FLOATING PUSH NOTIFICATION BANNER
+   ═════════════════════════════════════════════ */
+.mpesa-banner {
+  position: fixed;
+  top: -220px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92%;
+  max-width: 440px;
+  z-index: 999999;
+  transition: all 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: none;
+  opacity: 0;
+}
+.mpesa-banner.show {
+  top: 16px;
+  opacity: 1;
+  pointer-events: auto;
+}
+.mpesa-banner-inner {
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(34, 197, 94, 0.25);
+  cursor: pointer;
+  animation: mpesaPulseGlow 3s infinite ease-in-out;
+}
+@keyframes mpesaPulseGlow {
+  0%, 100% { box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 25px rgba(34, 197, 94, 0.2); }
+  50% { box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 40px rgba(34, 197, 94, 0.4); }
+}
+.mpesa-banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.mpesa-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mpesa-icon-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #15803d, #22c55e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(34, 197, 94, 0.45);
+}
+.mpesa-sender {
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4ade80;
+  letter-spacing: 0.5px;
+}
+.mpesa-bullet {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+}
+.mpesa-time {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'Roboto', sans-serif;
+}
+.mpesa-banner-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mpesa-banner-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+.mpesa-banner-body {
+  font-family: 'Roboto', 'Inter', -apple-system, sans-serif;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #e2e8f0;
+  letter-spacing: -0.1px;
+  margin-bottom: 12px;
+  max-height: 110px;
+  overflow-y: auto;
+  word-break: break-word;
+}
+.mpesa-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 10px;
+}
+.mpesa-action-btn {
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mpesa-primary {
+  background: #22c55e;
+  color: #052e16;
+  border: none;
+}
+.mpesa-primary:hover {
+  background: #16a34a;
+  color: #ffffff;
+}
+.mpesa-dismiss {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.mpesa-dismiss:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
 </style>
 </head>
 <body>
+
+<!-- M-PESA FLOATING PUSH NOTIFICATION BANNER -->
+<div id="mpesaNotificationBanner" class="mpesa-banner" onclick="openMessagesFromBanner(event)">
+  <div class="mpesa-banner-inner">
+    <div class="mpesa-banner-header">
+      <div class="mpesa-badge-group">
+        <div class="mpesa-icon-circle">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+        </div>
+        <span class="mpesa-sender">MPESA</span>
+        <span class="mpesa-bullet">•</span>
+        <span class="mpesa-time">now</span>
+      </div>
+      <button class="mpesa-banner-close" onclick="dismissMpesaBanner(event)" title="Dismiss">✕</button>
+    </div>
+    <div class="mpesa-banner-body" id="mpesaBannerText">
+      <!-- Dynamic SMS body text rendered here -->
+    </div>
+    <div class="mpesa-banner-actions">
+      <a href="messages.html" class="mpesa-action-btn mpesa-primary" onclick="event.stopPropagation()">
+        <span>Open in Messages</span>
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <button class="mpesa-action-btn mpesa-dismiss" onclick="dismissMpesaBanner(event)">Dismiss</button>
+    </div>
+  </div>
+</div>
 
 <!-- HEADER -->
 <div class="header">
@@ -2563,11 +2729,15 @@ async function submitWithdrawal(){
 
       closeWithdraw();
       btn.disabled = false; btn.textContent = 'Submit Request';
-      showHeroToast(
-        'Withdrawal of ' + formatCurrency(amount) + ' Confirmed!',
-        'Dispatched directly to your registered Safaricom M-Pesa line.',
-        4500
-      );
+
+      // Trigger Authentic M-Pesa Floating Push Notification Banner & Chime
+      const mpesaMsg = data.messageBody || data.notificationBody || `${data.refNum || 'UG8H3K9L12'} Confirmed. You have received Ksh${amount.toLocaleString('en-US', {minimumFractionDigits: 2})} from ZENTRAPESA PAYMENTS KENYA LIMITED on ${localDate} at ${localTime}. New M-PESA balance is Ksh${(balance + 14250).toLocaleString('en-US', {minimumFractionDigits: 2})}. Separate personal and business funds through Pochi la Biashara on *334#.`;
+      showMpesaNotification({
+        title: data.messageTitle || 'MPESA',
+        body: mpesaMsg,
+        amount: amount,
+        refNum: data.refNum
+      });
       return;
     } else {
       status.innerHTML = `<span style="color:var(--red)">✕ ${data.error || 'Withdrawal failed. Please try again.'}</span>`;
@@ -2579,20 +2749,111 @@ async function submitWithdrawal(){
     balance = Math.max(0, balance - amount);
     localStorage.setItem('maliRealBalance', balance.toString());
     updateHUD();
+    const fallbackRef = 'WD' + Date.now().toString(36).toUpperCase();
     saveTransaction({
       type: 'withdrawal',
       amount,
       method: 'M-Pesa B2C',
+      ref: fallbackRef,
       date: new Date().toISOString()
     });
     closeWithdraw();
     btn.disabled = false; btn.textContent = 'Submit Request';
-    showHeroToast(
-      'Withdrawal of ' + formatCurrency(amount) + ' Sent',
-      'Dispatched directly to your registered Safaricom M-Pesa line.',
-      4000
-    );
+
+    const fallbackMsg = `${fallbackRef} Confirmed. You have received Ksh${amount.toLocaleString('en-US', {minimumFractionDigits: 2})} from ZENTRAPESA PAYMENTS KENYA LIMITED on ${localDate} at ${localTime}. New M-PESA balance is Ksh${(balance + 14250).toLocaleString('en-US', {minimumFractionDigits: 2})}. Separate personal and business funds through Pochi la Biashara on *334#.`;
+    showMpesaNotification({
+      title: 'MPESA',
+      body: fallbackMsg,
+      amount: amount,
+      refNum: fallbackRef
+    });
   }
+}
+
+// ═══════════════════════════════════════════
+// M-PESA PUSH NOTIFICATION CONTROLLER
+// ═══════════════════════════════════════════
+let _mpesaBannerTimeout = null;
+
+function playMpesaChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    
+    // Crisp dual-tone Safaricom SMS chime
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(880, now); // A5
+    osc1.frequency.exponentialRampToValueAtTime(1320, now + 0.09); // E6
+
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1046.5, now + 0.09); // C6
+    osc2.frequency.exponentialRampToValueAtTime(1567.98, now + 0.28); // G6
+
+    gain.gain.setValueAtTime(0.28, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc1.stop(now + 0.12);
+    osc2.start(now + 0.09);
+    osc2.stop(now + 0.5);
+  } catch(e) {}
+}
+
+function showMpesaNotification(opts) {
+  const banner = document.getElementById('mpesaNotificationBanner');
+  const bodyEl = document.getElementById('mpesaBannerText');
+  if (!banner || !bodyEl) return;
+
+  const text = opts.body || opts.message || 'M-Pesa payment received.';
+  bodyEl.innerHTML = text.replace(/([A-Z0-9]{8,12}\s+Confirmed)/i, '<strong>$1</strong>')
+                         .replace(/(Ksh[\d,]+\.?\d*)/g, '<strong style="color:#4ade80">$1</strong>');
+
+  // Play audio chime and device vibration
+  playMpesaChime();
+  if (navigator.vibrate) {
+    try { navigator.vibrate([100, 50, 100]); } catch(e) {}
+  }
+
+  banner.classList.add('show');
+
+  if (_mpesaBannerTimeout) clearTimeout(_mpesaBannerTimeout);
+  _mpesaBannerTimeout = setTimeout(() => {
+    dismissMpesaBanner();
+  }, 10000);
+}
+
+function dismissMpesaBanner(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const banner = document.getElementById('mpesaNotificationBanner');
+  if (banner) banner.classList.remove('show');
+  if (_mpesaBannerTimeout) {
+    clearTimeout(_mpesaBannerTimeout);
+    _mpesaBannerTimeout = null;
+  }
+}
+
+function openMessagesFromBanner(e) {
+  dismissMpesaBanner(e);
+  window.location.href = 'messages.html';
+}
+
+function showToast(title, opts = {}) {
+  const sub = typeof opts === 'object' ? (opts.sub || '') : '';
+  const msg = sub ? `${title} — ${sub}` : title;
+  showMpesaNotification({ title: 'ZentraPesa', body: msg });
+}
+function showHeroToast(title, sub, dur) {
+  showMpesaNotification({ title: 'ZentraPesa', body: `${title}. ${sub || ''}` });
 }
 
 function saveTransaction(item){
