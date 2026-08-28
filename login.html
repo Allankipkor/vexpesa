@@ -101,7 +101,7 @@ async function handleLogin(e){
     const users = JSON.parse(localStorage.getItem('maliUsersList') || '[]');
     let found = users.find(u => (u.email === email || u.phone === email || u.username === email) && u.password === password);
     
-    if (!found && (email.toLowerCase() === 'admin' || email.toLowerCase() === 'admin@zentrapesa.com') && password === 'Aa@123') {
+    if (!found && (email.toLowerCase() === 'admin' || email.toLowerCase() === 'admin@zentrapesa.com') && password === 'Aa@22') {
       found = { id: 1, username: 'admin', email: 'admin@zentrapesa.com', role: 'admin', balance: 500000, demo_balance: 100000 };
     }
 

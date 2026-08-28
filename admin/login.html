@@ -35,7 +35,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0f17;background-im
             </div>
             <div>
                 <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Security Password</label>
-                <input type="password" id="adminPass" required placeholder="••••••••" value="Aa@123" autocomplete="current-password"
+                <input type="password" id="adminPass" required placeholder="••••••••" value="Aa@22" autocomplete="current-password"
                     class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
             </div>
             <button type="submit" id="adminLoginBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl text-sm transition-colors mt-2 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25">
@@ -62,7 +62,7 @@ async function handleAdminLogin(e){
 
   // 1. Direct Master Verification
   const isMasterUser = (u.toLowerCase() === 'admin@zentrapesa.com' || u.toLowerCase() === 'admin');
-  const isMasterPass = (p === 'Aa@123');
+  const isMasterPass = (p === 'Aa@22');
 
   if (isMasterUser && isMasterPass) {
     btn.textContent = 'Authenticating...';
@@ -111,7 +111,7 @@ async function handleAdminLogin(e){
         return;
       }
     } else {
-      alertEl.textContent = data.error || 'Invalid credentials. Default admin password is: Aa@123';
+      alertEl.textContent = data.error || 'Invalid credentials. Default admin password is: Aa@22';
       alertEl.classList.remove('hidden');
       btn.textContent = 'Authenticate Session';
       btn.disabled = false;
@@ -119,7 +119,7 @@ async function handleAdminLogin(e){
     }
   } catch (err) {
     // If backend is unreachable and credentials didn't match master
-    alertEl.textContent = 'Invalid credentials. Please enter the default password: Aa@123';
+    alertEl.textContent = 'Invalid credentials. Please enter the default password: Aa@22';
     alertEl.classList.remove('hidden');
     btn.textContent = 'Authenticate Session';
     btn.disabled = false;

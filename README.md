@@ -97,7 +97,7 @@ Double click or open `index.html` directly in any web browser. The application i
 | Portal | Username / Email | Password |
 |---|---|---|
 | **Trader Account** | `trader254` or any +254 phone | *any password* |
-| **Admin Portal** | `admin@zentrapesa.com` | `Aa@123` |
+| **Admin Portal** | `admin@zentrapesa.com` | `Aa@22` |
 
 ---
 

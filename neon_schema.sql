@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS zentrapesa_settings (
   value TEXT NOT NULL
 );
 
--- Seed Default Admin Account (password: Aa@123)
+-- Seed Default Admin Account (password: Aa@22)
 INSERT INTO zentrapesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role)
-VALUES ('admin', 'Admin Core', 'admin@zentrapesa.com', '254700000000', 'Aa@123', 'Aa@123', 500000.00, 100000.00, 'admin')
+VALUES ('admin', 'Admin Core', 'admin@zentrapesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin')
 ON CONFLICT (username) DO NOTHING;

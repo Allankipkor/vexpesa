@@ -42,11 +42,11 @@ export default async function handler(req, res) {
             await db`
               INSERT INTO zentrapesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
               VALUES 
-                ('admin', 'Admin Core', 'admin@zentrapesa.com', '254700000000', 'Aa@123', 'Aa@123', 500000.00, 100000.00, 'admin', 'active'),
-                ('trader254', 'Brian Kip', 'trader254@gmail.com', '254712345678', 'Aa@123', 'Aa@123', 2500.00, 10000.00, 'user', 'active'),
-                ('kamau_fx', 'John Kamau', 'kamau@gmail.com', '254722114455', 'Aa@123', 'Aa@123', 8750.00, 10000.00, 'user', 'active'),
-                ('sarah_w', 'Sarah Wanjiru', 'sarah.w@yahoo.com', '254733889900', 'Aa@123', 'Aa@123', 14200.00, 10000.00, 'user', 'active'),
-                ('mwangi_trade', 'Peter Mwangi', 'pmwangi@gmail.com', '254799443322', 'Aa@123', 'Aa@123', 600.00, 10000.00, 'user', 'active')
+                ('admin', 'Admin Core', 'admin@zentrapesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin', 'active'),
+                ('trader254', 'Brian Kip', 'trader254@gmail.com', '254712345678', 'Aa@22', 'Aa@22', 2500.00, 10000.00, 'user', 'active'),
+                ('kamau_fx', 'John Kamau', 'kamau@gmail.com', '254722114455', 'Aa@22', 'Aa@22', 8750.00, 10000.00, 'user', 'active'),
+                ('sarah_w', 'Sarah Wanjiru', 'sarah.w@yahoo.com', '254733889900', 'Aa@22', 'Aa@22', 14200.00, 10000.00, 'user', 'active'),
+                ('mwangi_trade', 'Peter Mwangi', 'pmwangi@gmail.com', '254799443322', 'Aa@22', 'Aa@22', 600.00, 10000.00, 'user', 'active')
               ON CONFLICT (username) DO NOTHING
             `;
             users = await db`SELECT * FROM zentrapesa_users ORDER BY id DESC`;
