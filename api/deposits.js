@@ -71,7 +71,69 @@ export default async function handler(req, res) {
             }
           }
 
-          const isCompleted = d.status === 'completed' || d.status === 'success' || d.status === 'successful';
+          let isCompleted = d.status === 'completed' || d.status === 'success' || d.status === 'successful';
+
+          // ACTIVE LIVE RECONCILIATION: If still pending, query GravityPay STK Status API in real-time
+          if (!isCompleted && d.status === 'pending') {
+            try {
+              let gpKey = process.env.GRAVITYPAY_API_KEY || '';
+              let gpSec = process.env.GRAVITYPAY_SECRET_KEY || '';
+
+              const cfgRows = await db`SELECT value FROM zentrapesa_settings WHERE key = 'platform_config' LIMIT 1`;
+              if (cfgRows.length > 0) {
+                const saved = JSON.parse(cfgRows[0].value);
+                if (!gpKey) gpKey = (saved.gravitypayApiKey || saved.payments?.gravitypay?.api_key || '').trim();
+                if (!gpSec) gpSec = (saved.gravitypaySecretKey || saved.payments?.gravitypay?.secret_key || '').trim();
+              }
+
+              if (gpKey || gpSec) {
+                const headers = { 'Content-Type': 'application/json' };
+                if (gpSec) headers['Authorization'] = `Bearer ${gpSec}`;
+                if (gpKey) headers['x-api-key'] = gpKey;
+                if (!gpSec && gpKey) headers['Authorization'] = `Bearer ${gpKey}`;
+                if (!gpKey && gpSec) headers['x-api-key'] = gpSec;
+
+                let gpStatusData = null;
+                if (d.checkout_request_id && d.checkout_request_id.length > 3) {
+                  try {
+                    const r = await fetch(`https://api.gravitypayapp.com/api/v1/stk/status/${encodeURIComponent(d.checkout_request_id)}`, { headers });
+                    if (r.ok) gpStatusData = await r.json();
+                  } catch(e) {}
+                }
+
+                if (!gpStatusData && d.deposit_ref) {
+                  try {
+                    const r = await fetch(`https://api.gravitypayapp.com/api/v1/transactions/${encodeURIComponent(d.deposit_ref)}`, { headers });
+                    if (r.ok) gpStatusData = await r.json();
+                  } catch(e) {}
+                }
+
+                if (gpStatusData) {
+                  const dataObj = gpStatusData.data || gpStatusData.response || gpStatusData;
+                  const gStatus = (dataObj.status || gpStatusData.status || '').toString().toLowerCase();
+                  const gReceipt = (dataObj.mpesaReceipt || dataObj.receipt || dataObj.mpesa_reference || dataObj.MpesaReceiptNumber || '').toString().toUpperCase().trim();
+
+                  if (gStatus === 'completed' || gStatus === 'success' || gStatus === 'successful' || gStatus === 'paid' || Boolean(gReceipt)) {
+                    const finalMethod = gReceipt.length >= 4 ? `M-Pesa (${gReceipt})` : 'M-Pesa (GravityPay)';
+                    await db`
+                      UPDATE zentrapesa_deposits 
+                      SET status = 'completed', method = ${finalMethod} 
+                      WHERE id = ${d.id}
+                    `;
+                    d.status = 'completed';
+                    d.method = finalMethod;
+                    isCompleted = true;
+                  } else if (gStatus === 'failed' || gStatus === 'cancelled' || gStatus === 'declined') {
+                    await db`UPDATE zentrapesa_deposits SET status = 'failed' WHERE id = ${d.id}`;
+                    d.status = 'failed';
+                  }
+                }
+              }
+            } catch(reconcileErr) {
+              console.error('GravityPay active status query error:', reconcileErr);
+            }
+          }
+
           let currentBal = null;
 
           // If completed and not marked credited yet, credit user atomically right now
