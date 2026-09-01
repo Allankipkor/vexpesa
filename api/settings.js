@@ -35,7 +35,7 @@ const defaultSettings = {
   payments: {
     usd_rate: 129.00,
     deposit_currency: "kes",
-    gateway: "gravitypay", // "gravitypay" | "payhero" | "auto"
+    gateway: "gravitypay", // "gravitypay" | "payhero"
     payhero: {
       api_username: "",
       api_password: "",

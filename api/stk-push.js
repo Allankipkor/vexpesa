@@ -106,11 +106,9 @@ export default async function handler(req, res) {
     }
   }
 
-  // Default gateway fallback if still undetermined
-  if (!gateway) {
-    if (gpApiKey || gpSecretKey) gateway = 'gravitypay';
-    else if (apiUsername && apiPassword && channelId) gateway = 'payhero';
-    else gateway = 'gravitypay';
+  // Default gateway strictly to GravityPay (primary)
+  if (!gateway || gateway === 'auto') {
+    gateway = 'gravitypay';
   }
 
   // Reference is strictly maximum 12 characters to support GravityPay & Daraja
@@ -209,12 +207,12 @@ export default async function handler(req, res) {
   const hasPayhero = Boolean(apiUsername && apiPassword && channelId);
   const hasGravity = Boolean(gpApiKey || gpSecretKey);
 
-  // 1. GRAVITYPAY PRIMARY
+  // 1. GRAVITYPAY (PRIMARY GATEWAY)
   if (gateway === 'gravitypay') {
     if (!hasGravity) {
       return res.status(400).json({
         success: false,
-        error: 'GravityPay is selected, but API Key / Secret Key is not configured yet. Please configure GravityPay API Key & Secret Key in Admin Settings -> Payments.'
+        error: 'GravityPay is selected as primary gateway, but API Key / Secret Key is not configured yet. Please configure GravityPay API Key & Secret Key in Admin Settings -> Payments.'
       });
     }
 
@@ -250,8 +248,15 @@ export default async function handler(req, res) {
     }
   }
 
-  // 2. PAYHERO PRIMARY
-  if ((gateway === 'payhero' || !gateway) && hasPayhero) {
+  // 2. PAYHERO (STRICT - NO AUTOSWITCHING / FALLBACK)
+  if (gateway === 'payhero') {
+    if (!hasPayhero) {
+      return res.status(400).json({
+        success: false,
+        error: 'PayHero is selected, but credentials (API Username, Password, Channel ID) are not configured. Please configure in Admin Settings -> Payments.'
+      });
+    }
+
     try {
       const result = await triggerPayhero();
       if (result.ok) {
@@ -273,120 +278,12 @@ export default async function handler(req, res) {
           response: result.data
         });
       } else {
-        // If failover is enabled to GravityPay
-        if (hasGravity) {
-          try {
-            const backupRes = await triggerGravityPay();
-            if (backupRes.ok) {
-              if (db) {
-                try {
-                  await db`
-                    INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
-                    VALUES (${reference}, ${backupRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
-                    ON CONFLICT (deposit_ref) DO UPDATE 
-                    SET checkout_request_id = ${backupRes.checkoutRequestId || ''}
-                  `;
-                } catch(e) {}
-              }
-              return res.status(200).json({
-                success: true,
-                live: true,
-                gateway: 'gravitypay_backup',
-                reference: reference,
-                checkoutRequestId: backupRes.checkoutRequestId,
-                message: `M-Pesa STK Push sent to ${formattedPhone} via Backup Gateway! Enter your M-Pesa PIN on your handset.`,
-                response: backupRes.data
-              });
-            }
-          } catch(bgErr) {}
-        }
-
         const msg = result.data?.message || result.data?.error || 'PayHero M-Pesa transaction could not be completed';
         return res.status(400).json({ success: false, error: msg, details: result.data });
       }
     } catch (err) {
-      if (hasGravity) {
-        try {
-          const backupRes = await triggerGravityPay();
-          if (backupRes.ok) {
-            if (db) {
-              try {
-                await db`
-                  INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
-                  VALUES (${reference}, ${backupRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay Backup)', 'pending', FALSE)
-                  ON CONFLICT (deposit_ref) DO UPDATE 
-                  SET checkout_request_id = ${backupRes.checkoutRequestId || ''}
-                `;
-              } catch(e) {}
-            }
-            return res.status(200).json({
-              success: true,
-              live: true,
-              gateway: 'gravitypay_backup',
-              reference: reference,
-              checkoutRequestId: backupRes.checkoutRequestId,
-              message: `M-Pesa STK Push sent to ${formattedPhone} via Backup Gateway! Enter your M-Pesa PIN on your phone.`,
-              response: backupRes.data
-            });
-          }
-        } catch(bgErr) {}
-      }
-      return res.status(500).json({ success: false, error: 'M-Pesa gateway connection timeout.' });
-    }
-  }
-
-  // 3. AUTO FAILOVER MODE (try PayHero, fallback to GravityPay or vice-versa)
-  if (gateway === 'auto') {
-    if (hasPayhero) {
-      try {
-        const phRes = await triggerPayhero();
-        if (phRes.ok) {
-          if (db) {
-            try {
-              await db`
-                INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
-                VALUES (${reference}, '', ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (PayHero)', 'pending', FALSE)
-                ON CONFLICT (deposit_ref) DO NOTHING
-              `;
-            } catch(e) {}
-          }
-          return res.status(200).json({
-            success: true,
-            live: true,
-            gateway: 'payhero',
-            reference: reference,
-            message: `STK Push sent to ${formattedPhone}! Enter your M-Pesa PIN on your phone.`,
-            response: phRes.data
-          });
-        }
-      } catch (e) {}
-    }
-
-    if (hasGravity) {
-      try {
-        const gpRes = await triggerGravityPay();
-        if (gpRes.ok) {
-          if (db) {
-            try {
-              await db`
-                INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
-                VALUES (${reference}, ${gpRes.checkoutRequestId || ''}, ${resolvedUsername}, ${amount}, ${formattedPhone}, 'M-Pesa (GravityPay)', 'pending', FALSE)
-                ON CONFLICT (deposit_ref) DO UPDATE 
-                SET checkout_request_id = ${gpRes.checkoutRequestId || ''}
-              `;
-            } catch(e) {}
-          }
-          return res.status(200).json({
-            success: true,
-            live: true,
-            gateway: 'gravitypay',
-            reference: reference,
-            checkoutRequestId: gpRes.checkoutRequestId,
-            message: `STK Push sent to ${formattedPhone}! Enter your M-Pesa PIN on your handset.`,
-            response: gpRes.data
-          });
-        }
-      } catch (e) {}
+      console.error('PayHero request error:', err);
+      return res.status(500).json({ success: false, error: `PayHero gateway connection error: ${err.message}` });
     }
   }
 
