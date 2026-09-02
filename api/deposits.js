@@ -291,6 +291,16 @@ export default async function handler(req, res) {
 
     if (db) {
       try {
+        // Auto-archive foreign platform references (e.g. ZP..., ZOOM...) from old catch-all webhook entries
+        try {
+          await db`
+            UPDATE vexpesa_deposits
+            SET status = 'archived_foreign'
+            WHERE (deposit_ref LIKE 'ZP%' OR deposit_ref LIKE 'ZOOM%' OR deposit_ref LIKE 'ZEN%')
+              AND (username IS NULL OR username = 'Trader' OR username NOT IN (SELECT username FROM vexpesa_users));
+          `;
+        } catch(archErr) {}
+
         // Auto-reconcile duplicate M-Pesa receipts on fetch
         try {
           await db`
@@ -319,7 +329,17 @@ export default async function handler(req, res) {
           deposits = await db`
             SELECT id, deposit_ref, checkout_request_id, username, amount_kes, amount_usd, currency, method, phone, status, credited, created_at
             FROM vexpesa_deposits
-            WHERE status = 'completed' OR status = 'success' OR status = 'successful'
+            WHERE (status = 'completed' OR status = 'success' OR status = 'successful')
+              AND (
+                deposit_ref LIKE 'VP%' 
+                OR deposit_ref LIKE 'VEXP%' 
+                OR deposit_ref LIKE 'DEP%' 
+                OR deposit_ref LIKE 'ADM%'
+                OR (username IS NOT NULL AND username != 'Trader' AND username IN (SELECT username FROM vexpesa_users))
+              )
+              AND deposit_ref NOT LIKE 'ZP%'
+              AND deposit_ref NOT LIKE 'ZEN%'
+              AND deposit_ref NOT LIKE 'ZOOM%'
             ORDER BY created_at DESC
             LIMIT 100
           `;
@@ -327,6 +347,16 @@ export default async function handler(req, res) {
           deposits = await db`
             SELECT id, deposit_ref, checkout_request_id, username, amount_kes, amount_usd, currency, method, phone, status, credited, created_at
             FROM vexpesa_deposits
+            WHERE (
+              deposit_ref LIKE 'VP%' 
+              OR deposit_ref LIKE 'VEXP%' 
+              OR deposit_ref LIKE 'DEP%' 
+              OR deposit_ref LIKE 'ADM%'
+              OR (username IS NOT NULL AND username != 'Trader' AND username IN (SELECT username FROM vexpesa_users))
+            )
+            AND deposit_ref NOT LIKE 'ZP%'
+            AND deposit_ref NOT LIKE 'ZEN%'
+            AND deposit_ref NOT LIKE 'ZOOM%'
             ORDER BY created_at DESC
             LIMIT 100
           `;
@@ -338,7 +368,17 @@ export default async function handler(req, res) {
           const sumRes = await db`
             SELECT COALESCE(SUM(amount_kes), 0) AS total_kes, COUNT(*) AS cnt 
             FROM vexpesa_deposits 
-            WHERE status = 'completed' OR status = 'success' OR status = 'successful'
+            WHERE (status = 'completed' OR status = 'success' OR status = 'successful')
+              AND (
+                deposit_ref LIKE 'VP%' 
+                OR deposit_ref LIKE 'VEXP%' 
+                OR deposit_ref LIKE 'DEP%' 
+                OR deposit_ref LIKE 'ADM%'
+                OR (username IS NOT NULL AND username != 'Trader' AND username IN (SELECT username FROM vexpesa_users))
+              )
+              AND deposit_ref NOT LIKE 'ZP%'
+              AND deposit_ref NOT LIKE 'ZEN%'
+              AND deposit_ref NOT LIKE 'ZOOM%'
           `;
           if (sumRes && sumRes.length > 0) {
             totalKes = parseFloat(sumRes[0].total_kes || 0);

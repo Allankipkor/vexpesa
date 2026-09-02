@@ -130,6 +130,15 @@ export async function initDb() {
     try { await db`CREATE INDEX IF NOT EXISTS vexpesa_deposits_checkout_req_idx ON vexpesa_deposits (checkout_request_id)`; } catch(e) {}
     try { await db`CREATE INDEX IF NOT EXISTS vexpesa_deposits_method_idx ON vexpesa_deposits (method)`; } catch(e) {}
     try { await db`CREATE INDEX IF NOT EXISTS vexpesa_deposits_phone_idx ON vexpesa_deposits (phone)`; } catch(e) {}
+    try {
+      // Auto-archive legacy/foreign platform deposits (ZP%, ZOOM%, ZEN%) not belonging to registered VexPesa accounts
+      await db`
+        UPDATE vexpesa_deposits
+        SET status = 'archived_foreign'
+        WHERE (deposit_ref LIKE 'ZP%' OR deposit_ref LIKE 'ZOOM%' OR deposit_ref LIKE 'ZEN%')
+          AND (username IS NULL OR username = 'Trader' OR username NOT IN (SELECT username FROM vexpesa_users))
+      `;
+    } catch(cleanErr) {}
   } catch (e) { console.error('Error creating vexpesa_deposits table:', e); }
 
   // 4. vexpesa_withdrawals

@@ -161,16 +161,6 @@ function filterType(type){
   renderTransactions();
 }
 
-// Seed default history if empty
-if (!localStorage.getItem('maliTransactions')) {
-  const initial = [
-    { type: 'deposit', amount: 2500, method: 'M-PESA', date: new Date(Date.now() - 3600000 * 2).toISOString() },
-    { type: 'trade', tradeType: 'buy', stake: 100, payout: 245, won: true, date: new Date(Date.now() - 3600000).toISOString() },
-    { type: 'trade', tradeType: 'sell', stake: 200, payout: 0, won: false, date: new Date(Date.now() - 1800000).toISOString() }
-  ];
-  localStorage.setItem('maliTransactions', JSON.stringify(initial));
-}
-
 renderTransactions();
 </script>
 </body>

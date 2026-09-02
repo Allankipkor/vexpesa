@@ -1526,23 +1526,6 @@ async function renderDepositsList() {
   } catch (err) {
     console.error('Error loading deposits list:', err);
   }
-
-  // Fallback to locally recorded transactions if DB not reachable
-  const localTx = JSON.parse(localStorage.getItem('maliTransactions') || '[]');
-  const localDeposits = localTx.filter(t => t.type === 'deposit');
-  if (localDeposits.length > 0) {
-    allAdminDeposits = localDeposits.map((d, i) => ({
-      id: i + 1,
-      deposit_ref: d.ref || `DEP-${1000 + i}`,
-      username: JSON.parse(localStorage.getItem('maliUser') || '{}').username || 'Trader',
-      phone: JSON.parse(localStorage.getItem('maliUser') || '{}').phone || '254712345678',
-      amount_kes: d.amount,
-      method: d.method || 'M-Pesa STK',
-      status: 'completed',
-      created_at: d.date || new Date().toISOString()
-    }));
-    displayFilteredDeposits();
-  }
 }
 
 async function reconcileDepositsLedger() {
