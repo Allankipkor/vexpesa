@@ -1692,8 +1692,12 @@ async function syncPlatformSettings() {
     const localCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
 
     // 1. Graph / Wave parameters
+    const serverSpeed = s.graph?.speed ?? s.speed;
+    if (serverSpeed !== undefined) {
+      CFG.TICK = parseFloat(serverSpeed) || 120;
+    }
     if (s.graph) {
-      CFG.TICK = parseFloat(s.graph.speed ?? localCfg.speed ?? 120);
+      if (s.graph.speed !== undefined) CFG.TICK = parseFloat(s.graph.speed) || 120;
       CFG.Y_MAX = parseFloat(s.graph.y_max || 3.0);
       CFG.SPIKE_FREQ = parseFloat(s.graph.spike_frequency ?? localCfg.spikeFreq ?? 0.12);
       CFG.CRASH_FREQ = parseFloat(s.graph.crash_frequency ?? localCfg.crashFreq ?? 0.02);
@@ -1703,11 +1707,32 @@ async function syncPlatformSettings() {
       eng.base = CFG.BASE_LEVEL * 0.5;
       high24 = CFG.Y_MAX * 0.8; low24 = -CFG.Y_MAX * 0.8;
     }
-    if (s.speed !== undefined) CFG.TICK = parseFloat(s.speed);
     if (s.spikeFreq !== undefined) CFG.SPIKE_FREQ = parseFloat(s.spikeFreq);
     if (s.spikeMax !== undefined) CFG.SPIKE_MAX = parseFloat(s.spikeMax);
     if (s.crashFreq !== undefined) CFG.CRASH_FREQ = parseFloat(s.crashFreq);
     if (s.crashDepth !== undefined) CFG.CRASH_DEPTH = parseFloat(s.crashDepth);
+
+    // Cache latest server config to local storage
+    try {
+      localStorage.setItem('maliPlatformConfig', JSON.stringify({
+        ...localCfg,
+        speed: CFG.TICK,
+        spikeFreq: CFG.SPIKE_FREQ,
+        spikeMax: CFG.SPIKE_MAX,
+        crashFreq: CFG.CRASH_FREQ,
+        crashDepth: CFG.CRASH_DEPTH,
+        maxMult: s.trade?.max_multiplier ?? s.maxMult ?? localCfg.maxMult ?? 5.0,
+        duration: s.trade?.duration ?? s.duration ?? localCfg.duration ?? 3,
+        prestart: s.trade?.prestart_wait ?? s.prestart ?? localCfg.prestart ?? 1,
+        autosell: s.trade?.autosell_multiplier ?? s.autosell ?? localCfg.autosell ?? 2.5,
+        minStake: s.trade?.min_stake ?? s.minStake ?? localCfg.minStake ?? 10,
+        maxStake: s.trade?.max_stake ?? s.maxStake ?? localCfg.maxStake ?? 50000,
+        minDep: s.trade?.min_deposit ?? s.minDep ?? localCfg.minDep ?? 50,
+        minWithdraw: s.withdraw?.min_withdrawal ?? s.minWithdraw ?? localCfg.minWithdraw ?? 100,
+        usdRate: s.payments?.usd_rate ?? s.usdRate ?? localCfg.usdRate ?? 129,
+        currency: s.payments?.deposit_currency ?? s.currency ?? localCfg.currency ?? 'kes'
+      }));
+    } catch(e) {}
 
     // 2. Trade parameters
     if (s.trade) {

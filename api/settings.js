@@ -111,6 +111,16 @@ export default async function handler(req, res) {
         const usdRate = input.usdRate !== undefined ? parseFloat(input.usdRate) : (input.payments?.usd_rate ?? currentSettings.payments?.usd_rate ?? 129.00);
         const currency = (input.currency || input.payments?.deposit_currency || currentSettings.payments?.deposit_currency || 'kes').toLowerCase();
 
+        const phUser = input.payheroUsername ?? input.payments?.payhero?.api_username ?? currentSettings.payheroUsername ?? currentSettings.payments?.payhero?.api_username ?? '';
+        const phPass = input.payheroPassword ?? input.payments?.payhero?.api_password ?? currentSettings.payheroPassword ?? currentSettings.payments?.payhero?.api_password ?? '';
+        const phChan = input.payheroChannelId ?? input.payments?.payhero?.channel_id ?? currentSettings.payheroChannelId ?? currentSettings.payments?.payhero?.channel_id ?? '';
+        const phCb = input.payheroCallbackUrl ?? input.payments?.payhero?.callback_url ?? currentSettings.payheroCallbackUrl ?? currentSettings.payments?.payhero?.callback_url ?? '';
+
+        const gpKey = input.gravitypayApiKey ?? input.payments?.gravitypay?.api_key ?? currentSettings.gravitypayApiKey ?? currentSettings.payments?.gravitypay?.api_key ?? '';
+        const gpSecret = input.gravitypaySecretKey ?? input.payments?.gravitypay?.secret_key ?? currentSettings.gravitypaySecretKey ?? currentSettings.payments?.gravitypay?.secret_key ?? '';
+        const gpWebhook = input.gravitypayWebhookSecret ?? input.payments?.gravitypay?.webhook_secret ?? currentSettings.gravitypayWebhookSecret ?? currentSettings.payments?.gravitypay?.webhook_secret ?? '';
+        const gpCb = input.gravitypayCallbackUrl ?? input.payments?.gravitypay?.callback_url ?? currentSettings.gravitypayCallbackUrl ?? currentSettings.payments?.gravitypay?.callback_url ?? 'https://vexpesa.com/api/webhooks/gravitypay';
+
         const updated = {
           ...currentSettings,
           ...input,
@@ -130,6 +140,14 @@ export default async function handler(req, res) {
           usdRate,
           currency,
           gateway: activeGateway,
+          payheroUsername: phUser,
+          payheroPassword: phPass,
+          payheroChannelId: phChan,
+          payheroCallbackUrl: phCb,
+          gravitypayApiKey: gpKey,
+          gravitypaySecretKey: gpSecret,
+          gravitypayWebhookSecret: gpWebhook,
+          gravitypayCallbackUrl: gpCb,
           force_outcome: forceOutcome,
           target_win_rate: targetWinRate,
           force_win_rate: forceWinRate,
@@ -195,6 +213,11 @@ export default async function handler(req, res) {
               ...currentSettings.controls?.user_outcomes,
               ...(input.user_outcomes || input.controls?.user_outcomes || {})
             }
+          },
+          notifications: {
+            ...defaultSettings.notifications,
+            ...(currentSettings.notifications || {}),
+            ...(input.notifications || {})
           }
         };
 
@@ -252,15 +275,35 @@ export default async function handler(req, res) {
   const depositCurrency = saved.currency ?? saved.payments?.deposit_currency ?? defaultSettings.payments.deposit_currency;
 
   // A. ADMIN AUTHENTICATED RESPONSE (Includes Full Config & Gateway Status)
+  if (auth.isValid || isAdminRequest) {
+    const phUser = process.env.PAYHERO_API_USERNAME || saved.payheroUsername || saved.payments?.payhero?.api_username || '';
+    const phPass = process.env.PAYHERO_API_PASSWORD || saved.payheroPassword || saved.payments?.payhero?.api_password || '';
+    const phChan = process.env.PAYHERO_CHANNEL_ID || saved.payheroChannelId || saved.payments?.payhero?.channel_id || '';
+    const phCb = process.env.PAYHERO_CALLBACK_URL || saved.payheroCallbackUrl || saved.payments?.payhero?.callback_url || '';
+
+    const gpKey = process.env.GRAVITYPAY_API_KEY || saved.gravitypayApiKey || saved.payments?.gravitypay?.api_key || '';
+    const gpSec = process.env.GRAVITYPAY_SECRET_KEY || saved.gravitypaySecretKey || saved.payments?.gravitypay?.secret_key || '';
+    const gpWh = process.env.GRAVITYPAY_WEBHOOK_SECRET || saved.gravitypayWebhookSecret || saved.payments?.gravitypay?.webhook_secret || '';
+    const gpCb = process.env.GRAVITYPAY_CALLBACK_URL || saved.gravitypayCallbackUrl || saved.payments?.gravitypay?.callback_url || 'https://vexpesa.com/api/webhooks/gravitypay';
+
     return res.status(200).json({
       ...defaultSettings,
       ...saved,
       gateway: activeGw,
+      payheroUsername: phUser,
+      payheroPassword: phPass,
+      payheroChannelId: phChan,
+      payheroCallbackUrl: phCb,
+      gravitypayApiKey: gpKey,
+      gravitypaySecretKey: gpSec,
+      gravitypayWebhookSecret: gpWh,
+      gravitypayCallbackUrl: gpCb,
       envConfigured: {
         gravitypay: Boolean(process.env.GRAVITYPAY_API_KEY || process.env.GRAVITYPAY_SECRET_KEY),
         payhero: Boolean(process.env.PAYHERO_API_USERNAME && process.env.PAYHERO_API_PASSWORD),
         database: Boolean(process.env.DATABASE_URL)
       },
+      speed: saved.speed ?? saved.graph?.speed ?? defaultSettings.graph.speed,
       graph: {
         ...defaultSettings.graph,
         ...(saved.graph || {}),
@@ -289,7 +332,19 @@ export default async function handler(req, res) {
       payments: {
         gateway: activeGw,
         deposit_currency: depositCurrency,
-        usd_rate: usdRate
+        usd_rate: usdRate,
+        payhero: {
+          api_username: phUser,
+          api_password: phPass,
+          channel_id: phChan,
+          callback_url: phCb
+        },
+        gravitypay: {
+          api_key: gpKey,
+          secret_key: gpSec,
+          webhook_secret: gpWh,
+          callback_url: gpCb
+        }
       },
       controls: {
         ...defaultSettings.controls,
@@ -304,6 +359,10 @@ export default async function handler(req, res) {
           ...(saved.controls?.user_outcomes || {}),
           ...(saved.user_outcomes || {})
         }
+      },
+      notifications: {
+        ...defaultSettings.notifications,
+        ...(saved.notifications || {})
       }
     });
   }
@@ -315,6 +374,7 @@ export default async function handler(req, res) {
     gateway: activeGw,
     currency: depositCurrency,
     usdRate: usdRate,
+    speed: saved.speed ?? saved.graph?.speed ?? defaultSettings.graph.speed,
     graph: {
       speed: saved.speed ?? saved.graph?.speed ?? defaultSettings.graph.speed,
       spike_frequency: saved.spikeFreq ?? saved.graph?.spike_frequency ?? defaultSettings.graph.spike_frequency,

@@ -1083,28 +1083,50 @@ async function saveAdminConfig(silent = false){
     }
   };
 
-  // Save to LocalStorage
+  // Save to LocalStorage cache
   localStorage.setItem('maliPlatformConfig', JSON.stringify(cfg));
   localStorage.setItem('maliDepositCurrency', cfg.currency);
   localStorage.setItem('maliUserOutcomes', JSON.stringify(currentUserOutcomes));
 
-  // Sync to Backend Server API
+  // Sync to Backend Server API (Neon DB)
+  let cloudSaved = false;
+  let errorMsg = '';
   try {
-    await adminFetch('/api/settings', {
+    const res = await adminFetch('/api/settings', {
       method: 'POST',
       body: JSON.stringify(cfg)
     });
-  } catch(e) {}
+    if (res && res.ok) {
+      const data = await res.json();
+      if (data && data.success) {
+        cloudSaved = true;
+      } else if (data && data.error) {
+        errorMsg = data.error;
+      }
+    } else if (res) {
+      const data = await res.json().catch(() => ({}));
+      errorMsg = data.error || `HTTP ${res.status}`;
+    }
+  } catch(e) {
+    errorMsg = e.message;
+  }
 
   if (!silent) {
     const btn = document.getElementById('saveCfgBtn');
     if (btn) {
-      btn.textContent = 'Saved & Applied! ✓';
-      btn.classList.add('bg-green-500', 'text-black');
+      if (cloudSaved) {
+        btn.textContent = 'Saved to Cloud & Applied! ✓';
+        btn.classList.remove('bg-red-500', 'bg-yellow-500');
+        btn.classList.add('bg-green-500', 'text-black');
+      } else {
+        btn.textContent = errorMsg ? `Saved Locally (${errorMsg})` : 'Saved Locally (Cloud sync error)';
+        btn.classList.remove('bg-green-500');
+        btn.classList.add('bg-yellow-500', 'text-black');
+      }
       setTimeout(()=>{
         btn.textContent = 'Save & Apply Settings';
-        btn.classList.remove('bg-green-500', 'text-black');
-      }, 1800);
+        btn.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'text-black');
+      }, 2500);
     }
   }
 
