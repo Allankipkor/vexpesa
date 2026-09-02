@@ -110,8 +110,8 @@ export default async function handler(req, res) {
     gateway = 'gravitypay';
   }
 
-  // Reference is strictly maximum 12 characters to support GravityPay & Daraja
-  const reference = 'ZP' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
+  // Reference is strictly maximum 12 characters and uniquely prefixed with VP (VexPesa)
+  const reference = 'VP' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
 
   // Auto-expire older pending deposits for this phone older than 5 minutes to prevent pending accumulation
   if (db && formattedPhone) {
@@ -140,7 +140,11 @@ export default async function handler(req, res) {
       channel_id: channelId,
       provider: 'm-pesa',
       external_reference: reference,
-      callback_url: cb
+      callback_url: cb,
+      metadata: {
+        username: resolvedUsername,
+        app: 'vexpesa'
+      }
     };
 
     const response = await fetch('https://backend.payhero.co.ke/api/v2/payments', {

@@ -136,6 +136,14 @@ export default async function handler(req, res) {
     ''
   ).trim();
 
+  const metadataApp = (
+    response.metadata?.app || body.metadata?.app || 
+    body.data?.metadata?.app || ''
+  ).toString().toLowerCase().trim();
+
+  const isVexPesaRef = Boolean(externalRef && (externalRef.startsWith('VP') || externalRef.startsWith('VEXP') || externalRef.startsWith('DEP-')));
+  const isVexPesaApp = metadataApp === 'vexpesa';
+
   const resultCode = response.ResultCode !== undefined ? parseInt(response.ResultCode) : 
     (body.ResultCode !== undefined ? parseInt(body.ResultCode) : 
     (response.resultCode !== undefined ? parseInt(response.resultCode) : null));
@@ -166,7 +174,7 @@ export default async function handler(req, res) {
         // 2. STRICT TARGET RESOLUTION: Find the EXACT target deposit to mark completed
         let depRecord = null;
 
-        // Step 2a: Match strictly by unique deposit_ref / external_reference (NEVER match on empty string)
+        // Step 2a: Match strictly by unique deposit_ref / external_reference
         if (externalRef) {
           const rows = await db`
             SELECT * FROM vexpesa_deposits
@@ -186,8 +194,8 @@ export default async function handler(req, res) {
           if (rows.length > 0) depRecord = rows[0];
         }
 
-        // Step 2c: Fallback matching by phone (match most recent pending or expired deposit within 30 mins)
-        if (!depRecord && phone) {
+        // Step 2c: Fallback matching ONLY IF tagged as VexPesa or reference starts with VP
+        if (!depRecord && (isVexPesaRef || isVexPesaApp) && phone) {
           const phone9 = phone.replace(/\D/g, '').slice(-9);
           if (phone9.length >= 8) {
             const rows = await db`
@@ -202,22 +210,19 @@ export default async function handler(req, res) {
           }
         }
 
-        // Step 2d: Fallback matching by username (match most recent pending or expired deposit within 30 mins)
-        if (!depRecord && metadataUser && metadataUser !== 'Trader') {
-          const rows = await db`
-            SELECT * FROM vexpesa_deposits
-            WHERE LOWER(username) = LOWER(${metadataUser})
-              AND status IN ('pending', 'expired')
-              AND created_at >= NOW() - INTERVAL '30 minutes'
-            ORDER BY created_at DESC
-            LIMIT 1
-          `;
-          if (rows.length > 0) depRecord = rows[0];
+        // 3. STRICT WEBSITE ISOLATION: If no deposit record matched AND this is not verified as a VexPesa transaction, IGNORE IT!
+        if (!depRecord && !isVexPesaRef && !isVexPesaApp) {
+          console.log(`[Webhook] Ignored non-VexPesa transaction (externalRef: ${externalRef}, receipt: ${mpesaReceipt})`);
+          return res.status(200).json({
+            status: 'IGNORED',
+            success: true,
+            message: 'Transaction does not belong to VexPesa platform.'
+          });
         }
 
         const formattedMethod = mpesaReceipt ? `M-Pesa (${mpesaReceipt})` : (depRecord?.method || 'M-Pesa STK');
 
-        // Step 2e: If a deposit was found, claim it atomically so only 1 process (webhook or polling) can credit the user
+        // Step 4: Claim the deposit atomically so only 1 process (webhook or polling) can credit the user
         let claim = [];
         if (depRecord) {
           claim = await db`
@@ -230,9 +235,9 @@ export default async function handler(req, res) {
             WHERE id = ${depRecord.id} AND credited = FALSE
             RETURNING id, username, phone, amount_kes
           `;
-        } else {
-          // If no matching pending record exists, insert a single new completed credited record
-          const newRef = externalRef || ('ZP' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0'));
+        } else if (isVexPesaRef || isVexPesaApp) {
+          // Only create a record if it is verified for VexPesa
+          const newRef = (isVexPesaRef && externalRef) ? externalRef : ('VP' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100).toString().padStart(2, '0'));
           claim = await db`
             INSERT INTO vexpesa_deposits (deposit_ref, checkout_request_id, username, amount_kes, phone, method, status, credited)
             VALUES (${newRef}, ${checkoutRequestId || ''}, ${metadataUser || 'Trader'}, ${amount}, ${phone}, ${formattedMethod}, 'completed', TRUE)

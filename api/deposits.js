@@ -229,7 +229,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, status: 'pending', deposit_ref: ref });
   }
 
-  // 2. ADMIN RECONCILIATION ACTION (Cleans up phantom duplicate receipt rows)
+  // 2. ADMIN RECONCILIATION ACTION (Cleans up phantom duplicate & foreign receipt rows)
   if (action === 'reconcile') {
     const auth = verifyAdminToken(req);
     if (!auth.isValid) {
@@ -258,10 +258,19 @@ export default async function handler(req, res) {
           WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
           RETURNING id, deposit_ref, method
         `;
+
+        // Archive foreign platform references not associated with registered VexPesa users
+        await db`
+          UPDATE vexpesa_deposits
+          SET status = 'superseded'
+          WHERE (deposit_ref LIKE 'ZP%' OR deposit_ref LIKE 'ZOOM%' OR deposit_ref LIKE 'ZEN%')
+            AND username NOT IN (SELECT username FROM vexpesa_users)
+        `;
+
         return res.status(200).json({
           success: true,
           reconciled_count: dupes.length,
-          message: `Successfully reconciled ${dupes.length} duplicate deposit records.`
+          message: `Successfully reconciled deposits ledger.`
         });
       } catch(recErr) {
         console.error('Error reconciling deposits:', recErr);
