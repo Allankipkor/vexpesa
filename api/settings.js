@@ -88,17 +88,6 @@ export default async function handler(req, res) {
           } catch(e) {}
         }
 
-        // Merge PayHero configuration (if provided by admin)
-        const phUser = input.payheroUsername !== undefined ? input.payheroUsername : (input.payments?.payhero?.api_username ?? currentSettings.payheroUsername ?? currentSettings.payments?.payhero?.api_username ?? '');
-        const phPass = input.payheroPassword !== undefined ? input.payheroPassword : (input.payments?.payhero?.api_password ?? currentSettings.payheroPassword ?? currentSettings.payments?.payhero?.api_password ?? '');
-        const phChan = input.payheroChannelId !== undefined ? input.payheroChannelId : (input.payments?.payhero?.channel_id ?? currentSettings.payheroChannelId ?? currentSettings.payments?.payhero?.channel_id ?? '');
-        const phCb = input.payheroCallbackUrl !== undefined ? input.payheroCallbackUrl : (input.payments?.payhero?.callback_url ?? currentSettings.payheroCallbackUrl ?? currentSettings.payments?.payhero?.callback_url ?? '');
-
-        // Merge GravityPay configuration (if provided by admin)
-        const gpKey = input.gravitypayApiKey !== undefined ? input.gravitypayApiKey : (input.payments?.gravitypay?.api_key ?? currentSettings.gravitypayApiKey ?? currentSettings.payments?.gravitypay?.api_key ?? '');
-        const gpSecret = input.gravitypaySecretKey !== undefined ? input.gravitypaySecretKey : (input.payments?.gravitypay?.secret_key ?? currentSettings.gravitypaySecretKey ?? currentSettings.payments?.gravitypay?.secret_key ?? '');
-        const gpWebhook = input.gravitypayWebhookSecret !== undefined ? input.gravitypayWebhookSecret : (input.payments?.gravitypay?.webhook_secret ?? currentSettings.gravitypayWebhookSecret ?? currentSettings.payments?.gravitypay?.webhook_secret ?? '');
-        const gpCb = input.gravitypayCallbackUrl !== undefined ? input.gravitypayCallbackUrl : (input.payments?.gravitypay?.callback_url ?? currentSettings.gravitypayCallbackUrl ?? currentSettings.payments?.gravitypay?.callback_url ?? 'https://vexpesa.com/api/webhooks/gravitypay');
         const activeGateway = input.gateway || input.payments?.gateway || currentSettings.gateway || currentSettings.payments?.gateway || process.env.PAYMENT_GATEWAY || 'gravitypay';
 
         const minDep = input.minDep !== undefined ? parseFloat(input.minDep) : (input.trade?.min_deposit ?? currentSettings.trade?.min_deposit ?? 50);
@@ -146,14 +135,6 @@ export default async function handler(req, res) {
           force_win_rate: forceWinRate,
           force_loss_rate: forceLossRate,
           demo_win_rate: demoWinRate,
-          payheroUsername: phUser,
-          payheroPassword: phPass,
-          payheroChannelId: phChan,
-          payheroCallbackUrl: phCb,
-          gravitypayApiKey: gpKey,
-          gravitypaySecretKey: gpSecret,
-          gravitypayWebhookSecret: gpWebhook,
-          gravitypayCallbackUrl: gpCb,
           graph: {
             ...currentSettings.graph,
             ...(input.graph || {}),
@@ -271,30 +252,10 @@ export default async function handler(req, res) {
   const depositCurrency = saved.currency ?? saved.payments?.deposit_currency ?? defaultSettings.payments.deposit_currency;
 
   // A. ADMIN AUTHENTICATED RESPONSE (Includes Full Config & Gateway Status)
-  if (auth.isValid) {
-    // Read credentials priority: Vercel Environment Variables -> Neon DB -> Default
-    const phUser = process.env.PAYHERO_API_USERNAME || saved.payheroUsername || saved.payments?.payhero?.api_username || '';
-    const phPass = process.env.PAYHERO_API_PASSWORD || saved.payheroPassword || saved.payments?.payhero?.api_password || '';
-    const phChan = process.env.PAYHERO_CHANNEL_ID || saved.payheroChannelId || saved.payments?.payhero?.channel_id || '';
-    const phCb = process.env.PAYHERO_CALLBACK_URL || saved.payheroCallbackUrl || saved.payments?.payhero?.callback_url || '';
-
-    const gpKey = process.env.GRAVITYPAY_API_KEY || saved.gravitypayApiKey || saved.payments?.gravitypay?.api_key || '';
-    const gpSec = process.env.GRAVITYPAY_SECRET_KEY || saved.gravitypaySecretKey || saved.payments?.gravitypay?.secret_key || '';
-    const gpWh = process.env.GRAVITYPAY_WEBHOOK_SECRET || saved.gravitypayWebhookSecret || saved.payments?.gravitypay?.webhook_secret || '';
-    const gpCb = process.env.GRAVITYPAY_CALLBACK_URL || saved.gravitypayCallbackUrl || saved.payments?.gravitypay?.callback_url || 'https://vexpesa.com/api/webhooks/gravitypay';
-
     return res.status(200).json({
       ...defaultSettings,
       ...saved,
       gateway: activeGw,
-      payheroUsername: phUser,
-      payheroPassword: phPass,
-      payheroChannelId: phChan,
-      payheroCallbackUrl: phCb,
-      gravitypayApiKey: gpKey,
-      gravitypaySecretKey: gpSec,
-      gravitypayWebhookSecret: gpWh,
-      gravitypayCallbackUrl: gpCb,
       envConfigured: {
         gravitypay: Boolean(process.env.GRAVITYPAY_API_KEY || process.env.GRAVITYPAY_SECRET_KEY),
         payhero: Boolean(process.env.PAYHERO_API_USERNAME && process.env.PAYHERO_API_PASSWORD),
@@ -328,19 +289,7 @@ export default async function handler(req, res) {
       payments: {
         gateway: activeGw,
         deposit_currency: depositCurrency,
-        usd_rate: usdRate,
-        payhero: {
-          api_username: phUser,
-          api_password: phPass,
-          channel_id: phChan,
-          callback_url: phCb
-        },
-        gravitypay: {
-          api_key: gpKey,
-          secret_key: gpSec,
-          webhook_secret: gpWh,
-          callback_url: gpCb
-        }
+        usd_rate: usdRate
       },
       controls: {
         ...defaultSettings.controls,

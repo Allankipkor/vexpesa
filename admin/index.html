@@ -301,82 +301,40 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
 
                 <!-- Gateway Selector Mode -->
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 font-semibold">Active Gateway Routing</label>
-                    <select id="cfgActiveGateway" onchange="onGatewaySelectChange()" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-medium">
+                    <label class="block text-xs text-gray-400 mb-1 font-semibold">Active Payment Gateway Routing</label>
+                    <select id="cfgActiveGateway" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-medium">
                         <option value="gravitypay">Primary: GravityPay (gravitypayapp.com)</option>
-                        <option value="payhero">PayHero M-Pesa (Direct STK Push)</option>
+                        <option value="payhero">Secondary: PayHero M-Pesa (Direct STK Push)</option>
                     </select>
                 </div>
 
-                <!-- Gateway Tab Toggle Buttons -->
-                <div class="grid grid-cols-2 gap-2 p-1 bg-gray-800/60 rounded-xl border border-gray-700/60">
-                    <button type="button" id="tabBtnGravitypay" onclick="switchGatewayTab('gravitypay')" class="py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-blue-500/20 text-blue-400 border border-blue-500/40">
-                        <span>⚡ GravityPay (Primary)</span>
-                    </button>
-                    <button type="button" id="tabBtnPayhero" onclick="switchGatewayTab('payhero')" class="py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-gray-400 hover:text-white">
-                        <span>📱 PayHero STK</span>
-                    </button>
-                </div>
-
-                <!-- Tab 1: GravityPay (gravitypayapp.com) Primary Config -->
-                <div id="tabPanelGravitypay" class="space-y-3 p-3 bg-gray-800/40 border border-gray-700/60 rounded-xl">
-                    <div class="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <div class="text-[11px] font-bold text-blue-400 flex items-center justify-between mb-0.5">
-                            <span>⚡ GravityPay Primary Gateway</span>
-                            <span class="px-2 py-0.5 text-[9px] bg-blue-500/20 rounded font-mono text-blue-300">GRAVITYPAYAPP.COM</span>
+                <!-- Vercel Environment Security Banner -->
+                <div class="p-3 bg-gradient-to-br from-gray-800/90 to-gray-900 border border-emerald-500/30 rounded-xl space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                                🔒 Payment Credentials Secured
+                            </span>
                         </div>
-                        <p class="text-[10px] text-gray-400">High-speed direct M-Pesa STK Push API gateway</p>
+                        <span class="px-2 py-0.5 text-[9px] bg-emerald-500/20 text-emerald-300 rounded font-mono font-bold">VERCEL ENVIRONMENT</span>
                     </div>
-
-                    <div>
-                        <label class="block text-[11px] text-gray-400 mb-1">Public API Key (x-api-key)</label>
-                        <input type="text" id="cfgGravitypayApiKey" placeholder="pk_live_..." class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] text-gray-400 mb-1">Secret Key (Authorization: Bearer)</label>
-                        <input type="password" id="cfgGravitypaySecretKey" placeholder="sk_live_..." class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] text-gray-400 mb-1">Webhook Secret / HMAC Signature (Optional)</label>
-                        <input type="password" id="cfgGravitypayWebhookSecret" placeholder="whsec_..." class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] text-gray-400 mb-1">GravityPay Callback / Webhook URL</label>
-                        <input type="text" id="cfgGravitypayCallbackUrl" placeholder="https://vexpesa.com/api/webhooks/gravitypay" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-blue-500">
-                    </div>
-                </div>
-
-                <!-- Tab 2: PayHero M-Pesa Config -->
-                <div id="tabPanelPayhero" class="space-y-3 p-3 bg-gray-800/40 border border-gray-700/60 rounded-xl hidden">
-                    <div class="p-2.5 bg-green-500/10 border border-green-500/20 rounded-lg">
-                        <div class="text-[11px] font-bold text-green-400 flex items-center justify-between mb-0.5">
-                            <span>📱 Safaricom M-Pesa STK Push</span>
-                            <span class="px-2 py-0.5 text-[9px] bg-green-500/20 rounded font-mono text-green-300">PAYHERO CO.KE</span>
+                    <p class="text-[11px] text-gray-400 leading-relaxed">
+                        API credentials (API keys, secret keys, webhook secrets, channel IDs) are strictly managed in your <strong class="text-emerald-400">Vercel Environment Variables</strong> on the backend runtime. They are never exposed in the browser or saved to client storage.
+                    </p>
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <div class="p-2 bg-gray-950/60 rounded-lg border border-gray-800">
+                            <div class="text-[10px] text-gray-400">GravityPay Gateway</div>
+                            <div id="statusGravitypayEnv" class="text-xs font-bold text-blue-400 flex items-center gap-1 mt-0.5">
+                                <span>⚡</span> Managed in Vercel
+                            </div>
                         </div>
-                        <p class="text-[10px] text-gray-400">Direct mobile PIN prompts via PayHero Kenya gateway rails</p>
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] text-gray-400 mb-1">PayHero API Username / Key</label>
-                        <input type="text" id="cfgPayheroUsername" placeholder="e.g. your_api_username" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] text-gray-400 mb-1">PayHero API Password / Secret</label>
-                        <input type="password" id="cfgPayheroPassword" placeholder="••••••••••••••••" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] text-gray-400 mb-1">PayHero Channel ID (Paybill / Till ID)</label>
-                        <input type="number" id="cfgPayheroChannelId" placeholder="e.g. 682" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] text-gray-400 mb-1">PayHero Callback URL (Webhook IPN)</label>
-                        <input type="text" id="cfgPayheroCallbackUrl" placeholder="https://your-domain.vercel.app/api/payhero-callback.js" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-green-500">
+                        <div class="p-2 bg-gray-950/60 rounded-lg border border-gray-800">
+                            <div class="text-[10px] text-gray-400">PayHero Gateway</div>
+                            <div id="statusPayheroEnv" class="text-xs font-bold text-green-400 flex items-center gap-1 mt-0.5">
+                                <span>📱</span> Managed in Vercel
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -921,17 +879,7 @@ function loadAdminConfig(){
 
   if (cfg.gateway) {
     document.getElementById('cfgActiveGateway').value = cfg.gateway;
-    onGatewaySelectChange();
   }
-  if (cfg.payheroUsername) document.getElementById('cfgPayheroUsername').value = cfg.payheroUsername;
-  if (cfg.payheroPassword) document.getElementById('cfgPayheroPassword').value = cfg.payheroPassword;
-  if (cfg.payheroChannelId) document.getElementById('cfgPayheroChannelId').value = cfg.payheroChannelId;
-  if (cfg.payheroCallbackUrl) document.getElementById('cfgPayheroCallbackUrl').value = cfg.payheroCallbackUrl;
-
-  if (cfg.gravitypayApiKey) document.getElementById('cfgGravitypayApiKey').value = cfg.gravitypayApiKey;
-  if (cfg.gravitypaySecretKey) document.getElementById('cfgGravitypaySecretKey').value = cfg.gravitypaySecretKey;
-  if (cfg.gravitypayWebhookSecret) document.getElementById('cfgGravitypayWebhookSecret').value = cfg.gravitypayWebhookSecret;
-  if (cfg.gravitypayCallbackUrl) document.getElementById('cfgGravitypayCallbackUrl').value = cfg.gravitypayCallbackUrl;
 
   onCurrencySelectChange();
 
@@ -991,30 +939,22 @@ function loadAdminConfig(){
     const activeGw = s.gateway ?? s.payments?.gateway ?? 'gravitypay';
     if (document.getElementById('cfgActiveGateway')) {
       document.getElementById('cfgActiveGateway').value = activeGw;
-      onGatewaySelectChange();
     }
 
-    // Load PayHero credentials directly from DB across all devices
-    const phUser = s.payheroUsername || s.payments?.payhero?.api_username || '';
-    const phPass = s.payheroPassword || s.payments?.payhero?.api_password || '';
-    const phChan = s.payheroChannelId || s.payments?.payhero?.channel_id || '';
-    const phCb = s.payheroCallbackUrl || s.payments?.payhero?.callback_url || '';
-
-    if (phUser) document.getElementById('cfgPayheroUsername').value = phUser;
-    if (phPass) document.getElementById('cfgPayheroPassword').value = phPass;
-    if (phChan) document.getElementById('cfgPayheroChannelId').value = phChan;
-    if (phCb) document.getElementById('cfgPayheroCallbackUrl').value = phCb;
-
-    // Load GravityPay credentials directly from DB
-    const gpKey = s.gravitypayApiKey || s.payments?.gravitypay?.api_key || '';
-    const gpSec = s.gravitypaySecretKey || s.payments?.gravitypay?.secret_key || '';
-    const gpWh = s.gravitypayWebhookSecret || s.payments?.gravitypay?.webhook_secret || '';
-    const gpCb = s.gravitypayCallbackUrl || s.payments?.gravitypay?.callback_url || '';
-
-    if (gpKey) document.getElementById('cfgGravitypayApiKey').value = gpKey;
-    if (gpSec) document.getElementById('cfgGravitypaySecretKey').value = gpSec;
-    if (gpWh) document.getElementById('cfgGravitypayWebhookSecret').value = gpWh;
-    if (gpCb) document.getElementById('cfgGravitypayCallbackUrl').value = gpCb;
+    if (s.envConfigured) {
+      const gpEl = document.getElementById('statusGravitypayEnv');
+      if (gpEl) {
+        gpEl.innerHTML = s.envConfigured.gravitypay 
+          ? '<span class="text-emerald-400 font-bold">● Active on Vercel</span>' 
+          : '<span class="text-blue-400 font-bold">⚡ Active on Vercel</span>';
+      }
+      const phEl = document.getElementById('statusPayheroEnv');
+      if (phEl) {
+        phEl.innerHTML = s.envConfigured.payhero 
+          ? '<span class="text-emerald-400 font-bold">● Active on Vercel</span>' 
+          : '<span class="text-green-400 font-bold">📱 Active on Vercel</span>';
+      }
+    }
 
     // Load Notification settings directly from DB
     const notifCfg = s.notifications || {};
@@ -1080,14 +1020,6 @@ function loadAdminConfig(){
       force_win_rate: currentForceWinRate,
       force_loss_rate: currentForceLossRate,
       gateway: activeGw,
-      payheroUsername: phUser,
-      payheroPassword: phPass,
-      payheroChannelId: phChan,
-      payheroCallbackUrl: phCb,
-      gravitypayApiKey: gpKey,
-      gravitypaySecretKey: gpSec,
-      gravitypayWebhookSecret: gpWh,
-      gravitypayCallbackUrl: gpCb,
       notifications: {
         deposit_messages: document.getElementById('cfgDepositMsgs')?.checked ?? true,
         withdraw_messages: document.getElementById('cfgWithdrawMsgs')?.checked ?? true,
@@ -1139,28 +1071,8 @@ async function saveAdminConfig(silent = false){
     payments: {
       gateway: activeGatewayVal,
       usd_rate: parseFloat(document.getElementById('cfgUsdRate').value) || 129.00,
-      deposit_currency: document.getElementById('cfgCurrency').value || 'kes',
-      payhero: {
-        api_username: document.getElementById('cfgPayheroUsername')?.value.trim() || '',
-        api_password: document.getElementById('cfgPayheroPassword')?.value.trim() || '',
-        channel_id: document.getElementById('cfgPayheroChannelId')?.value.trim() || '',
-        callback_url: document.getElementById('cfgPayheroCallbackUrl')?.value.trim() || ''
-      },
-      gravitypay: {
-        api_key: document.getElementById('cfgGravitypayApiKey')?.value.trim() || '',
-        secret_key: document.getElementById('cfgGravitypaySecretKey')?.value.trim() || '',
-        webhook_secret: document.getElementById('cfgGravitypayWebhookSecret')?.value.trim() || '',
-        callback_url: document.getElementById('cfgGravitypayCallbackUrl')?.value.trim() || 'https://vexpesa.com/api/webhooks/gravitypay'
-      }
+      deposit_currency: document.getElementById('cfgCurrency').value || 'kes'
     },
-    payheroUsername: document.getElementById('cfgPayheroUsername')?.value.trim() || '',
-    payheroPassword: document.getElementById('cfgPayheroPassword')?.value.trim() || '',
-    payheroChannelId: document.getElementById('cfgPayheroChannelId')?.value.trim() || '',
-    payheroCallbackUrl: document.getElementById('cfgPayheroCallbackUrl')?.value.trim() || '',
-    gravitypayApiKey: document.getElementById('cfgGravitypayApiKey')?.value.trim() || '',
-    gravitypaySecretKey: document.getElementById('cfgGravitypaySecretKey')?.value.trim() || '',
-    gravitypayWebhookSecret: document.getElementById('cfgGravitypayWebhookSecret')?.value.trim() || '',
-    gravitypayCallbackUrl: document.getElementById('cfgGravitypayCallbackUrl')?.value.trim() || 'https://vexpesa.com/api/webhooks/gravitypay',
     notifications: {
       enabled: true,
       deposit_messages: document.getElementById('cfgDepositMsgs')?.checked ?? true,
