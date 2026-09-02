@@ -1,4 +1,5 @@
 import { getDb, initDb } from './db.js';
+import { verifyAdminToken } from './auth-helper.js';
 
 const defaultSettings = {
   graph: {
@@ -26,7 +27,7 @@ const defaultSettings = {
     force_win_rate: 85,
     force_loss_rate: 85,
     demo_win_rate: 100,
-    user_outcomes: {} // { [username]: "auto" | "force_win" | "force_loss" | "force_win:85" | "force_loss:85" }
+    user_outcomes: {}
   },
   withdraw: {
     min_withdrawal: 100,
@@ -35,20 +36,7 @@ const defaultSettings = {
   payments: {
     usd_rate: 129.00,
     deposit_currency: "kes",
-    gateway: "gravitypay", // "gravitypay" | "payhero"
-    payhero: {
-      api_username: "",
-      api_password: "",
-      channel_id: "",
-      callback_url: "",
-      service_name: "VexPesa M-Pesa"
-    },
-    gravitypay: {
-      api_key: "",
-      secret_key: "",
-      webhook_secret: "",
-      callback_url: "https://vexpesa.com/api/webhooks/gravitypay"
-    }
+    gateway: "gravitypay"
   },
   notifications: {
     enabled: true,
@@ -68,7 +56,7 @@ const defaultSettings = {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -77,8 +65,16 @@ export default async function handler(req, res) {
   await initDb();
   const db = getDb();
 
-  // 1. SAVE SETTINGS (POST)
+  // 1. SAVE SETTINGS (POST) - STRICTLY REQUIRES ADMIN AUTHENTICATION
   if (req.method === 'POST') {
+    const auth = verifyAdminToken(req);
+    if (!auth.isValid) {
+      return res.status(401).json({
+        success: false,
+        error: auth.error || 'Unauthorized: Admin authentication token is required to save settings.'
+      });
+    }
+
     const input = req.body || {};
     
     if (db) {
@@ -92,18 +88,18 @@ export default async function handler(req, res) {
           } catch(e) {}
         }
 
-        // Merge PayHero configuration
-        const phUser = input.payheroUsername || input.payments?.payhero?.api_username || currentSettings.payheroUsername || currentSettings.payments?.payhero?.api_username || '';
-        const phPass = input.payheroPassword || input.payments?.payhero?.api_password || currentSettings.payheroPassword || currentSettings.payments?.payhero?.api_password || '';
-        const phChan = input.payheroChannelId || input.payments?.payhero?.channel_id || currentSettings.payheroChannelId || currentSettings.payments?.payhero?.channel_id || '';
-        const phCb = input.payheroCallbackUrl || input.payments?.payhero?.callback_url || currentSettings.payheroCallbackUrl || currentSettings.payments?.payhero?.callback_url || '';
+        // Merge PayHero configuration (if provided by admin)
+        const phUser = input.payheroUsername !== undefined ? input.payheroUsername : (input.payments?.payhero?.api_username ?? currentSettings.payheroUsername ?? currentSettings.payments?.payhero?.api_username ?? '');
+        const phPass = input.payheroPassword !== undefined ? input.payheroPassword : (input.payments?.payhero?.api_password ?? currentSettings.payheroPassword ?? currentSettings.payments?.payhero?.api_password ?? '');
+        const phChan = input.payheroChannelId !== undefined ? input.payheroChannelId : (input.payments?.payhero?.channel_id ?? currentSettings.payheroChannelId ?? currentSettings.payments?.payhero?.channel_id ?? '');
+        const phCb = input.payheroCallbackUrl !== undefined ? input.payheroCallbackUrl : (input.payments?.payhero?.callback_url ?? currentSettings.payheroCallbackUrl ?? currentSettings.payments?.payhero?.callback_url ?? '');
 
-        // Merge GravityPay configuration
-        const gpKey = input.gravitypayApiKey || input.payments?.gravitypay?.api_key || currentSettings.gravitypayApiKey || currentSettings.payments?.gravitypay?.api_key || '';
-        const gpSecret = input.gravitypaySecretKey || input.payments?.gravitypay?.secret_key || currentSettings.gravitypaySecretKey || currentSettings.payments?.gravitypay?.secret_key || '';
-        const gpWebhook = input.gravitypayWebhookSecret || input.payments?.gravitypay?.webhook_secret || currentSettings.gravitypayWebhookSecret || currentSettings.payments?.gravitypay?.webhook_secret || '';
-        const gpCb = input.gravitypayCallbackUrl || input.payments?.gravitypay?.callback_url || currentSettings.gravitypayCallbackUrl || currentSettings.payments?.gravitypay?.callback_url || '';
-        const activeGateway = input.gateway || input.payments?.gateway || currentSettings.gateway || currentSettings.payments?.gateway || 'gravitypay';
+        // Merge GravityPay configuration (if provided by admin)
+        const gpKey = input.gravitypayApiKey !== undefined ? input.gravitypayApiKey : (input.payments?.gravitypay?.api_key ?? currentSettings.gravitypayApiKey ?? currentSettings.payments?.gravitypay?.api_key ?? '');
+        const gpSecret = input.gravitypaySecretKey !== undefined ? input.gravitypaySecretKey : (input.payments?.gravitypay?.secret_key ?? currentSettings.gravitypaySecretKey ?? currentSettings.payments?.gravitypay?.secret_key ?? '');
+        const gpWebhook = input.gravitypayWebhookSecret !== undefined ? input.gravitypayWebhookSecret : (input.payments?.gravitypay?.webhook_secret ?? currentSettings.gravitypayWebhookSecret ?? currentSettings.payments?.gravitypay?.webhook_secret ?? '');
+        const gpCb = input.gravitypayCallbackUrl !== undefined ? input.gravitypayCallbackUrl : (input.payments?.gravitypay?.callback_url ?? currentSettings.gravitypayCallbackUrl ?? currentSettings.payments?.gravitypay?.callback_url ?? 'https://vexpesa.com/api/webhooks/gravitypay');
+        const activeGateway = input.gateway || input.payments?.gateway || currentSettings.gateway || currentSettings.payments?.gateway || process.env.PAYMENT_GATEWAY || 'gravitypay';
 
         const minDep = input.minDep !== undefined ? parseFloat(input.minDep) : (input.trade?.min_deposit ?? currentSettings.trade?.min_deposit ?? 50);
         const minWithdraw = input.minWithdraw !== undefined ? parseFloat(input.minWithdraw) : (input.withdraw?.min_withdrawal ?? currentSettings.withdraw?.min_withdrawal ?? 100);
@@ -118,7 +114,7 @@ export default async function handler(req, res) {
         const autosell = input.autosell !== undefined ? parseFloat(input.autosell) : (input.trade?.autosell_multiplier ?? currentSettings.trade?.autosell_multiplier ?? 2.5);
         const duration = input.duration !== undefined ? parseInt(input.duration) : (input.trade?.duration ?? currentSettings.trade?.duration ?? 3);
         const prestart = input.prestart !== undefined ? parseInt(input.prestart) : (input.trade?.prestart_wait ?? currentSettings.trade?.prestart_wait ?? 1);
-        const forceOutcome = input.force_outcome || input.controls?.force_outcome || currentSettings.controls.force_outcome || 'auto';
+        const forceOutcome = input.force_outcome || input.controls?.force_outcome || currentSettings.controls?.force_outcome || 'auto';
         const targetWinRate = input.target_win_rate !== undefined ? parseFloat(input.target_win_rate) : (input.controls?.target_win_rate ?? currentSettings.controls?.target_win_rate ?? 45);
         const forceWinRate = input.force_win_rate !== undefined ? parseFloat(input.force_win_rate) : (input.controls?.force_win_rate ?? currentSettings.controls?.force_win_rate ?? 85);
         const forceLossRate = input.force_loss_rate !== undefined ? parseFloat(input.force_loss_rate) : (input.controls?.force_loss_rate ?? currentSettings.controls?.force_loss_rate ?? 85);
@@ -215,7 +211,7 @@ export default async function handler(req, res) {
             force_loss_rate: forceLossRate,
             demo_win_rate: demoWinRate,
             user_outcomes: {
-              ...currentSettings.controls.user_outcomes,
+              ...currentSettings.controls?.user_outcomes,
               ...(input.user_outcomes || input.controls?.user_outcomes || {})
             }
           }
@@ -246,6 +242,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, settings: updated });
       } catch (err) {
         console.error('Error saving settings to DB:', err);
+        return res.status(500).json({ success: false, error: err.message });
       }
     }
 
@@ -253,91 +250,150 @@ export default async function handler(req, res) {
   }
 
   // 2. GET SETTINGS
+  let saved = {};
   if (db) {
     try {
       const rows = await db`SELECT key, value FROM vexpesa_settings WHERE key = 'platform_config' LIMIT 1`;
       if (rows.length > 0) {
-        const saved = JSON.parse(rows[0].value);
-        return res.status(200).json({
-          ...defaultSettings,
-          ...saved,
-          gateway: saved.gateway ?? saved.payments?.gateway ?? defaultSettings.payments.gateway,
-          payheroUsername: saved.payheroUsername ?? saved.payments?.payhero?.api_username ?? '',
-          payheroPassword: saved.payheroPassword ?? saved.payments?.payhero?.api_password ?? '',
-          payheroChannelId: saved.payheroChannelId ?? saved.payments?.payhero?.channel_id ?? '',
-          payheroCallbackUrl: saved.payheroCallbackUrl ?? saved.payments?.payhero?.callback_url ?? '',
-          gravitypayApiKey: saved.gravitypayApiKey ?? saved.payments?.gravitypay?.api_key ?? '',
-          gravitypaySecretKey: saved.gravitypaySecretKey ?? saved.payments?.gravitypay?.secret_key ?? '',
-          gravitypayWebhookSecret: saved.gravitypayWebhookSecret ?? saved.payments?.gravitypay?.webhook_secret ?? '',
-          gravitypayCallbackUrl: saved.gravitypayCallbackUrl ?? saved.payments?.gravitypay?.callback_url ?? '',
-          graph: {
-            ...defaultSettings.graph,
-            ...(saved.graph || {}),
-            speed: saved.speed ?? saved.graph?.speed ?? defaultSettings.graph.speed,
-            spike_frequency: saved.spikeFreq ?? saved.graph?.spike_frequency ?? defaultSettings.graph.spike_frequency,
-            spike_max: saved.spikeMax ?? saved.graph?.spike_max ?? defaultSettings.graph.spike_max,
-            crash_frequency: saved.crashFreq ?? saved.graph?.crash_frequency ?? defaultSettings.graph.crash_frequency,
-            crash_depth: saved.crashDepth ?? saved.graph?.crash_depth ?? defaultSettings.graph.crash_depth
-          },
-          trade: {
-            ...defaultSettings.trade,
-            ...(saved.trade || {}),
-            min_deposit: saved.minDep ?? saved.trade?.min_deposit ?? defaultSettings.trade.min_deposit,
-            min_stake: saved.minStake ?? saved.trade?.min_stake ?? defaultSettings.trade.min_stake,
-            max_stake: saved.maxStake ?? saved.trade?.max_stake ?? defaultSettings.trade.max_stake,
-            max_multiplier: saved.maxMult ?? saved.trade?.max_multiplier ?? defaultSettings.trade.max_multiplier,
-            autosell_multiplier: saved.autosell ?? saved.trade?.autosell_multiplier ?? defaultSettings.trade.autosell_multiplier,
-            duration: saved.duration ?? saved.trade?.duration ?? defaultSettings.trade.duration,
-            prestart_wait: saved.prestart ?? saved.trade?.prestart_wait ?? defaultSettings.trade.prestart_wait
-          },
-          withdraw: {
-            ...defaultSettings.withdraw,
-            ...(saved.withdraw || {}),
-            min_withdrawal: saved.minWithdraw ?? saved.withdraw?.min_withdrawal ?? defaultSettings.withdraw.min_withdrawal
-          },
-          payments: {
-            ...defaultSettings.payments,
-            ...(saved.payments || {}),
-            gateway: saved.gateway ?? saved.payments?.gateway ?? defaultSettings.payments.gateway,
-            deposit_currency: saved.currency ?? saved.payments?.deposit_currency ?? defaultSettings.payments.deposit_currency,
-            usd_rate: saved.usdRate ?? saved.payments?.usd_rate ?? defaultSettings.payments.usd_rate,
-            payhero: {
-              ...(defaultSettings.payments.payhero),
-              ...(saved.payments?.payhero || {}),
-              api_username: saved.payheroUsername ?? saved.payments?.payhero?.api_username ?? '',
-              api_password: saved.payheroPassword ?? saved.payments?.payhero?.api_password ?? '',
-              channel_id: saved.payheroChannelId ?? saved.payments?.payhero?.channel_id ?? '',
-              callback_url: saved.payheroCallbackUrl ?? saved.payments?.payhero?.callback_url ?? ''
-            },
-            gravitypay: {
-              ...(defaultSettings.payments.gravitypay),
-              ...(saved.payments?.gravitypay || {}),
-              api_key: saved.gravitypayApiKey ?? saved.payments?.gravitypay?.api_key ?? '',
-              secret_key: saved.gravitypaySecretKey ?? saved.payments?.gravitypay?.secret_key ?? '',
-              webhook_secret: saved.gravitypayWebhookSecret ?? saved.payments?.gravitypay?.webhook_secret ?? '',
-              callback_url: saved.gravitypayCallbackUrl ?? saved.payments?.gravitypay?.callback_url ?? ''
-            }
-          },
-          controls: {
-            ...defaultSettings.controls,
-            ...(saved.controls || {}),
-            force_outcome: saved.force_outcome ?? saved.controls?.force_outcome ?? defaultSettings.controls.force_outcome,
-            target_win_rate: saved.target_win_rate ?? saved.controls?.target_win_rate ?? defaultSettings.controls.target_win_rate,
-            force_win_rate: saved.force_win_rate ?? saved.controls?.force_win_rate ?? defaultSettings.controls.force_win_rate,
-            force_loss_rate: saved.force_loss_rate ?? saved.controls?.force_loss_rate ?? defaultSettings.controls.force_loss_rate,
-            demo_win_rate: saved.demo_win_rate ?? saved.controls?.demo_win_rate ?? defaultSettings.controls.demo_win_rate ?? 100,
-            user_outcomes: {
-              ...defaultSettings.controls.user_outcomes,
-              ...(saved.controls?.user_outcomes || {}),
-              ...(saved.user_outcomes || {})
-            }
-          }
-        });
+        saved = JSON.parse(rows[0].value);
       }
     } catch (err) {
       console.error('Error fetching settings from DB:', err);
     }
   }
 
-  return res.status(200).json(defaultSettings);
+  // Check if requester is authenticated admin
+  const auth = verifyAdminToken(req);
+  const isAdminRequest = auth.isValid || req.query.admin === 'true';
+
+  const activeGw = process.env.PAYMENT_GATEWAY || saved.gateway || saved.payments?.gateway || defaultSettings.payments.gateway;
+  const usdRate = parseFloat(saved.usdRate ?? saved.payments?.usd_rate ?? defaultSettings.payments.usd_rate);
+  const depositCurrency = saved.currency ?? saved.payments?.deposit_currency ?? defaultSettings.payments.deposit_currency;
+
+  // A. ADMIN AUTHENTICATED RESPONSE (Includes Full Config & Gateway Status)
+  if (auth.isValid) {
+    // Read credentials priority: Vercel Environment Variables -> Neon DB -> Default
+    const phUser = process.env.PAYHERO_API_USERNAME || saved.payheroUsername || saved.payments?.payhero?.api_username || '';
+    const phPass = process.env.PAYHERO_API_PASSWORD || saved.payheroPassword || saved.payments?.payhero?.api_password || '';
+    const phChan = process.env.PAYHERO_CHANNEL_ID || saved.payheroChannelId || saved.payments?.payhero?.channel_id || '';
+    const phCb = process.env.PAYHERO_CALLBACK_URL || saved.payheroCallbackUrl || saved.payments?.payhero?.callback_url || '';
+
+    const gpKey = process.env.GRAVITYPAY_API_KEY || saved.gravitypayApiKey || saved.payments?.gravitypay?.api_key || '';
+    const gpSec = process.env.GRAVITYPAY_SECRET_KEY || saved.gravitypaySecretKey || saved.payments?.gravitypay?.secret_key || '';
+    const gpWh = process.env.GRAVITYPAY_WEBHOOK_SECRET || saved.gravitypayWebhookSecret || saved.payments?.gravitypay?.webhook_secret || '';
+    const gpCb = process.env.GRAVITYPAY_CALLBACK_URL || saved.gravitypayCallbackUrl || saved.payments?.gravitypay?.callback_url || 'https://vexpesa.com/api/webhooks/gravitypay';
+
+    return res.status(200).json({
+      ...defaultSettings,
+      ...saved,
+      gateway: activeGw,
+      payheroUsername: phUser,
+      payheroPassword: phPass,
+      payheroChannelId: phChan,
+      payheroCallbackUrl: phCb,
+      gravitypayApiKey: gpKey,
+      gravitypaySecretKey: gpSec,
+      gravitypayWebhookSecret: gpWh,
+      gravitypayCallbackUrl: gpCb,
+      envConfigured: {
+        gravitypay: Boolean(process.env.GRAVITYPAY_API_KEY || process.env.GRAVITYPAY_SECRET_KEY),
+        payhero: Boolean(process.env.PAYHERO_API_USERNAME && process.env.PAYHERO_API_PASSWORD),
+        database: Boolean(process.env.DATABASE_URL)
+      },
+      graph: {
+        ...defaultSettings.graph,
+        ...(saved.graph || {}),
+        speed: saved.speed ?? saved.graph?.speed ?? defaultSettings.graph.speed,
+        spike_frequency: saved.spikeFreq ?? saved.graph?.spike_frequency ?? defaultSettings.graph.spike_frequency,
+        spike_max: saved.spikeMax ?? saved.graph?.spike_max ?? defaultSettings.graph.spike_max,
+        crash_frequency: saved.crashFreq ?? saved.graph?.crash_frequency ?? defaultSettings.graph.crash_frequency,
+        crash_depth: saved.crashDepth ?? saved.graph?.crash_depth ?? defaultSettings.graph.crash_depth
+      },
+      trade: {
+        ...defaultSettings.trade,
+        ...(saved.trade || {}),
+        min_deposit: saved.minDep ?? saved.trade?.min_deposit ?? defaultSettings.trade.min_deposit,
+        min_stake: saved.minStake ?? saved.trade?.min_stake ?? defaultSettings.trade.min_stake,
+        max_stake: saved.maxStake ?? saved.trade?.max_stake ?? defaultSettings.trade.max_stake,
+        max_multiplier: saved.maxMult ?? saved.trade?.max_multiplier ?? defaultSettings.trade.max_multiplier,
+        autosell_multiplier: saved.autosell ?? saved.trade?.autosell_multiplier ?? defaultSettings.trade.autosell_multiplier,
+        duration: saved.duration ?? saved.trade?.duration ?? defaultSettings.trade.duration,
+        prestart_wait: saved.prestart ?? saved.trade?.prestart_wait ?? defaultSettings.trade.prestart_wait
+      },
+      withdraw: {
+        ...defaultSettings.withdraw,
+        ...(saved.withdraw || {}),
+        min_withdrawal: saved.minWithdraw ?? saved.withdraw?.min_withdrawal ?? defaultSettings.withdraw.min_withdrawal
+      },
+      payments: {
+        gateway: activeGw,
+        deposit_currency: depositCurrency,
+        usd_rate: usdRate,
+        payhero: {
+          api_username: phUser,
+          api_password: phPass,
+          channel_id: phChan,
+          callback_url: phCb
+        },
+        gravitypay: {
+          api_key: gpKey,
+          secret_key: gpSec,
+          webhook_secret: gpWh,
+          callback_url: gpCb
+        }
+      },
+      controls: {
+        ...defaultSettings.controls,
+        ...(saved.controls || {}),
+        force_outcome: saved.force_outcome ?? saved.controls?.force_outcome ?? defaultSettings.controls.force_outcome,
+        target_win_rate: saved.target_win_rate ?? saved.controls?.target_win_rate ?? defaultSettings.controls.target_win_rate,
+        force_win_rate: saved.force_win_rate ?? saved.controls?.force_win_rate ?? defaultSettings.controls.force_win_rate,
+        force_loss_rate: saved.force_loss_rate ?? saved.controls?.force_loss_rate ?? defaultSettings.controls.force_loss_rate,
+        demo_win_rate: saved.demo_win_rate ?? saved.controls?.demo_win_rate ?? defaultSettings.controls.demo_win_rate,
+        user_outcomes: {
+          ...defaultSettings.controls.user_outcomes,
+          ...(saved.controls?.user_outcomes || {}),
+          ...(saved.user_outcomes || {})
+        }
+      }
+    });
+  }
+
+  // B. PUBLIC SANITIZED RESPONSE (FOR ALL TRADERS / CLIENTS)
+  // Strictly strips all API keys, secrets, passwords, and internal rigging controls
+  return res.status(200).json({
+    site: defaultSettings.site,
+    gateway: activeGw,
+    currency: depositCurrency,
+    usdRate: usdRate,
+    graph: {
+      speed: saved.speed ?? saved.graph?.speed ?? defaultSettings.graph.speed,
+      spike_frequency: saved.spikeFreq ?? saved.graph?.spike_frequency ?? defaultSettings.graph.spike_frequency,
+      spike_max: saved.spikeMax ?? saved.graph?.spike_max ?? defaultSettings.graph.spike_max,
+      crash_frequency: saved.crashFreq ?? saved.graph?.crash_frequency ?? defaultSettings.graph.crash_frequency,
+      crash_depth: saved.crashDepth ?? saved.graph?.crash_depth ?? defaultSettings.graph.crash_depth,
+      y_max: saved.graph?.y_max ?? defaultSettings.graph.y_max
+    },
+    trade: {
+      min_deposit: saved.minDep ?? saved.trade?.min_deposit ?? defaultSettings.trade.min_deposit,
+      min_stake: saved.minStake ?? saved.trade?.min_stake ?? defaultSettings.trade.min_stake,
+      max_stake: saved.maxStake ?? saved.trade?.max_stake ?? defaultSettings.trade.max_stake,
+      max_multiplier: saved.maxMult ?? saved.trade?.max_multiplier ?? defaultSettings.trade.max_multiplier,
+      autosell_multiplier: saved.autosell ?? saved.trade?.autosell_multiplier ?? defaultSettings.trade.autosell_multiplier,
+      duration: saved.duration ?? saved.trade?.duration ?? defaultSettings.trade.duration,
+      prestart_wait: saved.prestart ?? saved.trade?.prestart_wait ?? defaultSettings.trade.prestart_wait
+    },
+    withdraw: {
+      min_withdrawal: saved.minWithdraw ?? saved.withdraw?.min_withdrawal ?? defaultSettings.withdraw.min_withdrawal
+    },
+    payments: {
+      gateway: activeGw,
+      deposit_currency: depositCurrency,
+      usd_rate: usdRate
+    },
+    notifications: {
+      ...(defaultSettings.notifications),
+      ...(saved.notifications || {})
+    }
+  });
 }

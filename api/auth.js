@@ -1,9 +1,10 @@
 import { getDb, initDb } from './db.js';
+import { signAdminToken } from './auth-helper.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -49,34 +50,101 @@ export default async function handler(req, res) {
     }
   }
 
-  // 0. HEALTH CHECK / STATUS DIAGNOSTIC
+  // 0. HEALTH CHECK / STATUS DIAGNOSTIC (Sanitized - no user PII leaked)
   if (action === 'health' || action === 'status' || req.query.health === 'true') {
     if (db) {
       try {
         const testRes = await db`SELECT count(*)::int AS count FROM vexpesa_users`;
-        const recent = await db`SELECT id, username, email, phone, role, created_at FROM vexpesa_users ORDER BY id DESC LIMIT 10`;
         return res.status(200).json({
           success: true,
+          status: 'healthy',
           dbConnected: true,
           totalUsers: testRes[0]?.count || 0,
-          recentUsers: recent
+          timestamp: new Date().toISOString()
         });
       } catch (dbErr) {
         return res.status(500).json({
           success: false,
           dbConnected: false,
-          error: dbErr.message
+          error: 'Database connection issue'
         });
       }
     }
     return res.status(200).json({
       success: true,
+      status: 'operational',
       dbConnected: false,
       message: 'DATABASE_URL environment variable is not detected by the server runtime.'
     });
   }
 
-  // 1. REGISTER
+  // 1. ADMIN DEDICATED AUTHENTICATION (Produces Signed Cryptographic Session Token)
+  if (action === 'admin_login') {
+    const identifier = (input.identifier || input.username || input.email || '').trim().toLowerCase();
+    const password = (input.password || '').trim();
+
+    if (!identifier || !password) {
+      return res.status(400).json({ success: false, error: 'Admin username/email and password are required.' });
+    }
+
+    const envAdminUser = (process.env.ADMIN_USERNAME || 'admin').toLowerCase();
+    const envAdminPass = process.env.ADMIN_PASSWORD;
+
+    // A. Check against Vercel Environment Variables
+    if (envAdminPass && password === envAdminPass) {
+      if (identifier === envAdminUser || identifier === 'admin' || identifier === 'admin@vexpesa.com') {
+        const adminObj = { id: 1, username: envAdminUser, email: 'admin@vexpesa.com', role: 'admin' };
+        const token = signAdminToken(adminObj);
+        return res.status(200).json({
+          success: true,
+          token,
+          user: adminObj
+        });
+      }
+    }
+
+    // B. Check against Neon Database for Admin Role
+    if (db) {
+      try {
+        const users = await db`
+          SELECT id, username, email, role, password, password_hash, status
+          FROM vexpesa_users 
+          WHERE (
+            LOWER(username) = LOWER(${identifier}) 
+            OR LOWER(email) = LOWER(${identifier}) 
+            OR LOWER(name) = LOWER(${identifier})
+          )
+          AND role = 'admin'
+          AND (
+            password_hash = ${password} 
+            OR password = ${password}
+          )
+          LIMIT 1
+        `;
+
+        if (users.length > 0) {
+          const user = users[0];
+          if (user.status === 'suspended') {
+            return res.status(403).json({ success: false, error: 'Admin account has been suspended.' });
+          }
+          const adminObj = { id: user.id, username: user.username, email: user.email, role: 'admin' };
+          const token = signAdminToken(adminObj);
+          return res.status(200).json({
+            success: true,
+            token,
+            user: adminObj
+          });
+        }
+      } catch (err) {
+        console.error('Admin DB auth error:', err);
+        return res.status(500).json({ success: false, error: 'Database authentication failed.' });
+      }
+    }
+
+    return res.status(401).json({ success: false, error: 'Invalid admin credentials.' });
+  }
+
+  // 2. REGISTER (Player Registration)
   if (action === 'register') {
     const username = (input.username || '').trim();
     const email = (input.email || '').trim().toLowerCase();
@@ -100,7 +168,6 @@ export default async function handler(req, res) {
 
         let newUser;
         try {
-          // Standard auto-increment serial insert
           const res = await db`
             INSERT INTO vexpesa_users (
               username,
@@ -170,13 +237,26 @@ export default async function handler(req, res) {
     });
   }
 
-  // 2. LOGIN
+  // 3. LOGIN (Player and Trader Login)
   if (action === 'login') {
     const identifier = (input.identifier || input.username || input.email || '').trim();
     const password = (input.password || '').trim();
 
     if (!identifier || !password) {
       return res.status(400).json({ success: false, error: 'Identifier and password are required.' });
+    }
+
+    // Check if logging in as environment admin
+    const envAdminUser = (process.env.ADMIN_USERNAME || 'admin').toLowerCase();
+    const envAdminPass = process.env.ADMIN_PASSWORD;
+    if (envAdminPass && password === envAdminPass && (identifier.toLowerCase() === envAdminUser || identifier.toLowerCase() === 'admin')) {
+      const adminObj = { id: 1, username: envAdminUser, email: 'admin@vexpesa.com', role: 'admin', balance: 500000.00, demo_balance: 100000.00 };
+      const token = signAdminToken(adminObj);
+      return res.status(200).json({
+        success: true,
+        token,
+        user: adminObj
+      });
     }
 
     if (db) {
@@ -209,17 +289,25 @@ export default async function handler(req, res) {
         // Auto-reconcile user deposits
         await reconcileUserDeposits(user);
 
+        const userPayload = {
+          id: user.id,
+          username: user.username || user.name || identifier,
+          email: user.email,
+          phone: user.phone || '254712345678',
+          balance: parseFloat(user.balance || 0),
+          demo_balance: parseFloat(user.demo_balance || 10000),
+          role: user.role || 'user'
+        };
+
+        let token = null;
+        if (user.role === 'admin') {
+          token = signAdminToken(userPayload);
+        }
+
         return res.status(200).json({
           success: true,
-          user: {
-            id: user.id,
-            username: user.username || user.name || identifier,
-            email: user.email,
-            phone: user.phone || '254712345678',
-            balance: parseFloat(user.balance || 0),
-            demo_balance: parseFloat(user.demo_balance || 10000),
-            role: user.role || 'user'
-          }
+          token,
+          user: userPayload
         });
       } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
@@ -232,7 +320,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // 3. SYNC / GET USER PROFILE & BALANCE
+  // 4. SYNC / GET USER PROFILE & BALANCE
   if (action === 'me' || action === 'sync' || (req.method === 'GET' && (req.query.username || req.query.identifier))) {
     const identifier = (req.query.username || req.query.email || req.query.identifier || input.username || input.identifier || '').trim();
     if (!identifier) {

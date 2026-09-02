@@ -127,13 +127,9 @@ CREATE TABLE IF NOT EXISTS vexpesa_settings (
   value TEXT NOT NULL
 );
 
--- 7. Seed Default Admin and Traders for VexPesa
+-- 7. Initial Table Initialization
+-- Note: Set ADMIN_PASSWORD in your Vercel Environment Variables.
 INSERT INTO vexpesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
 VALUES 
-  ('admin', 'Admin Core', 'admin@vexpesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin', 'active'),
-  ('trader254', 'Brian Kip', 'trader254@gmail.com', '254712345678', 'Aa@22', 'Aa@22', 2500.00, 10000.00, 'user', 'active'),
-  ('kamau_fx', 'John Kamau', 'kamau@gmail.com', '254722114455', 'Aa@22', 'Aa@22', 8750.00, 10000.00, 'user', 'active'),
-  ('sarah_w', 'Sarah Wanjiru', 'sarah.w@yahoo.com', '254733889900', 'Aa@22', 'Aa@22', 14200.00, 10000.00, 'user', 'active'),
-  ('mwangi_trade', 'Peter Mwangi', 'pmwangi@gmail.com', '254799443322', 'Aa@22', 'Aa@22', 600.00, 10000.00, 'user', 'active')
-ON CONFLICT (username) DO UPDATE 
-SET password = EXCLUDED.password, password_hash = EXCLUDED.password_hash;
+  ('admin', 'Admin Core', 'admin@vexpesa.com', '254700000000', 'SetViaVercelEnv', 'SetViaVercelEnv', 500000.00, 100000.00, 'admin', 'active')
+ON CONFLICT (username) DO NOTHING;

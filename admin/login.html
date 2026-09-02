@@ -29,13 +29,13 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0f17;background-im
         <div id="adminAlert" class="hidden mb-4 p-3 rounded-xl text-xs font-medium bg-red-500/10 border border-red-500/20 text-red-400"></div>
         <form id="adminLoginForm" onsubmit="handleAdminLogin(event)" class="space-y-4">
             <div>
-                <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Admin Email / Username</label>
-                <input type="text" id="adminUser" required placeholder="admin@vexpesa.com" value="admin@vexpesa.com" autocomplete="username"
+                <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Admin Username or Email</label>
+                <input type="text" id="adminUser" required placeholder="admin" autocomplete="username"
                     class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
             </div>
             <div>
-                <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Security Password</label>
-                <input type="password" id="adminPass" required placeholder="••••••••" value="Aa@22" autocomplete="current-password"
+                <label class="block text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Admin Security Password</label>
+                <input type="password" id="adminPass" required placeholder="••••••••••••" autocomplete="current-password"
                     class="w-full bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
             </div>
             <button type="submit" id="adminLoginBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl text-sm transition-colors mt-2 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25">
@@ -60,66 +60,51 @@ async function handleAdminLogin(e){
   const p = (document.getElementById('adminPass').value || '').trim();
   const btn = document.getElementById('adminLoginBtn');
 
-  // 1. Direct Master Verification
-  const isMasterUser = (u.toLowerCase() === 'admin@vexpesa.com' || u.toLowerCase() === 'admin');
-  const isMasterPass = (p === 'Aa@22');
-
-  if (isMasterUser && isMasterPass) {
-    btn.textContent = 'Authenticating...';
-    btn.disabled = true;
-    localStorage.setItem('maliAdminAuth', 'true');
-    localStorage.setItem('maliUser', JSON.stringify({
-      id: 1,
-      username: 'admin',
-      email: 'admin@vexpesa.com',
-      role: 'admin',
-      balance: 500000.00,
-      demo_balance: 100000.00
-    }));
-    setTimeout(() => {
-      window.location.href = 'index.html';
-    }, 250);
-    return;
-  }
-
-  // 2. Neon Database Verification via API
-  btn.textContent = 'Verifying with Database...';
+  btn.textContent = 'Verifying Admin Access...';
   btn.disabled = true;
 
   try {
-    const res = await fetch('../api/auth.js', {
+    let res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'login',
+        action: 'admin_login',
         identifier: u,
         password: p
       })
     });
+
+    if (!res.ok && res.status === 404) {
+      res = await fetch('../api/auth.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'admin_login',
+          identifier: u,
+          password: p
+        })
+      });
+    }
+
     const data = await res.json();
-    if (data.success && data.user) {
-      if (data.user.role === 'admin' || isMasterUser) {
-        localStorage.setItem('maliAdminAuth', 'true');
+    if (data.success && data.token) {
+      localStorage.setItem('maliAdminToken', data.token);
+      localStorage.setItem('maliAdminAuth', 'true');
+      if (data.user) {
         localStorage.setItem('maliUser', JSON.stringify(data.user));
-        window.location.href = 'index.html';
-        return;
-      } else {
-        alertEl.textContent = 'Access denied: This user account does not have Admin privileges.';
-        alertEl.classList.remove('hidden');
-        btn.textContent = 'Authenticate Session';
-        btn.disabled = false;
-        return;
       }
+      btn.textContent = 'Authenticated. Redirecting...';
+      window.location.href = 'index.html';
+      return;
     } else {
-      alertEl.textContent = data.error || 'Invalid credentials. Default admin password is: Aa@22';
+      alertEl.textContent = data.error || 'Invalid admin credentials.';
       alertEl.classList.remove('hidden');
       btn.textContent = 'Authenticate Session';
       btn.disabled = false;
       return;
     }
   } catch (err) {
-    // If backend is unreachable and credentials didn't match master
-    alertEl.textContent = 'Invalid credentials. Please enter the default password: Aa@22';
+    alertEl.textContent = 'Connection error. Please check server connectivity.';
     alertEl.classList.remove('hidden');
     btn.textContent = 'Authenticate Session';
     btn.disabled = false;

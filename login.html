@@ -87,6 +87,9 @@ async function handleLogin(e){
       localStorage.setItem('maliUser', JSON.stringify(userObj));
       localStorage.setItem('maliRealBalance', (userObj.balance || 0).toString());
       localStorage.setItem('maliDemoBalance', (userObj.demo_balance || 10000).toString());
+      if (data.token) {
+        localStorage.setItem('maliAdminToken', data.token);
+      }
       if (userObj.role === 'admin' || userObj.username === 'admin') {
         localStorage.setItem('maliAdminAuth', 'true');
       }
@@ -102,10 +105,6 @@ async function handleLogin(e){
     // Local fallback
     const users = JSON.parse(localStorage.getItem('maliUsersList') || '[]');
     let found = users.find(u => (u.email === email || u.phone === email || u.username === email) && u.password === password);
-    
-    if (!found && (email.toLowerCase() === 'admin' || email.toLowerCase() === 'admin@vexpesa.com') && password === 'Aa@22') {
-      found = { id: 1, username: 'admin', email: 'admin@vexpesa.com', role: 'admin', balance: 500000, demo_balance: 100000 };
-    }
 
     let userObj = found;
     if (!userObj) {

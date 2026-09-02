@@ -79,25 +79,43 @@ vexpesa/
 ### Standalone / Static Browser Mode
 Double click or open `index.html` directly in any web browser. The application includes full client-side state simulation and `localStorage` persistence for balances, trades, deposits, withdrawals, and settings.
 
-### Serverless / Node.js Mode
-1. Place the `vexpesa/` directory in your environment:
-   ```bash
-   npm install
-   npm run dev
+### Serverless / Node.js & Vercel Deployment
+1. Set up your Vercel Project and add the following Environment Variables in **Vercel Project Settings -> Environment Variables**:
+   ```env
+   # Database
+   DATABASE_URL=postgresql://neondb_owner:...@ep-...neon.tech/neondb?sslmode=require
+
+   # Admin Authentication
+   ADMIN_USERNAME=admin
+   ADMIN_PASSWORD=your_secure_custom_password_here
+   ADMIN_JWT_SECRET=your_32_character_random_secret_here
+
+   # Primary Payment Gateway (GravityPay)
+   GRAVITYPAY_API_KEY=your_gravitypay_api_key
+   GRAVITYPAY_SECRET_KEY=your_gravitypay_secret_key
+   GRAVITYPAY_WEBHOOK_SECRET=your_gravitypay_webhook_secret
+   GRAVITYPAY_CALLBACK_URL=https://yourdomain.com/api/webhooks/gravitypay
+
+   # Secondary Gateway (PayHero)
+   PAYHERO_API_USERNAME=your_payhero_username
+   PAYHERO_API_PASSWORD=your_payhero_password
+   PAYHERO_CHANNEL_ID=your_channel_id
+   PAYHERO_CALLBACK_URL=https://yourdomain.com/api/webhooks/payhero
+
+   PAYMENT_GATEWAY=gravitypay
    ```
-2. Import `neon_schema.sql` into Neon PostgreSQL or `database.sql` into MySQL.
-3. Access:
-   - **User Platform**: `http://localhost:3000/` or `index.html`
-   - **Admin Portal**: `http://localhost:3000/admin/` or `admin/index.html`
+
+2. Access:
+   - **User Platform**: `https://yourdomain.com/`
+   - **Admin Portal**: `https://yourdomain.com/admin/login.html`
 
 ---
 
-## 🔐 Default Credentials
+## 🔐 Security Architecture
 
-| Portal | Username / Email | Password |
-|---|---|---|
-| **Trader Account** | `trader254` or any +254 phone | *any password* |
-| **Admin Portal** | `admin@vexpesa.com` | `Aa@22` |
+- **Protected Admin API**: All admin routes (`/api/settings`, `/api/users`, `/api/deposits`) require a cryptographically signed HMAC-SHA256 session token (`Authorization: Bearer <token>`).
+- **Zero Client Credential Leakage**: Gateway API keys and secrets are strictly retained on the backend runtime and never sent to or returned to client browsers.
+- **Environment Driven**: Gateway credentials and master admin authentication are managed securely via Vercel Environment Variables.
 
 ---
 

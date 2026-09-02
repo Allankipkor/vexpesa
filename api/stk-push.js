@@ -53,21 +53,20 @@ export default async function handler(req, res) {
   }
   if (!resolvedUsername) resolvedUsername = 'Trader';
 
-  // PayHero Credentials
-  let apiUsername = (input.payheroUsername || process.env.PAYHERO_API_USERNAME || '').trim();
-  let apiPassword = (input.payheroPassword || process.env.PAYHERO_API_PASSWORD || '').trim();
-  let channelId = parseInt(input.payheroChannelId || process.env.PAYHERO_CHANNEL_ID) || 0;
-  let callbackUrl = (input.payheroCallbackUrl || process.env.PAYHERO_CALLBACK_URL || '').trim();
+  // Gateway Credentials (strictly server-side environment variables first, database settings fallback)
+  let apiUsername = (process.env.PAYHERO_API_USERNAME || '').trim();
+  let apiPassword = (process.env.PAYHERO_API_PASSWORD || '').trim();
+  let channelId = parseInt(process.env.PAYHERO_CHANNEL_ID) || 0;
+  let callbackUrl = (process.env.PAYHERO_CALLBACK_URL || '').trim();
 
-  // GravityPay Credentials
-  let gpApiKey = (input.gravitypayApiKey || process.env.GRAVITYPAY_API_KEY || '').trim();
-  let gpSecretKey = (input.gravitypaySecretKey || process.env.GRAVITYPAY_SECRET_KEY || '').trim();
-  let gpCallbackUrl = (input.gravitypayCallbackUrl || process.env.GRAVITYPAY_CALLBACK_URL || '').trim();
-  let gateway = (input.gateway || process.env.PAYMENT_GATEWAY || '').toLowerCase().trim();
+  let gpApiKey = (process.env.GRAVITYPAY_API_KEY || '').trim();
+  let gpSecretKey = (process.env.GRAVITYPAY_SECRET_KEY || '').trim();
+  let gpCallbackUrl = (process.env.GRAVITYPAY_CALLBACK_URL || '').trim();
+  let gateway = (process.env.PAYMENT_GATEWAY || '').toLowerCase().trim();
 
   let minDep = 50.0;
 
-  // Fetch credentials and gateway routing from Neon DB settings table
+  // Fetch credentials and gateway routing from Neon DB settings table if not in environment
   if (db) {
     try {
       const rows = await db`SELECT value FROM vexpesa_settings WHERE key = 'platform_config' LIMIT 1`;
@@ -75,13 +74,13 @@ export default async function handler(req, res) {
         const saved = JSON.parse(rows[0].value);
         if (!gateway) gateway = (saved.gateway || saved.payments?.gateway || '').toLowerCase().trim();
         
-        // PayHero
+        // PayHero Fallback
         if (!apiUsername) apiUsername = (saved.payheroUsername || saved.payments?.payhero?.api_username || '').trim();
         if (!apiPassword) apiPassword = (saved.payheroPassword || saved.payments?.payhero?.api_password || '').trim();
         if (!channelId) channelId = parseInt(saved.payheroChannelId || saved.payments?.payhero?.channel_id) || 0;
         if (!callbackUrl) callbackUrl = (saved.payheroCallbackUrl || saved.payments?.payhero?.callback_url || '').trim();
 
-        // GravityPay
+        // GravityPay Fallback
         if (!gpApiKey) gpApiKey = (saved.gravitypayApiKey || saved.payments?.gravitypay?.api_key || '').trim();
         if (!gpSecretKey) gpSecretKey = (saved.gravitypaySecretKey || saved.payments?.gravitypay?.secret_key || '').trim();
         if (!gpCallbackUrl) gpCallbackUrl = (saved.gravitypayCallbackUrl || saved.payments?.gravitypay?.callback_url || '').trim();

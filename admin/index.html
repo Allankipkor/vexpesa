@@ -596,13 +596,55 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#0a0e17;color:#e8edf5
 </footer>
 
 <script>
-// Check admin authentication
-if (localStorage.getItem('maliAdminAuth') !== 'true') {
+// Check admin authentication token
+const adminToken = localStorage.getItem('maliAdminToken');
+if (!adminToken || localStorage.getItem('maliAdminAuth') !== 'true') {
   window.location.href = 'login.html';
 }
 
+function getAdminAuthHeaders() {
+  const token = localStorage.getItem('maliAdminToken') || '';
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + token
+  };
+}
+
+async function adminFetch(url, options = {}) {
+  const token = localStorage.getItem('maliAdminToken');
+  if (!token) {
+    window.location.href = 'login.html';
+    return null;
+  }
+  options.headers = {
+    ...options.headers,
+    'Authorization': 'Bearer ' + token,
+    'Content-Type': options.headers?.['Content-Type'] || 'application/json'
+  };
+  let res;
+  try {
+    res = await fetch(url, options);
+    if (!res.ok && res.status === 404 && !url.startsWith('../')) {
+      res = await fetch('../' + (url.startsWith('/') ? url.slice(1) : url), options);
+    }
+  } catch(e) {
+    console.error('Network request failed:', e);
+    return null;
+  }
+
+  if (res && (res.status === 401 || res.status === 403)) {
+    localStorage.removeItem('maliAdminToken');
+    localStorage.removeItem('maliAdminAuth');
+    window.location.href = 'login.html';
+    return null;
+  }
+  return res;
+}
+
 function adminLogout(){
+  localStorage.removeItem('maliAdminToken');
   localStorage.removeItem('maliAdminAuth');
+  localStorage.removeItem('maliUser');
   window.location.href = 'login.html';
 }
 
@@ -758,22 +800,12 @@ async function setUserOutcomeOverride(username, outcome, rate) {
   }
 
   try {
-    let res = await fetch('/api/settings', {
+    await adminFetch('/api/settings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         user_override: { username: safeUser, outcome, rate: finalRate }
       })
     });
-    if (!res.ok) {
-      await fetch('../api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_override: { username: safeUser, outcome, rate: finalRate }
-        })
-      });
-    }
   } catch(e) {}
 
   localStorage.setItem('maliUserOutcomes', JSON.stringify(currentUserOutcomes));
@@ -1066,8 +1098,8 @@ function loadAdminConfig(){
     }));
   };
 
-  fetch('/api/settings')
-    .then(r => r.ok ? r.json() : fetch('../api/settings').then(r2 => r2.json()))
+  adminFetch('/api/settings?admin=true')
+    .then(r => r ? r.json() : null)
     .then(applySettingsData)
     .catch(() => {});
 
@@ -1146,18 +1178,10 @@ async function saveAdminConfig(silent = false){
 
   // Sync to Backend Server API
   try {
-    let res = await fetch('/api/settings', {
+    await adminFetch('/api/settings', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(cfg)
     });
-    if (!res.ok) {
-      await fetch('../api/settings', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(cfg)
-      });
-    }
   } catch(e) {}
 
   if (!silent) {
@@ -1257,9 +1281,8 @@ async function submitModalCredit() {
   statusEl.textContent = 'Processing wallet credit...';
 
   try {
-    let res = await fetch('/api/users', {
+    const res = await adminFetch('/api/users', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'credit',
         username,
@@ -1268,20 +1291,7 @@ async function submitModalCredit() {
         wallet_type: selectedCreditWalletType
       })
     });
-    if (!res.ok) {
-      res = await fetch('../api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'credit',
-          username,
-          user_id: userId,
-          amount: amt,
-          wallet_type: selectedCreditWalletType
-        })
-      });
-    }
-    const data = await res.json();
+    const data = res ? await res.json() : { success: false, error: 'Session expired' };
     if (data.success) {
       statusEl.className = 'text-xs p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 block';
       statusEl.textContent = `✓ Successfully credited ${prefix}${amt.toLocaleString('en-US',{minimumFractionDigits:2})} to ${username}!`;
@@ -1332,9 +1342,8 @@ async function renderTradersList(){
   const prefix = curr === 'usd' ? '$' : 'KES ';
 
   try {
-    let res = await fetch('/api/users');
-    if (!res.ok) res = await fetch('../api/users');
-    const data = await res.json();
+    const res = await adminFetch('/api/users');
+    const data = res ? await res.json() : null;
 
     if (data && data.success && Array.isArray(data.users)) {
       if (data.users.length === 0) {
@@ -1584,9 +1593,8 @@ function displayFilteredDeposits() {
 
 async function renderDepositsList() {
   try {
-    let res = await fetch('/api/deposits');
-    if (!res.ok) res = await fetch('../api/deposits');
-    const data = await res.json();
+    const res = await adminFetch('/api/deposits');
+    const data = res ? await res.json() : null;
 
     if (data.success && data.deposits) {
       allAdminDeposits = data.deposits;
@@ -1632,9 +1640,8 @@ async function reconcileDepositsLedger() {
     btn.innerHTML = '<span>⏳</span> Reconciling...';
   }
   try {
-    let res = await fetch('/api/deposits?action=reconcile');
-    if (!res.ok) res = await fetch('../api/deposits?action=reconcile');
-    const data = await res.json();
+    const res = await adminFetch('/api/deposits?action=reconcile');
+    const data = res ? await res.json() : null;
     if (data.success) {
       await renderDepositsList();
     }

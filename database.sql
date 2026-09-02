@@ -105,7 +105,7 @@ INSERT INTO `vexpesa_settings` (`key`, `value`) VALUES
 ('checkout_method', 'both')
 ON DUPLICATE KEY UPDATE `value`=VALUES(`value`);
 
--- Seed Default Admin Account (password: Aa@22)
+-- Seed Default Admin Account
 INSERT INTO `vexpesa_users` (`username`, `name`, `email`, `phone`, `password_hash`, `password`, `balance`, `demo_balance`, `role`) VALUES
-('admin', 'Admin Core', 'admin@vexpesa.com', '254700000000', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Aa@22', 500000.00, 100000.00, 'admin')
+('admin', 'Admin Core', 'admin@vexpesa.com', '254700000000', '', '', 500000.00, 100000.00, 'admin')
 ON DUPLICATE KEY UPDATE `username`=VALUES(`username`);

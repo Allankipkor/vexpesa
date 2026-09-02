@@ -186,23 +186,16 @@ export async function initDb() {
     const userCountRes = await db`SELECT COUNT(*) AS cnt FROM vexpesa_users`;
     const count = parseInt(userCountRes[0]?.cnt || 0);
     if (count < 2) {
+      const adminPass = process.env.ADMIN_PASSWORD || 'ChangeMeImmediate_2026!';
+      const adminUser = process.env.ADMIN_USERNAME || 'admin';
       await db`
         INSERT INTO vexpesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
         VALUES 
-          ('admin', 'Admin Core', 'admin@vexpesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin', 'active'),
-          ('trader254', 'Brian Kip', 'trader254@gmail.com', '254712345678', 'Aa@22', 'Aa@22', 2500.00, 10000.00, 'user', 'active'),
-          ('kamau_fx', 'John Kamau', 'kamau@gmail.com', '254722114455', 'Aa@22', 'Aa@22', 8750.00, 10000.00, 'user', 'active'),
-          ('sarah_w', 'Sarah Wanjiru', 'sarah.w@yahoo.com', '254733889900', 'Aa@22', 'Aa@22', 14200.00, 10000.00, 'user', 'active'),
-          ('mwangi_trade', 'Peter Mwangi', 'pmwangi@gmail.com', '254799443322', 'Aa@22', 'Aa@22', 600.00, 10000.00, 'user', 'active')
+          (${adminUser}, 'Admin Core', 'admin@vexpesa.com', '254700000000', ${adminPass}, ${adminPass}, 500000.00, 100000.00, 'admin', 'active'),
+          ('trader254', 'Brian Kip', 'trader254@gmail.com', '254712345678', 'Trader2026!', 'Trader2026!', 2500.00, 10000.00, 'user', 'active')
         ON CONFLICT (username) DO NOTHING
       `;
     }
-    // Ensure admin user password is synchronized to Aa@22 in Neon DB
-    await db`
-      UPDATE vexpesa_users 
-      SET password = 'Aa@22', password_hash = 'Aa@22' 
-      WHERE LOWER(username) = 'admin' OR LOWER(email) = 'admin@vexpesa.com'
-    `;
   } catch (e) {
     console.error('Error seeding active traders in initDb:', e);
   }

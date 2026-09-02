@@ -1,9 +1,10 @@
 import { getDb, initDb } from './db.js';
+import { verifyAdminToken } from './auth-helper.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -229,41 +230,56 @@ export default async function handler(req, res) {
   }
 
   // 2. ADMIN RECONCILIATION ACTION (Cleans up phantom duplicate receipt rows)
-  if (action === 'reconcile' && db) {
-    try {
-      // Reconcile duplicate M-Pesa receipts: keep only earliest 1 per receipt, mark remainder as superseded
-      const dupes = await db`
-        WITH duplicates AS (
-          SELECT id, 
-                 ROW_NUMBER() OVER (
-                   PARTITION BY method 
-                   ORDER BY created_at ASC, id ASC
-                 ) AS rn
-          FROM vexpesa_deposits
-          WHERE (status = 'completed' OR status = 'success' OR status = 'successful')
-            AND method LIKE 'M-Pesa (%'
-            AND method NOT LIKE 'M-Pesa (GravityPay)'
-            AND method NOT LIKE 'M-Pesa (PayHero)'
-            AND method NOT LIKE 'M-Pesa STK'
-        )
-        UPDATE vexpesa_deposits
-        SET status = 'superseded'
-        WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
-        RETURNING id, deposit_ref, method
-      `;
-      return res.status(200).json({
-        success: true,
-        reconciled_count: dupes.length,
-        message: `Successfully reconciled ${dupes.length} duplicate deposit records.`
-      });
-    } catch(recErr) {
-      console.error('Error reconciling deposits:', recErr);
-      return res.status(500).json({ success: false, error: recErr.message });
+  if (action === 'reconcile') {
+    const auth = verifyAdminToken(req);
+    if (!auth.isValid) {
+      return res.status(401).json({ success: false, error: auth.error || 'Unauthorized: Admin authentication token required.' });
+    }
+
+    if (db) {
+      try {
+        // Reconcile duplicate M-Pesa receipts: keep only earliest 1 per receipt, mark remainder as superseded
+        const dupes = await db`
+          WITH duplicates AS (
+            SELECT id, 
+                   ROW_NUMBER() OVER (
+                     PARTITION BY method 
+                     ORDER BY created_at ASC, id ASC
+                   ) AS rn
+            FROM vexpesa_deposits
+            WHERE (status = 'completed' OR status = 'success' OR status = 'successful')
+              AND method LIKE 'M-Pesa (%'
+              AND method NOT LIKE 'M-Pesa (GravityPay)'
+              AND method NOT LIKE 'M-Pesa (PayHero)'
+              AND method NOT LIKE 'M-Pesa STK'
+          )
+          UPDATE vexpesa_deposits
+          SET status = 'superseded'
+          WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
+          RETURNING id, deposit_ref, method
+        `;
+        return res.status(200).json({
+          success: true,
+          reconciled_count: dupes.length,
+          message: `Successfully reconciled ${dupes.length} duplicate deposit records.`
+        });
+      } catch(recErr) {
+        console.error('Error reconciling deposits:', recErr);
+        return res.status(500).json({ success: false, error: recErr.message });
+      }
     }
   }
 
   // 3. GET ALL DEPOSITS & STATS (Strictly Successful Deposits for Admin Ledger)
   if (req.method === 'GET') {
+    const auth = verifyAdminToken(req);
+    if (!auth.isValid) {
+      return res.status(401).json({
+        success: false,
+        error: auth.error || 'Unauthorized: Admin authentication token required to view transaction ledger.'
+      });
+    }
+
     if (db) {
       try {
         // Auto-reconcile duplicate M-Pesa receipts on fetch

@@ -35,30 +35,15 @@ export default async function handler(req, res) {
 
   // 2. GET MESSAGES (Strictly user-specific; never leak messages to unauthenticated / global requests)
   if (req.method === 'GET') {
+    if (!username || username === 'Trader') {
+      return res.status(200).json({
+        success: true,
+        messages: []
+      });
+    }
+
     if (db) {
       try {
-        if (!username || username === 'Trader') {
-          // If no specific user is provided, check if there are recent messages for the active session
-          const fallbackMessages = await db`
-            SELECT id, user_id, username, title, body, read, created_at 
-            FROM vexpesa_messages 
-            ORDER BY created_at DESC 
-            LIMIT 20
-          `;
-          return res.status(200).json({
-            success: true,
-            messages: fallbackMessages.map(m => ({
-              id: m.id.toString(),
-              userId: m.user_id,
-              username: m.username,
-              title: m.title || 'MPESA',
-              body: m.body,
-              read: m.read || false,
-              createdAt: m.created_at
-            }))
-          });
-        }
-
         let messages = [];
         try {
           const uLookup = await db`
@@ -104,13 +89,7 @@ export default async function handler(req, res) {
           }
         } catch(qErr) {
           console.error('Error in user message query:', qErr);
-          // Fallback to recent messages
-          messages = await db`
-            SELECT id, user_id, username, title, body, read, created_at 
-            FROM vexpesa_messages 
-            ORDER BY created_at DESC 
-            LIMIT 20
-          `;
+          messages = [];
         }
 
         return res.status(200).json({

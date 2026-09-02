@@ -274,9 +274,9 @@ export default async function handler(req, res) {
       amount: withdrawAmt,
       phone: targetPhone,
       newBalance: updatedBalance,
-      messageTitle: shouldDeliverMessage ? title : null,
-      messageBody: shouldDeliverMessage ? messageBody : null,
-      notificationBody: shouldDeliverMessage ? messageBody : null,
+      messageTitle: title,
+      messageBody: messageBody,
+      notificationBody: messageBody,
       message: 'Withdrawal processed successfully!'
     });
   }

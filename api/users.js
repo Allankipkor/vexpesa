@@ -1,18 +1,28 @@
 import { getDb, initDb } from './db.js';
+import { verifyAdminToken } from './auth-helper.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
+  // Strictly enforce Admin Token Authentication for all user management endpoints
+  const auth = verifyAdminToken(req);
+  if (!auth.isValid) {
+    return res.status(401).json({
+      success: false,
+      error: auth.error || 'Unauthorized: Admin authentication token required.'
+    });
+  }
+
   await initDb();
   const db = getDb();
 
-  // 1. GET ALL TRADERS & STATS
+  // 1. GET ALL TRADERS & STATS (ADMIN ONLY)
   if (req.method === 'GET') {
     if (db) {
       try {
@@ -32,27 +42,8 @@ export default async function handler(req, res) {
             ORDER BY id DESC
           `;
         } catch (qErr) {
-          console.error('Initial user query failed, attempting select all:', qErr);
+          console.error('User query error:', qErr);
           users = await db`SELECT * FROM vexpesa_users ORDER BY id DESC`;
-        }
-
-        // If no traders in DB, seed active traders
-        if (!users || users.length === 0) {
-          try {
-            await db`
-              INSERT INTO vexpesa_users (username, name, email, phone, password_hash, password, balance, demo_balance, role, status)
-              VALUES 
-                ('admin', 'Admin Core', 'admin@vexpesa.com', '254700000000', 'Aa@22', 'Aa@22', 500000.00, 100000.00, 'admin', 'active'),
-                ('trader254', 'Brian Kip', 'trader254@gmail.com', '254712345678', 'Aa@22', 'Aa@22', 2500.00, 10000.00, 'user', 'active'),
-                ('kamau_fx', 'John Kamau', 'kamau@gmail.com', '254722114455', 'Aa@22', 'Aa@22', 8750.00, 10000.00, 'user', 'active'),
-                ('sarah_w', 'Sarah Wanjiru', 'sarah.w@yahoo.com', '254733889900', 'Aa@22', 'Aa@22', 14200.00, 10000.00, 'user', 'active'),
-                ('mwangi_trade', 'Peter Mwangi', 'pmwangi@gmail.com', '254799443322', 'Aa@22', 'Aa@22', 600.00, 10000.00, 'user', 'active')
-              ON CONFLICT (username) DO NOTHING
-            `;
-            users = await db`SELECT * FROM vexpesa_users ORDER BY id DESC`;
-          } catch(seedErr) {
-            console.error('Error auto-seeding users in api/users.js:', seedErr);
-          }
         }
 
         let totalVol = 4820400;
@@ -88,24 +79,19 @@ export default async function handler(req, res) {
         });
       } catch (err) {
         console.error('Error fetching users from DB:', err);
+        return res.status(500).json({ success: false, error: err.message });
       }
     }
 
-    // Default simulation if DB not configured yet or offline
     return res.status(200).json({
       success: true,
       connected: false,
-      users: [
-        { id: 1, username: 'trader254', email: 'trader254@gmail.com', phone: '254712345678', balance: 2500.00, demo_balance: 10000.00, role: 'user', status: 'active', created_at: new Date().toISOString() },
-        { id: 2, username: 'kamau_fx', email: 'kamau@gmail.com', phone: '254722114455', balance: 8750.00, demo_balance: 10000.00, role: 'user', status: 'active', created_at: new Date().toISOString() },
-        { id: 3, username: 'sarah_w', email: 'sarah.w@yahoo.com', phone: '254733889900', balance: 14200.00, demo_balance: 10000.00, role: 'user', status: 'active', created_at: new Date().toISOString() },
-        { id: 4, username: 'mwangi_trade', email: 'pmwangi@gmail.com', phone: '254799443322', balance: 600.00, demo_balance: 10000.00, role: 'user', status: 'active', created_at: new Date().toISOString() }
-      ],
-      stats: { total_traders: 4, total_volume: 4820400, total_payouts: 32491000 }
+      users: [],
+      stats: { total_traders: 0, total_volume: 0, total_payouts: 0 }
     });
   }
 
-  // 2. POST (Credit balance, update user)
+  // 2. POST (Credit balance, update user status - ADMIN ONLY)
   if (req.method === 'POST') {
     const input = req.body || {};
     const action = input.action || '';
@@ -154,7 +140,7 @@ export default async function handler(req, res) {
             }
           }
 
-          // Also record in deposits table
+          // Record in deposits table
           try {
             await db`
               INSERT INTO vexpesa_deposits (deposit_ref, username, amount_kes, phone, method, status, credited)
@@ -170,7 +156,7 @@ export default async function handler(req, res) {
         }
       }
 
-      return res.status(200).json({ success: true, message: `Credited ${amount} (Local)` });
+      return res.status(200).json({ success: true, message: `Credited ${amount}` });
     }
 
     if (action === 'toggle_status') {
@@ -186,5 +172,5 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(400).json({ success: false, error: 'Invalid request' });
+  return res.status(400).json({ success: false, error: 'Invalid request action' });
 }

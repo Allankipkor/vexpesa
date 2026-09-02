@@ -2393,8 +2393,6 @@ async function requestSTK(){
   localStorage.setItem('maliIsDemoMode', 'false');
   updateHUD();
 
-  // Fetch admin credentials from localStorage
-  const adminCfg = JSON.parse(localStorage.getItem('maliPlatformConfig') || '{}');
   const uname = currentUser.username || currentUser.name || currentUser.email;
 
   try {
@@ -2404,16 +2402,7 @@ async function requestSTK(){
       body: JSON.stringify({
         username: uname,
         phone: phone,
-        amount: kesAmount,
-        gateway: adminCfg.gateway || 'gravitypay',
-        payheroUsername: adminCfg.payheroUsername || '',
-        payheroPassword: adminCfg.payheroPassword || '',
-        payheroChannelId: adminCfg.payheroChannelId || '',
-        payheroCallbackUrl: adminCfg.payheroCallbackUrl || '',
-        gravitypayApiKey: adminCfg.gravitypayApiKey || '',
-        gravitypaySecretKey: adminCfg.gravitypaySecretKey || '',
-        gravitypayWebhookSecret: adminCfg.gravitypayWebhookSecret || '',
-        gravitypayCallbackUrl: adminCfg.gravitypayCallbackUrl || 'https://vexpesa.com/api/webhooks/gravitypay'
+        amount: kesAmount
       })
     });
     if (!res.ok && res.status === 404) {
@@ -2423,16 +2412,7 @@ async function requestSTK(){
         body: JSON.stringify({
           username: uname,
           phone: phone,
-          amount: kesAmount,
-          gateway: adminCfg.gateway || 'gravitypay',
-          payheroUsername: adminCfg.payheroUsername || '',
-          payheroPassword: adminCfg.payheroPassword || '',
-          payheroChannelId: adminCfg.payheroChannelId || '',
-          payheroCallbackUrl: adminCfg.payheroCallbackUrl || '',
-          gravitypayApiKey: adminCfg.gravitypayApiKey || '',
-          gravitypaySecretKey: adminCfg.gravitypaySecretKey || '',
-          gravitypayWebhookSecret: adminCfg.gravitypayWebhookSecret || '',
-          gravitypayCallbackUrl: adminCfg.gravitypayCallbackUrl || 'https://vexpesa.com/api/webhooks/gravitypay'
+          amount: kesAmount
         })
       });
     }
