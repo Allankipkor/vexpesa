@@ -1712,59 +1712,6 @@ async function syncPlatformSettings() {
     if (s.crashFreq !== undefined) CFG.CRASH_FREQ = parseFloat(s.crashFreq);
     if (s.crashDepth !== undefined) CFG.CRASH_DEPTH = parseFloat(s.crashDepth);
 
-    // Cache latest server config to local storage
-    try {
-      localStorage.setItem('maliPlatformConfig', JSON.stringify({
-        ...localCfg,
-        speed: CFG.TICK,
-        spikeFreq: CFG.SPIKE_FREQ,
-        spikeMax: CFG.SPIKE_MAX,
-        crashFreq: CFG.CRASH_FREQ,
-        crashDepth: CFG.CRASH_DEPTH,
-        maxMult: s.trade?.max_multiplier ?? s.maxMult ?? localCfg.maxMult ?? 5.0,
-        duration: s.trade?.duration ?? s.duration ?? localCfg.duration ?? 3,
-        prestart: s.trade?.prestart_wait ?? s.prestart ?? localCfg.prestart ?? 1,
-        autosell: s.trade?.autosell_multiplier ?? s.autosell ?? localCfg.autosell ?? 2.5,
-        minStake: s.trade?.min_stake ?? s.minStake ?? localCfg.minStake ?? 10,
-        maxStake: s.trade?.max_stake ?? s.maxStake ?? localCfg.maxStake ?? 50000,
-        minDep: s.trade?.min_deposit ?? s.minDep ?? localCfg.minDep ?? 50,
-        minWithdraw: s.withdraw?.min_withdrawal ?? s.minWithdraw ?? localCfg.minWithdraw ?? 100,
-        usdRate: s.payments?.usd_rate ?? s.usdRate ?? localCfg.usdRate ?? 129,
-        currency: s.payments?.deposit_currency ?? s.currency ?? localCfg.currency ?? 'kes'
-      }));
-    } catch(e) {}
-
-    // 2. Trade parameters
-    if (s.trade) {
-      CFG.TRADE_DUR = parseInt(s.trade.duration || 3);
-      CFG.MIN_STAKE = parseFloat(s.trade.min_stake ?? localCfg.minStake ?? 10);
-      CFG.MAX_STAKE = parseFloat(s.trade.max_stake ?? localCfg.maxStake ?? 50000);
-      CFG.MIN_DEPOSIT = parseFloat(s.trade.min_deposit ?? localCfg.minDep ?? 50);
-      CFG.MAX_MULT = parseFloat(s.trade.max_multiplier ?? localCfg.maxMult ?? 5.0);
-      CFG.PRESTART_WAIT = parseInt(s.trade.prestart_wait ?? localCfg.prestart ?? 1);
-      CFG.AUTOSELL_MULT = parseFloat(s.trade.autosell_multiplier ?? localCfg.autosell ?? 2.5);
-      const timerVal = document.getElementById('timerVal');
-      if (timerVal) timerVal.textContent = CFG.TRADE_DUR;
-    }
-    if (s.minStake !== undefined) CFG.MIN_STAKE = parseFloat(s.minStake);
-    if (s.maxStake !== undefined) CFG.MAX_STAKE = parseFloat(s.maxStake);
-    if (s.minDep !== undefined) CFG.MIN_DEPOSIT = parseFloat(s.minDep);
-    if (s.maxMult !== undefined) CFG.MAX_MULT = parseFloat(s.maxMult);
-    if (s.prestart !== undefined) CFG.PRESTART_WAIT = parseInt(s.prestart);
-    if (s.autosell !== undefined) CFG.AUTOSELL_MULT = parseFloat(s.autosell);
-
-    // 3. Withdrawal parameters
-    if (s.withdraw && s.withdraw.min_withdrawal !== undefined) CFG.MIN_WITHDRAW = parseFloat(s.withdraw.min_withdrawal);
-    if (s.minWithdraw !== undefined) CFG.MIN_WITHDRAW = parseFloat(s.minWithdraw);
-
-    // 4. Payments
-    if (s.payments) {
-      usdRate = parseFloat(s.payments.usd_rate ?? localCfg.usdRate ?? 129);
-      depositCurrency = (s.payments.deposit_currency || localCfg.currency || 'kes').toLowerCase();
-    }
-    if (s.usdRate !== undefined) usdRate = parseFloat(s.usdRate);
-    if (s.currency) depositCurrency = s.currency.toLowerCase();
-
     // 5. Outcome Controls & Rigging
     if (s.controls) {
       if (s.controls.force_outcome) platformForceOutcome = s.controls.force_outcome;
@@ -1784,7 +1731,40 @@ async function syncPlatformSettings() {
     if (s.user_outcomes && typeof s.user_outcomes === 'object') {
       platformUserOutcomes = { ...platformUserOutcomes, ...s.user_outcomes };
     }
+
+    // Cache latest server config to local storage
     try {
+      localStorage.setItem('maliPlatformConfig', JSON.stringify({
+        ...localCfg,
+        speed: CFG.TICK,
+        spikeFreq: CFG.SPIKE_FREQ,
+        spikeMax: CFG.SPIKE_MAX,
+        crashFreq: CFG.CRASH_FREQ,
+        crashDepth: CFG.CRASH_DEPTH,
+        maxMult: s.trade?.max_multiplier ?? s.maxMult ?? localCfg.maxMult ?? 5.0,
+        duration: s.trade?.duration ?? s.duration ?? localCfg.duration ?? 3,
+        prestart: s.trade?.prestart_wait ?? s.prestart ?? localCfg.prestart ?? 1,
+        autosell: s.trade?.autosell_multiplier ?? s.autosell ?? localCfg.autosell ?? 2.5,
+        minStake: s.trade?.min_stake ?? s.minStake ?? localCfg.minStake ?? 10,
+        maxStake: s.trade?.max_stake ?? s.maxStake ?? localCfg.maxStake ?? 50000,
+        minDep: s.trade?.min_deposit ?? s.minDep ?? localCfg.minDep ?? 50,
+        minWithdraw: s.withdraw?.min_withdrawal ?? s.minWithdraw ?? localCfg.minWithdraw ?? 100,
+        usdRate: s.payments?.usd_rate ?? s.usdRate ?? localCfg.usdRate ?? 129,
+        currency: s.payments?.deposit_currency ?? s.currency ?? localCfg.currency ?? 'kes',
+        force_outcome: platformForceOutcome,
+        target_win_rate: platformWinRate,
+        force_win_rate: platformForceWinRate,
+        force_loss_rate: platformForceLossRate,
+        demo_win_rate: platformDemoWinRate,
+        controls: {
+          force_outcome: platformForceOutcome,
+          target_win_rate: platformWinRate,
+          force_win_rate: platformForceWinRate,
+          force_loss_rate: platformForceLossRate,
+          demo_win_rate: platformDemoWinRate,
+          user_outcomes: platformUserOutcomes
+        }
+      }));
       localStorage.setItem('maliUserOutcomes', JSON.stringify(platformUserOutcomes));
     } catch(e) {}
 
@@ -2065,12 +2045,6 @@ function updateActiveButton() {
   }
 
   if (tradePhase !== 'active') return;
-
-  // Only trigger crash loss for BUY trades that are NOT forced wins or demo trades
-  if (activeTrade.type === 'buy' && rate <= 0 && prevRate > 0 && activeTrade.plannedOutcome !== 'force_win' && !activeTrade.isDemo) {
-    resolveTrade('crash');
-    return;
-  }
 
   const rateDiff = (activeTrade.type === 'buy') ? (rate - activeTrade.entryRate) : (activeTrade.entryRate - rate);
   const rawPayout = rateDiff > 0 ? activeTrade.stake * (1 + rateDiff * 10) : 0;

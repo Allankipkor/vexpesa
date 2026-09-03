@@ -638,34 +638,40 @@ function setGlobalOutcomeMode(mode) {
 
 function onWinRateSliderChange(val) {
   currentWinRate = parseInt(val) || 45;
+  currentGlobalOutcome = 'auto';
   updateGlobalOutcomeUI();
   saveAdminConfig();
 }
 function setWinRatePreset(val) {
   const slider = document.getElementById('sliderWinRate');
   if (slider) slider.value = val;
+  currentGlobalOutcome = 'auto';
   onWinRateSliderChange(val);
 }
 
 function onForceWinSliderChange(val) {
   currentForceWinRate = parseInt(val) || 85;
+  currentGlobalOutcome = 'force_win';
   updateGlobalOutcomeUI();
   saveAdminConfig();
 }
 function setForceWinPreset(val) {
   const slider = document.getElementById('sliderForceWinRate');
   if (slider) slider.value = val;
+  currentGlobalOutcome = 'force_win';
   onForceWinSliderChange(val);
 }
 
 function onForceLossSliderChange(val) {
   currentForceLossRate = parseInt(val) || 85;
+  currentGlobalOutcome = 'force_loss';
   updateGlobalOutcomeUI();
   saveAdminConfig();
 }
 function setForceLossPreset(val) {
   const slider = document.getElementById('sliderForceLossRate');
   if (slider) slider.value = val;
+  currentGlobalOutcome = 'force_loss';
   onForceLossSliderChange(val);
 }
 

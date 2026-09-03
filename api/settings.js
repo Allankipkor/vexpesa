@@ -368,13 +368,38 @@ export default async function handler(req, res) {
   }
 
   // B. PUBLIC SANITIZED RESPONSE (FOR ALL TRADERS / CLIENTS)
-  // Strictly strips all API keys, secrets, passwords, and internal rigging controls
+  // Securely strips API keys, passwords, and secrets, while delivering active trade outcome controls
+  const publicForceOutcome = saved.force_outcome ?? saved.controls?.force_outcome ?? defaultSettings.controls.force_outcome;
+  const publicTargetWinRate = parseFloat(saved.target_win_rate ?? saved.controls?.target_win_rate ?? defaultSettings.controls.target_win_rate);
+  const publicForceWinRate = parseFloat(saved.force_win_rate ?? saved.controls?.force_win_rate ?? defaultSettings.controls.force_win_rate);
+  const publicForceLossRate = parseFloat(saved.force_loss_rate ?? saved.controls?.force_loss_rate ?? defaultSettings.controls.force_loss_rate);
+  const publicDemoWinRate = parseFloat(saved.demo_win_rate ?? saved.controls?.demo_win_rate ?? defaultSettings.controls.demo_win_rate);
+  const publicUserOutcomes = {
+    ...defaultSettings.controls.user_outcomes,
+    ...(saved.controls?.user_outcomes || {}),
+    ...(saved.user_outcomes || {})
+  };
+
   return res.status(200).json({
     site: defaultSettings.site,
     gateway: activeGw,
     currency: depositCurrency,
     usdRate: usdRate,
     speed: saved.speed ?? saved.graph?.speed ?? defaultSettings.graph.speed,
+    force_outcome: publicForceOutcome,
+    target_win_rate: publicTargetWinRate,
+    force_win_rate: publicForceWinRate,
+    force_loss_rate: publicForceLossRate,
+    demo_win_rate: publicDemoWinRate,
+    user_outcomes: publicUserOutcomes,
+    controls: {
+      force_outcome: publicForceOutcome,
+      target_win_rate: publicTargetWinRate,
+      force_win_rate: publicForceWinRate,
+      force_loss_rate: publicForceLossRate,
+      demo_win_rate: publicDemoWinRate,
+      user_outcomes: publicUserOutcomes
+    },
     graph: {
       speed: saved.speed ?? saved.graph?.speed ?? defaultSettings.graph.speed,
       spike_frequency: saved.spikeFreq ?? saved.graph?.spike_frequency ?? defaultSettings.graph.spike_frequency,
